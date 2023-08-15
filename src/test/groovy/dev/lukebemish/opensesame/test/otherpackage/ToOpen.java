@@ -1,12 +1,16 @@
-package dev.lukebemish.opensesame.test;
+package dev.lukebemish.opensesame.test.otherpackage;
 
-public class TestPrivate {
+public class ToOpen {
     private static void testStatic() {
         System.out.println("ran private static method");
     }
 
     private void testInstance() {
         System.out.println("ran private instance method");
+    }
+
+    protected void testProtectedInstance() {
+        System.out.println("ran protected instance method");
     }
 
     private static void testStaticWithArg(Object object) {

@@ -1,59 +1,67 @@
 package dev.lukebemish.opensesame.test
 
 import dev.lukebemish.opensesame.OpenSesame
+import dev.lukebemish.opensesame.test.otherpackage.HasPrivateCtor
+import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import org.junit.jupiter.api.Test
 
 class TestAccess {
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateAccess() {
-        TestPrivate testPrivate = new TestPrivate()
+        ToOpen testPrivate = new ToOpen()
         testPrivate.testInstance()
+    }
+    @Test
+    @OpenSesame(ToOpen)
+    void testProtectedAccess() {
+        ToOpen testPrivate = new ToOpen()
+        testPrivate.testProtectedInstance()
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateFieldGet() {
-        TestPrivate testPrivate = new TestPrivate()
+        ToOpen testPrivate = new ToOpen()
         println testPrivate.instance
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateStaticFieldGet() {
-        println TestPrivate.STATIC
+        println ToOpen.STATIC
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateFieldSet() {
-        TestPrivate testPrivate = new TestPrivate()
+        ToOpen testPrivate = new ToOpen()
         testPrivate.instance = 'mutated'
         println testPrivate.instance
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateStaticFieldSet() {
-        TestPrivate.STATIC = 'mutated'
-        println TestPrivate.STATIC
+        ToOpen.STATIC = 'mutated'
+        println ToOpen.STATIC
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateStaticAccess() {
-        TestPrivate.testStatic()
+        ToOpen.testStatic()
     }
 
     @Test
-    @OpenSesame(TestPrivate)
+    @OpenSesame(ToOpen)
     void testPrivateStaticWithArgAccess() {
-        TestPrivate.testStaticWithArg('test')
+        ToOpen.testStaticWithArg('test')
     }
 
     @Test
-    @OpenSesame(TestPrivateCtor)
+    @OpenSesame(HasPrivateCtor)
     void testPrivateCtorAccess() {
-        new TestPrivateCtor('test')
+        new HasPrivateCtor('test')
     }
 }

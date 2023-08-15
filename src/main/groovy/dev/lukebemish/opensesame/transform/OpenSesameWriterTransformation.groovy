@@ -86,10 +86,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                         return super.transform(expr)
                     }
 
-                    if (
-                            !field.private &&
-                                    (!field.protected || !methodNode.declaringClass.isDerivedFrom(field.declaringClass)) &&
-                                    (field.public || field.declaringClass.package == methodNode.declaringClass.package)) {
+                    if (isAccessible(field.declaringClass, methodNode.declaringClass, field.protected, field.public, field.private)) {
                         return super.transform(expr)
                     }
 
@@ -144,11 +141,11 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                         it.setGenericsTypes(new GenericsType[]{new GenericsType(methodNode.declaringClass)})
                     })
                     var out = new MethodCallExpression(
-                            classExpression,
+                            transform(classExpression),
                             bridgeMethodName,
-                            new ArgumentListExpression(
+                            transform(new ArgumentListExpression(
                                     outParameters
-                            )
+                            ))
                     )
 
                     out.setNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET, bridgeMethod)
@@ -188,7 +185,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                         if (property !== null && property.setterName != null && !allowFieldOnly) {
                             Expression setterExpression = new MethodCallExpression(
                                     lhs.objectExpression,
-                                    property.getterName,
+                                    property.setterName,
                                     new ArgumentListExpression(new Expression[] {expr.rightExpression})
                             )
                             var setter = property.declaringClass.getMethod(property.setterName, new Parameter[]{new Parameter(expr.rightExpression.type, 'value')})
@@ -204,10 +201,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                             return expr
                         }
 
-                        if (
-                                !field.private &&
-                                        (!field.protected || !methodNode.declaringClass.isDerivedFrom(field.declaringClass)) &&
-                                        (field.public || field.declaringClass.package == methodNode.declaringClass.package)) {
+                        if (isAccessible(field.declaringClass, methodNode.declaringClass, field.protected, field.public, field.private)) {
                             expr.rightExpression = super.transform(expr.rightExpression)
                             return expr
                         }
@@ -267,11 +261,11 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                             it.setGenericsTypes(new GenericsType[]{new GenericsType(methodNode.declaringClass)})
                         })
                         var out = new MethodCallExpression(
-                                classExpression,
+                                transform(classExpression),
                                 bridgeMethodName,
-                                new ArgumentListExpression(
+                                transform(new ArgumentListExpression(
                                         outParameters
-                                )
+                                ))
                         )
 
                         out.setNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET, bridgeMethod)
@@ -288,18 +282,11 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                 if (expr !instanceof MethodCall) {
                     return null
                 }
-                if ((method.private ||
-                        (method.packageScope && method.declaringClass.package != methodNode.declaringClass.package) ||
-                        (method.protected && methodNode.declaringClass.isDerivedFrom(method.declaringClass.declaringClass)))
-                        && openedClasses.contains(method.declaringClass)) {
+                if (!isAccessible(method.declaringClass, methodNode.declaringClass, method.protected, method.public, method.private) && openedClasses.contains(method.declaringClass)) {
                     boolean isCtor = method.name == '$opensesame$$new'
                     if (isCtor) {
                         var ctor = method.declaringClass.getDeclaredConstructor(method.parameters)
-                        if (
-                                ctor !== null &&
-                                        !ctor.private &&
-                                        (!method.packageScope || method.declaringClass.package == methodNode.declaringClass.package) &&
-                                        (!method.protected || !methodNode.declaringClass.isDerivedFrom(method.declaringClass.declaringClass))) {
+                        if (ctor !== null && isAccessible(ctor.declaringClass, methodNode.declaringClass, ctor.protected, ctor.public, ctor.private)) {
                             var out = new ConstructorCallExpression(
                                     method.declaringClass,
                                     expr.arguments
@@ -311,7 +298,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                 }
                             }
                             out.setNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET, ctor)
-                            return out
+                            return transform(out)
                         }
                     }
                     String outMethodPart = "\$\$${method.declaringClass.name.replace('.', '$')}\$\$${method.name}\$\$${method.parameters.collect { it.type.name.replace('.', '$') }.join('$')}"
@@ -349,6 +336,8 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                         var methodName = 'invokeInstance'
                                         if (method.static)
                                             methodName = 'invokeStatic'
+                                        if (!method.static && method.private)
+                                            methodName = 'invokePrivateInstance'
                                         if (isCtor)
                                             methodName = 'invokeCtor'
                                         methodVisitor.visitInvokeDynamicInsn(
@@ -383,11 +372,11 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                         it.setGenericsTypes(new GenericsType[]{new GenericsType(methodNode.declaringClass)})
                     })
                     var out = new MethodCallExpression(
-                            classExpression,
+                            transform(classExpression),
                             bridgeMethodName,
-                            new ArgumentListExpression(
+                            transform(new ArgumentListExpression(
                                     outParameters
-                            )
+                            ))
                     )
 
                     out.setNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET, bridgeMethod)
@@ -406,6 +395,22 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
         }
 
         trn.visitMethod(methodNode)
+    }
+
+    private static boolean isAccessible(ClassNode target, ClassNode source, boolean isProtected, boolean isPublic, boolean isPrivate) {
+        if (isPublic) {
+            return true
+        }
+        if (target == source || target.innerClasses.collect().contains(source) || source.innerClasses.collect().contains(target)) {
+            return true
+        }
+        if (isPrivate) {
+            return false
+        }
+        if (isProtected) {
+            return source.isDerivedFrom(target) || target.package == source.package
+        }
+        return target.package == source.package
     }
 
     @Override
