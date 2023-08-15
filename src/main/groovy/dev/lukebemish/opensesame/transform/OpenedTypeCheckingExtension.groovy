@@ -12,6 +12,7 @@ import org.codehaus.groovy.ast.expr.AttributeExpression
 import org.codehaus.groovy.ast.expr.ClassExpression
 import org.codehaus.groovy.ast.expr.ListExpression
 import org.codehaus.groovy.ast.expr.MethodCall
+import org.codehaus.groovy.ast.expr.PropertyExpression
 import org.codehaus.groovy.transform.stc.StaticTypeCheckingVisitor
 import org.codehaus.groovy.transform.stc.TypeCheckingExtension
 
@@ -113,7 +114,64 @@ class OpenedTypeCheckingExtension extends TypeCheckingExtension {
     }
 
     @Override
+    boolean handleUnresolvedProperty(PropertyExpression pexp) {
+        Set<ClassNode> openedClasses = getClassesToOpen()
+        var receiver = pexp.objectExpression.type
+        String name = pexp.propertyAsString
+        if (receiver == classNodeFor(Class)) {
+            // try static stuff
+            GenericsType type = receiver.genericsTypes[0]
+            if (type.upperBounds === null && type.lowerBound === null && type.type !== null) {
+                ClassNode staticReceiver = type.type
+                if (openedClasses.contains(staticReceiver)) {
+                    var property = staticReceiver.getProperty(name)
+                    if (property !== null && property.static) {
+                        storeType(pexp, property.type)
+                        return true
+                    }
+                    var field = staticReceiver.getField(name)
+                    if (field !== null && field.static) {
+                        storeType(pexp, field.type)
+                        return true
+                    }
+                }
+            }
+        }
+        if (openedClasses.contains(receiver)) {
+            var property = receiver.getProperty(name)
+            if (property !== null && !property.static) {
+                storeType(pexp, property.type)
+                return true
+            }
+            var field = receiver.getField(name)
+            if (field !== null && !field.static) {
+                storeType(pexp, field.type)
+                return true
+            }
+        }
+        return super.handleUnresolvedProperty(pexp)
+    }
+
+    @Override
     boolean handleUnresolvedAttribute(AttributeExpression aexp) {
+        Set<ClassNode> openedClasses = getClassesToOpen()
+        var receiver = aexp.objectExpression.type
+        String name = aexp.propertyAsString
+        if (receiver == classNodeFor(Class)) {
+            // try static stuff
+            GenericsType type = receiver.genericsTypes[0]
+            if (type.upperBounds === null && type.lowerBound === null && type.type !== null) {
+                ClassNode staticReceiver = type.type
+                if (openedClasses.contains(staticReceiver)) {
+                    var field = staticReceiver.getField(name)
+                    return field !== null && field.static
+                }
+            }
+        }
+        if (openedClasses.contains(receiver)) {
+            var field = receiver.getField(name)
+            return field !== null && !field.static
+        }
         return super.handleUnresolvedAttribute(aexp)
     }
 }

@@ -13,6 +13,34 @@ class TestAccess {
 
     @Test
     @OpenSesame(TestPrivate)
+    void testPrivateFieldGet() {
+        TestPrivate testPrivate = new TestPrivate()
+        println testPrivate.instance
+    }
+
+    @Test
+    @OpenSesame(TestPrivate)
+    void testPrivateStaticFieldGet() {
+        println TestPrivate.STATIC
+    }
+
+    @Test
+    @OpenSesame(TestPrivate)
+    void testPrivateFieldSet() {
+        TestPrivate testPrivate = new TestPrivate()
+        testPrivate.instance = 'mutated'
+        println testPrivate.instance
+    }
+
+    @Test
+    @OpenSesame(TestPrivate)
+    void testPrivateStaticFieldSet() {
+        TestPrivate.STATIC = 'mutated'
+        println TestPrivate.STATIC
+    }
+
+    @Test
+    @OpenSesame(TestPrivate)
     void testPrivateStaticAccess() {
         TestPrivate.testStatic()
     }
