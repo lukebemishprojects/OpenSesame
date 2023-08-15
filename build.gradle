@@ -1,0 +1,28 @@
+plugins {
+    id 'groovy'
+}
+
+group = 'dev.lukebemish'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.apache.groovy:groovy:4.0.12'
+    implementation 'org.ow2.asm:asm:9.5'
+    compileOnly 'org.jetbrains:annotations:24.0.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events = ['passed', 'failed', 'skipped']
+    }
+}
