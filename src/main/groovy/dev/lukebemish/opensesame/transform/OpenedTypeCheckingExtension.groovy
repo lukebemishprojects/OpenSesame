@@ -2,11 +2,13 @@ package dev.lukebemish.opensesame.transform
 
 import dev.lukebemish.opensesame.OpenSesame
 import groovy.transform.CompileStatic
+import groovyjarjarasm.asm.Opcodes
 import org.codehaus.groovy.ast.ClassHelper
 import org.codehaus.groovy.ast.ClassNode
 import org.codehaus.groovy.ast.GenericsType
 import org.codehaus.groovy.ast.MethodNode
 import org.codehaus.groovy.ast.expr.ArgumentListExpression
+import org.codehaus.groovy.ast.expr.AttributeExpression
 import org.codehaus.groovy.ast.expr.ClassExpression
 import org.codehaus.groovy.ast.expr.ListExpression
 import org.codehaus.groovy.ast.expr.MethodCall
@@ -86,8 +88,21 @@ class OpenedTypeCheckingExtension extends TypeCheckingExtension {
             if (type.upperBounds === null && type.lowerBound === null && type.type !== null) {
                 ClassNode staticReceiver = type.type
                 if (openedClasses.contains(staticReceiver)) {
+                    if (name == '$opensesame$$new') {
+                        return staticReceiver.getMethods(name) + (staticReceiver.getDeclaredConstructors().collect {
+                            var out = new MethodNode(
+                                    '$opensesame$$new',
+                                    Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
+                                    staticReceiver,
+                                    it.parameters,
+                                    it.exceptions,
+                                    null
+                            )
+                            out.setDeclaringClass(staticReceiver)
+                            out
+                        } as Collection<MethodNode>)
+                    }
                     return staticReceiver.getMethods(name)
-
                 }
             }
         }
@@ -98,7 +113,7 @@ class OpenedTypeCheckingExtension extends TypeCheckingExtension {
     }
 
     @Override
-    void afterMethodCall(MethodCall call) {
-        super.afterMethodCall(call)
+    boolean handleUnresolvedAttribute(AttributeExpression aexp) {
+        return super.handleUnresolvedAttribute(aexp)
     }
 }

@@ -1,10 +1,11 @@
 package dev.lukebemish.opensesame.transform
 
-import dev.lukebemish.opensesame.OpenSesame
+
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
 import groovyjarjarasm.asm.MethodVisitor
+import groovyjarjarasm.asm.Opcodes
 import groovyjarjarasm.asm.Type
 import org.codehaus.groovy.ast.*
 import org.codehaus.groovy.ast.expr.*
@@ -17,13 +18,10 @@ import org.codehaus.groovy.transform.AbstractASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
 import org.codehaus.groovy.transform.TransformWithPriority
 import org.codehaus.groovy.transform.stc.StaticTypesMarker
-import org.objectweb.asm.Opcodes
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.INSTRUCTION_SELECTION)
 class OpenSesameWriterTransformation extends AbstractASTTransformation implements TransformWithPriority {
-    private static final ClassNode OPEN_SESAME = ClassHelper.makeWithoutCaching(OpenSesame)
-    private static final ClassNode CLASS = ClassHelper.makeWithoutCaching(Class)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
     @Override
@@ -44,7 +42,35 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
             Expression transform(Expression expr) {
                 if (expr instanceof MethodCall) {
                     MethodNode method = ((Expression) expr).getNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET)
-                    if (!method.public && openedClasses.contains(method.declaringClass)) {
+                    if (method === null) {
+                        return super.transform(expr)
+                    }
+                    if ((method.private ||
+                            (method.packageScope && method.declaringClass.package != methodNode.declaringClass.package) ||
+                            (method.protected && methodNode.declaringClass.isDerivedFrom(method.declaringClass.declaringClass)))
+                            && openedClasses.contains(method.declaringClass)) {
+                        boolean isCtor = method.name == '$opensesame$$new'
+                        if (isCtor) {
+                            var ctor = method.declaringClass.getDeclaredConstructor(method.parameters)
+                            if (
+                                    ctor !== null &&
+                                    !ctor.private &&
+                                    (!method.packageScope || method.declaringClass.package == methodNode.declaringClass.package) &&
+                                    (!method.protected || !methodNode.declaringClass.isDerivedFrom(method.declaringClass.declaringClass))) {
+                                var out = new ConstructorCallExpression(
+                                        method.declaringClass,
+                                        expr.arguments
+                                )
+                                for (final key : [StaticTypesMarker.TYPE, StaticTypesMarker.INFERRED_TYPE, StaticTypesMarker.INFERRED_RETURN_TYPE]) {
+                                    var old = ((Expression) expr).getNodeMetaData(key)
+                                    if (old !== null) {
+                                        out.setNodeMetaData(key, old)
+                                    }
+                                }
+                                out.setNodeMetaData(StaticTypesMarker.DIRECT_METHOD_CALL_TARGET, ctor)
+                                return out
+                            }
+                        }
                         String outMethodPart = "\$\$${method.declaringClass.name.replace('.','$')}\$\$${method.name}\$\$${method.parameters.collect {it.type.name.replace('.','$')}.join('$')}"
                         String bridgeMethodName = "\$opensesame_bridge${outMethodPart}"
                         Parameter[] parameters = new Parameter[method.static ? method.parameters.size() : method.parameters.size() + 1]
@@ -76,7 +102,11 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                             var pType = method.parameters[i].type
                                             BytecodeHelper.load(methodVisitor, pType, i + offset)
                                         }
-                                        var methodName = method.static ? 'invokeStatic' : 'invokeInstance'
+                                        var methodName = 'invokeInstance'
+                                        if (method.static)
+                                            methodName = 'invokeStatic'
+                                        if (isCtor)
+                                            methodName = 'invokeCtor'
                                         methodVisitor.visitInvokeDynamicInsn(
                                                 method.name,
                                                 BytecodeHelper.getMethodDescriptor(method.returnType, parameters),

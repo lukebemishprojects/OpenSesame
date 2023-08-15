@@ -1,2 +1,3 @@
 rootProject.name = 'opensesame'
 
+include 'opensesame-runtime'

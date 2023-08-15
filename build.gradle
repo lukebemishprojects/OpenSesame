@@ -1,9 +1,10 @@
 plugins {
     id 'groovy'
+    id 'java-library'
+    id 'maven-publish'
 }
 
-group = 'dev.lukebemish'
-version = '1.0-SNAPSHOT'
+java.withSourcesJar()
 
 repositories {
     mavenCentral()
@@ -11,7 +12,7 @@ repositories {
 
 dependencies {
     implementation 'org.apache.groovy:groovy:4.0.12'
-    implementation 'org.ow2.asm:asm:9.5'
+    implementation project(':opensesame-runtime')
     compileOnly 'org.jetbrains:annotations:24.0.1'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
@@ -24,5 +25,13 @@ test {
         showStandardStreams = true
         exceptionFormat = 'full'
         events = ['passed', 'failed', 'skipped']
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
     }
 }

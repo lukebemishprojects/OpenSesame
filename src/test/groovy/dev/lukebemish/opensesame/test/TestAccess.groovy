@@ -20,6 +20,12 @@ class TestAccess {
     @Test
     @OpenSesame(TestPrivate)
     void testPrivateStaticWithArgAccess() {
-        TestPrivate.testStaticWithArg("test")
+        TestPrivate.testStaticWithArg('test')
+    }
+
+    @Test
+    @OpenSesame(TestPrivateCtor)
+    void testPrivateCtorAccess() {
+        new TestPrivateCtor('test')
     }
 }
