@@ -1,13 +1,13 @@
 plugins {
     id 'groovy'
     id 'io.github.gradle-nexus.publish-plugin' version '1.3.0'
+    id 'maven-publish'
 }
 
 apply from: 'version.gradle'
 
 subprojects {
     apply plugin: 'java-library'
-    apply plugin: 'maven-publish'
     apply plugin: 'signing'
 
     afterEvaluate {
