@@ -1,11 +1,23 @@
+plugins {
+    id 'groovy'
+}
+
 java.withSourcesJar()
-java.withJavadocJar()
+groovydoc.use = true
+
+tasks.register('groovydocJar', Jar) {
+    dependsOn groovydoc
+    archiveClassifier.set 'javadoc'
+    from groovydoc.destinationDir
+}
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation 'org.apache.groovy:groovy:4.0.12'
+    implementation project(':opensesame-runtime')
     compileOnly 'org.jetbrains:annotations:24.0.1'
 }
 
@@ -13,11 +25,12 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            artifact tasks.groovydocJar
 
             pom {
-                name = "OpenSesame - Runtime"
+                name = "OpenSesame - Transform"
                 packaging = 'jar'
-                description = 'Runtime metafactory used for OpenSesame, a tool for fase typesafe access of private members with groovy'
+                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for fase typesafe access of private members with groovy'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

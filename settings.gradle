@@ -1,3 +1,4 @@
 rootProject.name = 'opensesame'
 
 include 'opensesame-runtime'
+include 'opensesame-transform'
