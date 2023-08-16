@@ -23,7 +23,7 @@ dependencies {
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
+        mavenTransform(MavenPublication) {
             from components.java
             artifact tasks.groovydocJar
 
