@@ -3,8 +3,12 @@ package dev.lukebemish.opensesame.test
 import dev.lukebemish.opensesame.OpenSesame
 import dev.lukebemish.opensesame.test.otherpackage.HasPrivateCtor
 import dev.lukebemish.opensesame.test.otherpackage.ToOpen
+import groovy.transform.CompileStatic
+import groovy.transform.TypeChecked
 import org.junit.jupiter.api.Test
 
+@CompileStatic
+@SuppressWarnings('GroovyAccessibility')
 class TestAccess {
     @Test
     @OpenSesame(ToOpen)

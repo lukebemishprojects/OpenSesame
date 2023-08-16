@@ -10,6 +10,7 @@ import org.codehaus.groovy.ast.MethodNode
 import org.codehaus.groovy.ast.expr.ArgumentListExpression
 import org.codehaus.groovy.ast.expr.AttributeExpression
 import org.codehaus.groovy.ast.expr.ClassExpression
+import org.codehaus.groovy.ast.expr.Expression
 import org.codehaus.groovy.ast.expr.ListExpression
 import org.codehaus.groovy.ast.expr.MethodCall
 import org.codehaus.groovy.ast.expr.PropertyExpression
@@ -173,5 +174,18 @@ class OpenedTypeCheckingExtension extends TypeCheckingExtension {
             return field !== null && !field.static
         }
         return super.handleUnresolvedAttribute(aexp)
+    }
+
+    @Override
+    List<MethodNode> handleAmbiguousMethods(List<MethodNode> nodes, Expression origin) {
+        List<MethodNode> outNodes = new ArrayList<>()
+        Set<MethodNode> methods = new HashSet<>()
+        for (final methodNode : nodes) {
+            if (!methods.contains(methodNode)) {
+                outNodes.add(methodNode)
+            }
+        }
+        println "handleAmbiguousMethods: $outNodes"
+        return outNodes
     }
 }
