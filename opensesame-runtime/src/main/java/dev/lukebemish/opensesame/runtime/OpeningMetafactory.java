@@ -4,6 +4,11 @@ import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -11,13 +16,40 @@ import java.lang.invoke.MethodType;
 public final class OpeningMetafactory {
     private OpeningMetafactory() {}
 
-    /**
-     * A remapper that can be used to remap method and field names. Set this to a non-null value to enable remapping.
-     */
-    public static RuntimeRemapper remapper = null;
+    private static final Map<ClassLoaderKey, RuntimeRemapper> REMAPPER_LOOKUP = new ConcurrentHashMap<>();
+    private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
+
+    private static RuntimeRemapper getRemapper(ClassLoader classLoader) {
+        ClassLoaderKey ref;
+        while ((ref = (ClassLoaderKey) REMAPPER_LOOKUP_QUEUE.poll()) != null) {
+            REMAPPER_LOOKUP.remove(ref);
+        }
+        return REMAPPER_LOOKUP.computeIfAbsent(new ClassLoaderKey(classLoader, REMAPPER_LOOKUP_QUEUE), k ->
+                ServiceLoader.load(RuntimeRemapper.class, classLoader).findFirst().orElse(null));
+    }
+
+    private static class ClassLoaderKey extends WeakReference<ClassLoader> {
+        final int hashCode;
+
+        public ClassLoaderKey(ClassLoader referent, ReferenceQueue<? super ClassLoader> q) {
+            super(referent, q);
+            this.hashCode = System.identityHashCode(referent);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof ClassLoaderKey key) && hashCode == key.hashCode && get() == key.get();
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+    }
 
     public static CallSite invokeStatic(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
                 if (remapMethodName != null) {
@@ -33,6 +65,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokeInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
                 if (remapMethodName != null) {
@@ -48,6 +81,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokePrivateInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
                 if (remapMethodName != null) {
@@ -63,6 +97,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokeStaticFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
                 if (remapMethodName != null) {
@@ -78,6 +113,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokeInstanceFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
                 if (remapMethodName != null) {
@@ -93,6 +129,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokeStaticFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
                 if (remapMethodName != null) {
@@ -108,6 +145,7 @@ public final class OpeningMetafactory {
 
     public static CallSite invokeInstanceFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
+            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
             if (remapper != null) {
                 String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
                 if (remapMethodName != null) {
