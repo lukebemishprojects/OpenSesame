@@ -7,8 +7,6 @@ def gitTagProcess = 'git describe --abbrev=0 --tags'.execute()
 gitTagProcess.waitFor()
 if (gitTagProcess.exitValue() == 0) {
     lastTaggedVersion = gitTagProcess.text.trim()
-    def parts = lastTaggedVersion.split("-")
-    lastTaggedVersion = parts[0..-2].join("-")
 } else {
     logger.warn "Failed to get last tagged version: ERROR(${gitTagProcess.exitValue()})"
 }
@@ -17,13 +15,9 @@ if (lastTaggedVersion == version) {
     def currentTagProcess = 'git tag --points-at HEAD'.execute()
     currentTagProcess.waitFor()
     if (currentTagProcess.exitValue() != 0 || currentTagProcess.text.trim().empty) {
-        def noMetaParts = version.split("-")
-        def noBuildParts = noMetaParts[0].split("\\+")
-        def mainParts = noBuildParts[0].split("\\.")
+        def mainParts = version.split("\\.")
         mainParts[-1] = (mainParts[-1] as int + 1) as String
-        noBuildParts[0] = mainParts.join(".")
-        noMetaParts[0] = noBuildParts.join("+")
-        version = noMetaParts.join("-")
+        version = mainParts.join('.')
     }
 }
 
