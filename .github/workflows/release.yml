@@ -32,6 +32,8 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.RELEASE_MAVEN_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
       - run: |
           git push
           git push --tags
