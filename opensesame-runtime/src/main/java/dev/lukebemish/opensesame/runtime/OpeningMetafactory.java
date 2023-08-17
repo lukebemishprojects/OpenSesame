@@ -6,9 +6,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -16,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class OpeningMetafactory {
     private OpeningMetafactory() {}
 
-    private static final Map<ClassLoaderKey, RuntimeRemapper> REMAPPER_LOOKUP = new ConcurrentHashMap<>();
+    private static final Map<ClassLoaderKey, RuntimeRemapper> REMAPPER_LOOKUP = new HashMap<>();
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
 
-    private static RuntimeRemapper getRemapper(ClassLoader classLoader) {
+    private synchronized static RuntimeRemapper getRemapper(ClassLoader classLoader) {
         ClassLoaderKey ref;
         while ((ref = (ClassLoaderKey) REMAPPER_LOOKUP_QUEUE.poll()) != null) {
             REMAPPER_LOOKUP.remove(ref);
