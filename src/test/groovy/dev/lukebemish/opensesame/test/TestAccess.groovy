@@ -6,6 +6,8 @@ import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
 
+import static org.junit.jupiter.api.Assertions.*
+
 @CompileStatic
 @SuppressWarnings('GroovyAccessibility')
 class TestAccess {
@@ -13,58 +15,48 @@ class TestAccess {
     @OpenSesame(ToOpen)
     void testPrivateAccess() {
         ToOpen testPrivate = new ToOpen()
-        testPrivate.testInstance()
+        assertEquals("ran private instance method", testPrivate.testInstance())
     }
     @Test
     @OpenSesame(ToOpen)
     void testProtectedAccess() {
         ToOpen testPrivate = new ToOpen()
-        testPrivate.testProtectedInstance()
+        assertEquals("ran protected instance method", testPrivate.testProtectedInstance())
     }
 
     @Test
     @OpenSesame(ToOpen)
-    void testPrivateFieldGet() {
+    void testPrivateField() {
         ToOpen testPrivate = new ToOpen()
-        println testPrivate.instance
-    }
-
-    @Test
-    @OpenSesame(ToOpen)
-    void testPrivateStaticFieldGet() {
-        println ToOpen.STATIC
-    }
-
-    @Test
-    @OpenSesame(ToOpen)
-    void testPrivateFieldSet() {
-        ToOpen testPrivate = new ToOpen()
+        assertEquals("private instance field", testPrivate.instance)
         testPrivate.instance = 'mutated'
-        println testPrivate.instance
+        assertEquals("mutated", testPrivate.instance)
     }
 
     @Test
     @OpenSesame(ToOpen)
-    void testPrivateStaticFieldSet() {
+    void testPrivateStaticField() {
+        assertEquals("private static field", ToOpen.STATIC)
         ToOpen.STATIC = 'mutated'
-        println ToOpen.STATIC
+        assertEquals("mutated", ToOpen.STATIC)
     }
 
     @Test
     @OpenSesame(ToOpen)
     void testPrivateStaticAccess() {
-        ToOpen.testStatic()
+        assertEquals("ran private static method", ToOpen.testStatic())
     }
 
     @Test
     @OpenSesame(ToOpen)
     void testPrivateStaticWithArgAccess() {
-        ToOpen.testStaticWithArg('test')
+        assertEquals("ran private instance method with arg: test", ToOpen.testStaticWithArg('test'))
     }
 
     @Test
     @OpenSesame(HasPrivateCtor)
     void testPrivateCtorAccess() {
-        new HasPrivateCtor('test')
+        var object = new HasPrivateCtor('test')
+        assertEquals('test', object.arg)
     }
 }

@@ -1,7 +1,8 @@
 package dev.lukebemish.opensesame.test.otherpackage;
 
 public class HasPrivateCtor {
+    public final String arg;
     private HasPrivateCtor(String arg) {
-        System.out.println("ran private constructor: "+arg);
+        this.arg = arg;
     }
 }

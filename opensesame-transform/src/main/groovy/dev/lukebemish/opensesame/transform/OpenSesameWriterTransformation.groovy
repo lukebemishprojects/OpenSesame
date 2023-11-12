@@ -19,6 +19,10 @@ import org.codehaus.groovy.transform.GroovyASTTransformation
 import org.codehaus.groovy.transform.TransformWithPriority
 import org.codehaus.groovy.transform.stc.StaticTypesMarker
 
+import java.lang.invoke.CallSite
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
+
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.INSTRUCTION_SELECTION)
 class OpenSesameWriterTransformation extends AbstractASTTransformation implements TransformWithPriority {
@@ -120,7 +124,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
                                                         methodName,
-                                                        BytecodeHelper.getMethodDescriptor(OPENING_METAFACTORY.getMethods(methodName)[0]),
+                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
                                                         false
                                                 ),
                                                 Type.getObjectType(BytecodeHelper.getClassInternalName(field.declaringClass)),
@@ -238,7 +242,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                                             Opcodes.H_INVOKESTATIC,
                                                             BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
                                                             methodName,
-                                                            BytecodeHelper.getMethodDescriptor(OPENING_METAFACTORY.getMethods(methodName)[0]),
+                                                            Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
                                                             false
                                                     ),
                                                     Type.getObjectType(BytecodeHelper.getClassInternalName(field.declaringClass)),
@@ -347,7 +351,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
                                                         methodName,
-                                                        BytecodeHelper.getMethodDescriptor(OPENING_METAFACTORY.getMethods(methodName)[0]),
+                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
                                                         false
                                                 ),
                                                 Type.getObjectType(BytecodeHelper.getClassInternalName(method.declaringClass)),
