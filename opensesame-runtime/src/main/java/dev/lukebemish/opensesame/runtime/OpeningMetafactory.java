@@ -1,14 +1,10 @@
 package dev.lukebemish.opensesame.runtime;
 
-import org.jetbrains.annotations.Nullable;
-
-import java.lang.invoke.CallSite;
-import java.lang.invoke.ConstantCallSite;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -17,19 +13,39 @@ public final class OpeningMetafactory {
     private OpeningMetafactory() {}
 
     private static final Map<ClassLoaderKey, RuntimeRemapper> REMAPPER_LOOKUP = new HashMap<>();
+    private static final Map<Character, Class<?>> PRIMITIVES = Map.of(
+            'V', void.class,
+            'Z', boolean.class,
+            'C', char.class,
+            'B', byte.class,
+            'S', short.class,
+            'I', int.class,
+            'F', float.class,
+            'J', long.class,
+            'D', double.class
+    );
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
     private static final ModuleHandler MODULE_HANDLER;
-    private static final Throwable MODULE_HANDLER_EXCEPTION;
+    private static final Exception MODULE_HANDLER_EXCEPTION;
+
+    public static final int STATIC_TYPE = 0;
+    public static final int INSTANCE_TYPE = 1;
+    public static final int PRIVATE_INSTANCE_TYPE = 2;
+    public static final int STATIC_GET_TYPE = 3;
+    public static final int INSTANCE_GET_TYPE = 4;
+    public static final int STATIC_SET_TYPE = 5;
+    public static final int INSTANCE_SET_TYPE = 6;
+    public static final int CTOR_TYPE = 7;
 
     static {
-        Throwable MODULE_HANDLER_EXCEPTION1;
+        Exception MODULE_HANDLER_EXCEPTION1;
         ModuleHandler MODULE_HANDLER1;
         try {
-            MODULE_HANDLER1 = new ModuleHandler();
+            MODULE_HANDLER1 = new ModuleHandlerUnsafe();
             MODULE_HANDLER_EXCEPTION1 = null;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             MODULE_HANDLER_EXCEPTION1 = e;
-            MODULE_HANDLER1 = null;
+            MODULE_HANDLER1 = new ModuleHandlerFallback();
         }
         MODULE_HANDLER_EXCEPTION = MODULE_HANDLER_EXCEPTION1;
         MODULE_HANDLER = MODULE_HANDLER1;
@@ -63,197 +79,161 @@ public final class OpeningMetafactory {
         }
     }
 
-    private static Class<?> getOpenedClass(String holdingClasses, @Nullable String module, MethodHandles.Lookup caller) {
+    private static Class<?> getClassFromDescriptor(String desc, MethodHandles.Lookup caller) {
+        char first = desc.charAt(0);
+        Class<?> type = PRIMITIVES.get(first);
+        if (type != null) return type;
+        if (first == '[') return getClassFromDescriptor(desc.substring(1), caller).arrayType();
+        String className = desc.substring(1, desc.length()-1).replace('/','.');
+        try {
+            return Class.forName(className, false, caller.lookupClass().getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new OpeningException("Could not find class '"+className+"'", e);
+        }
+    }
+
+    private static MethodType makeMethodType(String desc, MethodHandles.Lookup caller) {
+        var argsEnd = desc.indexOf(')');
+        String args = desc.substring(1, desc.indexOf(')'));
+        List<Class<?>> argTypes = new ArrayList<>();
+        while (!args.isEmpty()) {
+            char c = args.charAt(0);
+            if (c == 'L' || c == '[') {
+                var end = args.indexOf(';');
+                if (end == -1) {
+                    throw new OpeningException("Descriptor '"+desc+"' is invalid");
+                }
+                String start = args.substring(0, end + 1);
+                args = args.substring(end + 1);
+                argTypes.add(getClassFromDescriptor(start, caller));
+            } else {
+                argTypes.add(Objects.requireNonNull(PRIMITIVES.get(c)));
+                args = args.substring(1);
+            }
+        }
+        Class<?> returnType = getClassFromDescriptor(desc.substring(argsEnd+1), caller);
+        return MethodType.methodType(returnType, argTypes);
+    }
+
+    private static Class<?> getOpenedClass(String className, String[] modules, MethodHandles.Lookup caller) {
         Class<?> lookupClass = caller.lookupClass();
         ClassLoader classLoader = lookupClass.getClassLoader();
-        String[] parts = holdingClasses.split(";");
-        Class<?> holdingClass = null;
-        List<Throwable> exceptions = new ArrayList<>();
+
+        className = remapClass(caller, className);
 
         Module from = lookupClass.getModule();
-        if (module != null && !module.isEmpty()) {
-            if (MODULE_HANDLER == null) {
-                throw new OpeningException(MODULE_HANDLER_EXCEPTION);
-            }
-            MODULE_HANDLER.openModule(from, module, parts);
-        }
+        modules = Arrays.stream(modules).filter(s -> s != null && !s.isEmpty()).toArray(String[]::new);
 
-        for (String part : parts) {
+        boolean opened = false;
+
+        if (modules.length != 0) {
             try {
-                holdingClass = Class.forName(part, false, classLoader);
-            } catch (ClassNotFoundException e) {
-                exceptions.add(e);
+                for (String moduleName : modules) {
+                    Module targetModule = ModuleLayer.boot().findModule(moduleName).orElseThrow();
+                    opened = MODULE_HANDLER.openModule(from, targetModule, className);
+                    if (opened) break;
+                }
+            } catch (Exception e) {
+                var exception = new OpeningException("Could not open module for class '"+className+"', modules "+Arrays.toString(modules), e);
+                if (MODULE_HANDLER_EXCEPTION != null) {
+                    exception.addSuppressed(MODULE_HANDLER_EXCEPTION);
+                }
+
+                throw exception;
             }
         }
-        if (holdingClass == null) {
-            var e = new OpeningException("No classes found out of "+ Arrays.toString(parts));
-            for (var throwable : exceptions) {
-                e.addSuppressed(throwable);
-            }
-            throw e;
-        }
-        return holdingClass;
-    }
-    
-    public static CallSite invokeStatic(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        // TODO: handle coercion of types
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeStatic(caller, targetMethodName, factoryType, holdingClass);
-    }
 
-    public static CallSite invokeInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeInstance(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokePrivateInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokePrivateInstance(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeStaticFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeStaticFieldGet(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeInstanceFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeInstanceFieldGet(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeStaticFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeStaticFieldSet(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeInstanceFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeInstanceFieldSet(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeCtor(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String holdingClasses, String module) {
-        Class<?> holdingClass = getOpenedClass(holdingClasses, module, caller);
-        return invokeCtor(caller, targetMethodName, factoryType, holdingClass);
-    }
-
-    public static CallSite invokeStatic(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
         try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
+            Class<?> clazz =  Class.forName(className, false, classLoader);
+            if (!opened) {
+                try {
+                    MODULE_HANDLER.openModule(from, clazz.getModule(), className);
+                } catch (Exception e) {
+                    var exception = new OpeningException("Could not open module for class '" + className + "', modules " + Arrays.toString(modules), e);
+                    if (MODULE_HANDLER_EXCEPTION != null) {
+                        exception.addSuppressed(MODULE_HANDLER_EXCEPTION);
+                    }
+
+                    throw exception;
                 }
             }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findStatic(holdingClass, targetMethodName, factoryType);
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchMethodException e) {
+            return clazz;
+        } catch (ClassNotFoundException e) {
             throw new OpeningException(e);
         }
     }
 
-    public static CallSite invokeInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
+    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String className, String desc, String modules, int type) {
+        var moduleNames = modules.split(";");
+        Class<?> holdingClass = getOpenedClass(className, moduleNames, caller);
+        MethodType accessType = makeMethodType(desc, caller);
+        return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
+    }
+
+    public static CallSite invoke(MethodHandles.Lookup caller, String name, MethodType factoryType, Class<?> holdingClass, int type) {
+        return invoke0(caller, name, factoryType, factoryType, holdingClass, type);
+    }
+
+    private static CallSite invoke0(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
+        if (type < STATIC_GET_TYPE) {
+            name = remapMethod(caller, name, accessType, holdingClass);
+        } else if (type < CTOR_TYPE) {
+            name = remapField(caller, name, holdingClass);
+        }
+        var handle = makeHandle(name, factoryType, accessType, holdingClass, type);
+        return new ConstantCallSite(handle);
+    }
+
+    private static MethodHandle makeHandle(String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
         try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
+            var lookup = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup());
+            var handle = switch (type) {
+                case STATIC_TYPE -> lookup.findStatic(holdingClass, name, accessType);
+                case INSTANCE_TYPE -> lookup.findVirtual(holdingClass, name, accessType.dropParameterTypes(0, 1));
+                case PRIVATE_INSTANCE_TYPE -> lookup.findSpecial(holdingClass, name, accessType.dropParameterTypes(0, 1), holdingClass);
+                case STATIC_GET_TYPE -> lookup.findStaticGetter(holdingClass, name, accessType.returnType());
+                case INSTANCE_GET_TYPE -> lookup.findGetter(holdingClass, name, accessType.returnType());
+                case STATIC_SET_TYPE -> lookup.findStaticSetter(holdingClass, name, accessType.parameterType(0));
+                case INSTANCE_SET_TYPE -> lookup.findSetter(holdingClass, name, accessType.parameterType(1));
+                case CTOR_TYPE -> lookup.findConstructor(holdingClass, accessType.changeReturnType(Void.TYPE));
+                default -> throw new OpeningException("Unexpected opening type: " + type);
+            };
+            return handle.asType(factoryType);
+        } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
+            throw new OpeningException(e);
+        }
+    }
+
+    private static String remapMethod(MethodHandles.Lookup caller, String targetMethodName, MethodType methodType, Class<?> holdingClass) {
+        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+        if (remapper != null) {
+            String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray());
+            if (remapMethodName != null) {
+                targetMethodName = remapMethodName;
             }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findVirtual(holdingClass, targetMethodName, factoryType.dropParameterTypes(0, 1));
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchMethodException e) {
-            throw new OpeningException(e);
         }
+        return targetMethodName;
     }
 
-    public static CallSite invokePrivateInstance(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, factoryType.parameterArray());
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
+    private static String remapField(MethodHandles.Lookup caller, String targetFieldName, Class<?> holdingClass) {
+        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+        if (remapper != null) {
+            String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName);
+            if (remapFieldName != null) {
+                targetFieldName = remapFieldName;
             }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findSpecial(holdingClass, targetMethodName, factoryType.dropParameterTypes(0, 1), holdingClass);
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchMethodException e) {
-            throw new OpeningException(e);
         }
+        return targetFieldName;
     }
 
-    public static CallSite invokeStaticFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
+    private static String remapClass(MethodHandles.Lookup caller, String className) {
+        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+        if (remapper != null) {
+            String remapClassName = remapper.remapClassName(className);
+            if (remapClassName != null) {
+                className = remapClassName;
             }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findStaticGetter(holdingClass, targetMethodName, factoryType.returnType());
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new OpeningException(e);
         }
-    }
-
-    public static CallSite invokeInstanceFieldGet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
-            }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findGetter(holdingClass, targetMethodName, factoryType.returnType());
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new OpeningException(e);
-        }
-    }
-
-    public static CallSite invokeStaticFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
-            }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findStaticSetter(holdingClass, targetMethodName, factoryType.parameterType(0));
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new OpeningException(e);
-        }
-    }
-
-    public static CallSite invokeInstanceFieldSet(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
-            if (remapper != null) {
-                String remapMethodName = remapper.remapFieldName(holdingClass, targetMethodName);
-                if (remapMethodName != null) {
-                    targetMethodName = remapMethodName;
-                }
-            }
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findSetter(holdingClass, targetMethodName, factoryType.parameterType(1));
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            throw new OpeningException(e);
-        }
-    }
-
-    public static CallSite invokeCtor(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> holdingClass) {
-        try {
-            var handle = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup()).findConstructor(holdingClass, factoryType.changeReturnType(Void.TYPE));
-            return new ConstantCallSite(handle);
-        } catch (IllegalAccessException | NoSuchMethodException e) {
-            throw new OpeningException(e);
-        }
+        return className;
     }
 }

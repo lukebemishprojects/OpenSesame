@@ -7,6 +7,9 @@ repositories {
 
 dependencies {
     compileOnly 'org.jetbrains:annotations:24.0.1'
+
+    // not needed for now but will be added later if I have to do hidden class generation
+    // implementation 'org.ow2.asm:asm:9.6'
 }
 
 publishing {

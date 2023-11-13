@@ -17,19 +17,18 @@ import java.lang.annotation.Target
     String name()
     String target()
     String desc()
-    String[] aliases() default []
     Type type()
-    String module() default ""
+    String[] module() default []
 
     @CompileStatic
     enum Type {
         STATIC(false, false),
         VIRTUAL(true, false),
         SPECIAL(true, false),
-        PUT_STATIC(false, true),
         GET_STATIC(false, true),
-        PUT_INSTANCE(true, true),
         GET_INSTANCE(true, true),
+        SET_STATIC(false, true),
+        SET_INSTANCE(true, true),
         CONSTRUCT(false, false),
 
         final boolean takesInstance

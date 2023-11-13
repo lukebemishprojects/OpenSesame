@@ -5,7 +5,7 @@ import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
 
-import static org.junit.jupiter.api.Assertions.*
+import static org.junit.jupiter.api.Assertions.assertEquals
 
 @CompileStatic
 class TestOpener {
@@ -15,7 +15,7 @@ class TestOpener {
             desc = '()Ljava/lang/String;',
             type = Opener.Type.SPECIAL
     )
-    private static openerTestPrivateAccess(ToOpen instance) {
+    private static String openerTestPrivateAccess(ToOpen instance) {
         throw new RuntimeException()
     }
 
@@ -31,7 +31,7 @@ class TestOpener {
             desc = '()Ljava/lang/String;',
             type = Opener.Type.STATIC
     )
-    private static openerTestPrivateClass() {
+    private static String openerTestPrivateClass() {
         throw new RuntimeException()
     }
 

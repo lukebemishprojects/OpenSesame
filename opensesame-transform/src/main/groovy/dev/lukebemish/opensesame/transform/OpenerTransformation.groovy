@@ -46,16 +46,10 @@ class OpenerTransformation extends AbstractASTTransformation {
         var annotationNode = methodNode.getAnnotations(OPENER).get(0)
 
         final String target = getMemberStringValue(annotationNode, 'target')
-        final List<String> aliases = [target]
         final String name = getMemberStringValue(annotationNode, 'name')
         final String desc = getMemberStringValue(annotationNode, 'desc')
         final Opener.Type type = Opener.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
-        final String module = getMemberStringValue(annotationNode, 'module') ?: ""
-
-        var foundAliases = getMemberStringList(annotationNode, 'aliases')
-        if (foundAliases != null) {
-            aliases.addAll(foundAliases)
-        }
+        final List<String> modules = getMemberStringList(annotationNode, 'module') ?: []
 
         if (type.field && desc.startsWith('(')) {
             throw new RuntimeException("Field opener, but provided with method descriptor ${desc}")
@@ -70,7 +64,7 @@ class OpenerTransformation extends AbstractASTTransformation {
         Type asmDescType = Type.getType(desc)
         Type returnType = switch (type) {
             case Opener.Type.STATIC, Opener.Type.VIRTUAL, Opener.Type.SPECIAL -> asmDescType.getReturnType()
-            case Opener.Type.PUT_STATIC, Opener.Type.PUT_INSTANCE -> Type.VOID_TYPE
+            case Opener.Type.SET_STATIC, Opener.Type.SET_INSTANCE -> Type.VOID_TYPE
             case Opener.Type.GET_STATIC, Opener.Type.GET_INSTANCE -> asmDescType
             case Opener.Type.CONSTRUCT -> asmTarget
         }
@@ -80,25 +74,12 @@ class OpenerTransformation extends AbstractASTTransformation {
         }
         parameterTypes.addAll(switch (type) {
             case Opener.Type.STATIC, Opener.Type.VIRTUAL, Opener.Type.SPECIAL, Opener.Type.CONSTRUCT -> asmDescType.getArgumentTypes()
-            case Opener.Type.PUT_STATIC, Opener.Type.PUT_INSTANCE -> [asmDescType]
+            case Opener.Type.SET_STATIC, Opener.Type.SET_INSTANCE -> [asmDescType]
             default -> []
         } as Collection<Type>)
-        switch (type) {
-
-        }
 
         if (methodNode.parameters.length != parameterTypes.size()) {
             throw new RuntimeException("Method ${methodNode.name} has ${methodNode.parameters.length} parameters, but the generated opener expects ${parameterTypes.size()}")
-        }
-
-        for (int i = 0; i < methodNode.parameters.length; i++) {
-            Type parameterType = parameterTypes[i]
-            var methodParameterType = methodNode.parameters[i].type
-            if (parameterType.sort <= Type.DOUBLE) {
-                if (ClassHelper.make(parameterType.getClassName()) != methodParameterType) {
-                    throw new RuntimeException("Method ${methodNode.name} has parameter ${methodParameterType.name} at index ${i}, but the generated opener expects primitive parameter ${parameterType.className}")
-                }
-            }
         }
 
         methodNode.code = new ExpressionStatement(new BytecodeExpression(methodNode.returnType) {
@@ -106,41 +87,28 @@ class OpenerTransformation extends AbstractASTTransformation {
             void visit(MethodVisitor methodVisitor) {
                 for (int i = 0; i < parameterTypes.size(); i++) {
                     methodVisitor.visitVarInsn(parameterTypes[i].getOpcode(Opcodes.ILOAD), i)
-                    if (parameterTypes[i].getOpcode(Opcodes.ILOAD) == Opcodes.ALOAD) {
-                        methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, parameterTypes[i].getInternalName())
-                    }
                 }
 
-                var methodName = switch (type) {
-
-                    case Opener.Type.STATIC -> 'invokeStatic'
-                    case Opener.Type.VIRTUAL -> 'invokeInstance'
-                    case Opener.Type.SPECIAL -> 'invokePrivateInstance'
-                    case Opener.Type.PUT_STATIC -> 'invokeInstanceFieldSet'
-                    case Opener.Type.GET_STATIC -> 'invokeInstanceFieldGet'
-                    case Opener.Type.PUT_INSTANCE -> 'invokeStaticFieldSet'
-                    case Opener.Type.GET_INSTANCE -> 'invokeStaticFieldGet'
-                    case Opener.Type.CONSTRUCT -> 'invokeCtor'
-                }
+                var methodType = type.ordinal()
 
                 methodVisitor.visitInvokeDynamicInsn(
                         type == Opener.Type.CONSTRUCT ? 'constructor' : name,
-                        Type.getMethodDescriptor(returnType, parameterTypes.toArray(Type[]::new)),
+                        BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters),
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
                                 BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                methodName,
-                                Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(String), Type.getType(String)),
+                                'invoke',
+                                Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(String), Type.getType(String), Type.getType(String), Type.getType(int.class)),
                                 false
                         ),
-                        aliases.join(';'),
-                        module
+                        target,
+                        Type.getMethodDescriptor(returnType, parameterTypes.toArray(Type[]::new)),
+                        modules.join(';'),
+                        methodType
                 )
 
                 if (returnType.sort == Type.VOID) {
                     methodVisitor.visitInsn(Opcodes.ACONST_NULL)
-                } else if (returnType.sort > Type.DOUBLE) {
-                    methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, returnType.getInternalName())
                 }
             }
         })

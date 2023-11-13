@@ -22,4 +22,11 @@ public interface RuntimeRemapper {
      * @return the new name of the field, or {@code null} to use the original name
      */
     @Nullable String remapFieldName(Class<?> parent, String name);
+
+    /**
+     * Remap a class internal name
+     * @param className the internal name of the class
+     * @return the new name of the class, or {@code null} to use the original name
+     */
+    @Nullable String remapClassName(String className);
 }

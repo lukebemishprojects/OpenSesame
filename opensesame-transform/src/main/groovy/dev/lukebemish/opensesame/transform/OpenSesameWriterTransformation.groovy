@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
+import dev.lukebemish.opensesame.Opener
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
@@ -114,20 +115,21 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                         if (!field.static) {
                                             BytecodeHelper.load(methodVisitor, field.declaringClass, 0)
                                         }
-                                        var methodName = 'invokeInstanceFieldGet'
+                                        var methodType = Opener.Type.GET_INSTANCE.ordinal()
                                         if (field.static)
-                                            methodName = 'invokeStaticFieldGet'
+                                            methodType = Opener.Type.GET_STATIC.ordinal()
                                         methodVisitor.visitInvokeDynamicInsn(
                                                 field.name,
                                                 BytecodeHelper.getMethodDescriptor(field.type, parameters),
                                                 new Handle(
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                        methodName,
-                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
+                                                        'invoke',
+                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                         false
                                                 ),
                                                 Type.getObjectType(BytecodeHelper.getClassInternalName(field.declaringClass)),
+                                                methodType
                                         )
                                     }
                                 })
@@ -232,20 +234,21 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                                 BytecodeHelper.load(methodVisitor, field.declaringClass, 0)
                                             }
                                             BytecodeHelper.load(methodVisitor, parameters[parameters.length - 1].type, parameters.length - 1)
-                                            var methodName = 'invokeInstanceFieldSet'
+                                            var methodType = Opener.Type.SET_INSTANCE.ordinal()
                                             if (field.static)
-                                                methodName = 'invokeStaticFieldSet'
+                                                methodType = Opener.Type.SET_STATIC.ordinal()
                                             methodVisitor.visitInvokeDynamicInsn(
                                                     field.name,
                                                     BytecodeHelper.getMethodDescriptor(ClassHelper.VOID_TYPE, parameters),
                                                     new Handle(
                                                             Opcodes.H_INVOKESTATIC,
                                                             BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                            methodName,
-                                                            Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
+                                                            'invoke',
+                                                            Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                             false
                                                     ),
                                                     Type.getObjectType(BytecodeHelper.getClassInternalName(field.declaringClass)),
+                                                    methodType
                                             )
                                             methodVisitor.visitInsn(Opcodes.ACONST_NULL)
                                         }
@@ -337,24 +340,25 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                             var pType = method.parameters[i].type
                                             BytecodeHelper.load(methodVisitor, pType, i + offset)
                                         }
-                                        var methodName = 'invokeInstance'
+                                        var methodType = Opener.Type.VIRTUAL.ordinal()
                                         if (method.static)
-                                            methodName = 'invokeStatic'
+                                            methodType = Opener.Type.STATIC.ordinal()
                                         if (!method.static && method.private)
-                                            methodName = 'invokePrivateInstance'
+                                            methodType = Opener.Type.SPECIAL.ordinal()
                                         if (isCtor)
-                                            methodName = 'invokeCtor'
+                                            methodType = Opener.Type.CONSTRUCT.ordinal()
                                         methodVisitor.visitInvokeDynamicInsn(
                                                 method.name,
                                                 BytecodeHelper.getMethodDescriptor(method.returnType, parameters),
                                                 new Handle(
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                        methodName,
-                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class)),
+                                                        'invoke',
+                                                        Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                         false
                                                 ),
                                                 Type.getObjectType(BytecodeHelper.getClassInternalName(method.declaringClass)),
+                                                methodType
                                         )
                                         if (method.returnType == ClassHelper.VOID_TYPE) {
                                             methodVisitor.visitInsn(Opcodes.ACONST_NULL)
