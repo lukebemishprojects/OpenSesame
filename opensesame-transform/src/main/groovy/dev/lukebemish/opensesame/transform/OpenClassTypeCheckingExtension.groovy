@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
-import dev.lukebemish.opensesame.OpenSesame
+import dev.lukebemish.opensesame.OpenClass
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Opcodes
 import org.codehaus.groovy.ast.ClassHelper
@@ -18,10 +18,12 @@ import org.codehaus.groovy.transform.stc.StaticTypeCheckingVisitor
 import org.codehaus.groovy.transform.stc.TypeCheckingExtension
 
 @CompileStatic
-class OpenedTypeCheckingExtension extends TypeCheckingExtension {
-    private static final ClassNode OPEN_SESAME = ClassHelper.makeWithoutCaching(OpenSesame)
+class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
+    private static final ClassNode OPEN_SESAME = ClassHelper.makeWithoutCaching(OpenClass)
 
-    OpenedTypeCheckingExtension(StaticTypeCheckingVisitor typeCheckingVisitor) {
+    static final String CTOR_DUMMY = '$dev$lukebemish$opensesame$$new'
+
+    OpenClassTypeCheckingExtension(StaticTypeCheckingVisitor typeCheckingVisitor) {
         super(typeCheckingVisitor)
     }
 
@@ -90,10 +92,10 @@ class OpenedTypeCheckingExtension extends TypeCheckingExtension {
             if (type.upperBounds === null && type.lowerBound === null && type.type !== null) {
                 ClassNode staticReceiver = type.type
                 if (openedClasses.contains(staticReceiver)) {
-                    if (name == '$opensesame$$new') {
+                    if (name == CTOR_DUMMY) {
                         return staticReceiver.getMethods(name) + (staticReceiver.getDeclaredConstructors().collect {
                             var out = new MethodNode(
-                                    '$opensesame$$new',
+                                    CTOR_DUMMY,
                                     Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
                                     staticReceiver,
                                     it.parameters,

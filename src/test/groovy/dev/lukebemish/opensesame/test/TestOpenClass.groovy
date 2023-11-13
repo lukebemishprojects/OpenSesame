@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.test
 
-import dev.lukebemish.opensesame.OpenSesame
+import dev.lukebemish.opensesame.OpenClass
 import dev.lukebemish.opensesame.test.otherpackage.HasPrivateCtor
 import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import groovy.transform.CompileStatic
@@ -10,22 +10,22 @@ import static org.junit.jupiter.api.Assertions.*
 
 @CompileStatic
 @SuppressWarnings('GroovyAccessibility')
-class TestAccess {
+class TestOpenClass {
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testPrivateAccess() {
         ToOpen testPrivate = new ToOpen()
         assertEquals("ran private instance method", testPrivate.testInstance())
     }
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testProtectedAccess() {
         ToOpen testPrivate = new ToOpen()
         assertEquals("ran protected instance method", testPrivate.testProtectedInstance())
     }
 
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testPrivateField() {
         ToOpen testPrivate = new ToOpen()
         assertEquals("private instance field", testPrivate.instance)
@@ -34,7 +34,7 @@ class TestAccess {
     }
 
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testPrivateStaticField() {
         assertEquals("private static field", ToOpen.STATIC)
         ToOpen.STATIC = 'mutated'
@@ -42,19 +42,19 @@ class TestAccess {
     }
 
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testPrivateStaticAccess() {
         assertEquals("ran private static method", ToOpen.testStatic())
     }
 
     @Test
-    @OpenSesame(ToOpen)
+    @OpenClass(ToOpen)
     void testPrivateStaticWithArgAccess() {
         assertEquals("ran private instance method with arg: test", ToOpen.testStaticWithArg('test'))
     }
 
     @Test
-    @OpenSesame(HasPrivateCtor)
+    @OpenClass(HasPrivateCtor)
     void testPrivateCtorAccess() {
         var object = new HasPrivateCtor('test')
         assertEquals('test', object.arg)

@@ -11,9 +11,9 @@ import java.lang.annotation.Target
 @Retention(RetentionPolicy.SOURCE)
 @Target([ElementType.METHOD])
 @GroovyASTTransformationClass([
-        'dev.lukebemish.opensesame.transform.OpenerTransformation'
+        'dev.lukebemish.opensesame.transform.OpenTransformation'
 ])
-@interface Opener {
+@interface Open {
     String name()
     String target()
     String desc()

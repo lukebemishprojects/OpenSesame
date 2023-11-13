@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
-import dev.lukebemish.opensesame.Opener
+import dev.lukebemish.opensesame.Open
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
@@ -26,7 +26,7 @@ import java.lang.invoke.MethodType
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.INSTRUCTION_SELECTION)
-class OpenSesameWriterTransformation extends AbstractASTTransformation implements TransformWithPriority {
+class OpenClassWriterTransformation extends AbstractASTTransformation implements TransformWithPriority {
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
     @Override
@@ -115,9 +115,9 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                         if (!field.static) {
                                             BytecodeHelper.load(methodVisitor, field.declaringClass, 0)
                                         }
-                                        var methodType = Opener.Type.GET_INSTANCE.ordinal()
+                                        var methodType = Open.Type.GET_INSTANCE.ordinal()
                                         if (field.static)
-                                            methodType = Opener.Type.GET_STATIC.ordinal()
+                                            methodType = Open.Type.GET_STATIC.ordinal()
                                         methodVisitor.visitInvokeDynamicInsn(
                                                 field.name,
                                                 BytecodeHelper.getMethodDescriptor(field.type, parameters),
@@ -234,9 +234,9 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                                 BytecodeHelper.load(methodVisitor, field.declaringClass, 0)
                                             }
                                             BytecodeHelper.load(methodVisitor, parameters[parameters.length - 1].type, parameters.length - 1)
-                                            var methodType = Opener.Type.SET_INSTANCE.ordinal()
+                                            var methodType = Open.Type.SET_INSTANCE.ordinal()
                                             if (field.static)
-                                                methodType = Opener.Type.SET_STATIC.ordinal()
+                                                methodType = Open.Type.SET_STATIC.ordinal()
                                             methodVisitor.visitInvokeDynamicInsn(
                                                     field.name,
                                                     BytecodeHelper.getMethodDescriptor(ClassHelper.VOID_TYPE, parameters),
@@ -290,7 +290,7 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                     return null
                 }
                 if (!isAccessible(method.declaringClass, methodNode.declaringClass, method.protected, method.public, method.private) && openedClasses.contains(method.declaringClass)) {
-                    boolean isCtor = method.name == '$opensesame$$new'
+                    boolean isCtor = method.name == OpenClassTypeCheckingExtension.CTOR_DUMMY
                     if (isCtor) {
                         var ctor = method.declaringClass.getDeclaredConstructor(method.parameters)
                         if (ctor !== null && isAccessible(ctor.declaringClass, methodNode.declaringClass, ctor.protected, ctor.public, ctor.private)) {
@@ -340,13 +340,13 @@ class OpenSesameWriterTransformation extends AbstractASTTransformation implement
                                             var pType = method.parameters[i].type
                                             BytecodeHelper.load(methodVisitor, pType, i + offset)
                                         }
-                                        var methodType = Opener.Type.VIRTUAL.ordinal()
+                                        var methodType = Open.Type.VIRTUAL.ordinal()
                                         if (method.static)
-                                            methodType = Opener.Type.STATIC.ordinal()
+                                            methodType = Open.Type.STATIC.ordinal()
                                         if (!method.static && method.private)
-                                            methodType = Opener.Type.SPECIAL.ordinal()
+                                            methodType = Open.Type.SPECIAL.ordinal()
                                         if (isCtor)
-                                            methodType = Opener.Type.CONSTRUCT.ordinal()
+                                            methodType = Open.Type.CONSTRUCT.ordinal()
                                         methodVisitor.visitInvokeDynamicInsn(
                                                 method.name,
                                                 BytecodeHelper.getMethodDescriptor(method.returnType, parameters),

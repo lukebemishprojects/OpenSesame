@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
-import dev.lukebemish.opensesame.Opener
+import dev.lukebemish.opensesame.Open
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
@@ -26,8 +26,8 @@ import java.lang.invoke.MethodType
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
-class OpenerTransformation extends AbstractASTTransformation {
-    private static final ClassNode OPENER = ClassHelper.makeWithoutCaching(Opener)
+class OpenTransformation extends AbstractASTTransformation {
+    private static final ClassNode OPENER = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
     @Override
@@ -48,7 +48,7 @@ class OpenerTransformation extends AbstractASTTransformation {
         final String target = getMemberStringValue(annotationNode, 'target')
         final String name = getMemberStringValue(annotationNode, 'name')
         final String desc = getMemberStringValue(annotationNode, 'desc')
-        final Opener.Type type = Opener.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
+        final Open.Type type = Open.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
         final List<String> modules = getMemberStringList(annotationNode, 'module') ?: []
 
         if (type.field && desc.startsWith('(')) {
@@ -63,18 +63,18 @@ class OpenerTransformation extends AbstractASTTransformation {
 
         Type asmDescType = Type.getType(desc)
         Type returnType = switch (type) {
-            case Opener.Type.STATIC, Opener.Type.VIRTUAL, Opener.Type.SPECIAL -> asmDescType.getReturnType()
-            case Opener.Type.SET_STATIC, Opener.Type.SET_INSTANCE -> Type.VOID_TYPE
-            case Opener.Type.GET_STATIC, Opener.Type.GET_INSTANCE -> asmDescType
-            case Opener.Type.CONSTRUCT -> asmTarget
+            case Open.Type.STATIC, Open.Type.VIRTUAL, Open.Type.SPECIAL -> asmDescType.getReturnType()
+            case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> Type.VOID_TYPE
+            case Open.Type.GET_STATIC, Open.Type.GET_INSTANCE -> asmDescType
+            case Open.Type.CONSTRUCT -> asmTarget
         }
         final List<Type> parameterTypes = []
         if (type.takesInstance) {
             parameterTypes.add(asmTarget)
         }
         parameterTypes.addAll(switch (type) {
-            case Opener.Type.STATIC, Opener.Type.VIRTUAL, Opener.Type.SPECIAL, Opener.Type.CONSTRUCT -> asmDescType.getArgumentTypes()
-            case Opener.Type.SET_STATIC, Opener.Type.SET_INSTANCE -> [asmDescType]
+            case Open.Type.STATIC, Open.Type.VIRTUAL, Open.Type.SPECIAL, Open.Type.CONSTRUCT -> asmDescType.getArgumentTypes()
+            case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> [asmDescType]
             default -> []
         } as Collection<Type>)
 
@@ -92,7 +92,7 @@ class OpenerTransformation extends AbstractASTTransformation {
                 var methodType = type.ordinal()
 
                 methodVisitor.visitInvokeDynamicInsn(
-                        type == Opener.Type.CONSTRUCT ? 'constructor' : name,
+                        type == Open.Type.CONSTRUCT ? 'constructor' : name,
                         BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters),
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,

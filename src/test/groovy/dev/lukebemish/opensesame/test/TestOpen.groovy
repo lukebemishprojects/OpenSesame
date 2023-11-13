@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.test
 
-import dev.lukebemish.opensesame.Opener
+import dev.lukebemish.opensesame.Open
 import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
@@ -8,12 +8,12 @@ import org.junit.jupiter.api.Test
 import static org.junit.jupiter.api.Assertions.assertEquals
 
 @CompileStatic
-class TestOpener {
-    @Opener(
+class TestOpen {
+    @Open(
             name = 'testInstance',
             target = 'dev.lukebemish.opensesame.test.otherpackage.ToOpen',
             desc = '()Ljava/lang/String;',
-            type = Opener.Type.SPECIAL
+            type = Open.Type.SPECIAL
     )
     private static String openerTestPrivateAccess(ToOpen instance) {
         throw new RuntimeException()
@@ -25,11 +25,11 @@ class TestOpener {
         assertEquals("ran private instance method", openerTestPrivateAccess(testPrivate))
     }
 
-    @Opener(
+    @Open(
             name = 'invoke',
             target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             desc = '()Ljava/lang/String;',
-            type = Opener.Type.STATIC
+            type = Open.Type.STATIC
     )
     private static String openerTestPrivateClass() {
         throw new RuntimeException()
@@ -40,21 +40,21 @@ class TestOpener {
         assertEquals("PrivateSubclass", openerTestPrivateClass())
     }
 
-    @Opener(
+    @Open(
             name = '<init>',
             target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             desc = '(Ljava/lang/String;)Ldev/lukebemish/opensesame/test/otherpackage/HasPrivateSubclass$PrivateSubclass;',
-            type = Opener.Type.CONSTRUCT
+            type = Open.Type.CONSTRUCT
     )
     private static Object openerTestPrivateCtor(String arg) {
         throw new RuntimeException()
     }
 
-    @Opener(
+    @Open(
             name = 'arg',
             target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             desc = 'Ljava/lang/String;',
-            type = Opener.Type.GET_INSTANCE
+            type = Open.Type.GET_INSTANCE
     )
     private static String openerTestPrivateCtorField(Object instance) {
         throw new RuntimeException()
@@ -64,5 +64,20 @@ class TestOpener {
     void testPrivateCtor() {
         var object = openerTestPrivateCtor('test')
         assertEquals('test', openerTestPrivateCtorField(object))
+    }
+
+    @Open(
+            name = 'getRuntimeArguments',
+            target = 'jdk.internal.misc.VM',
+            desc = '()[Ljava/lang/String;',
+            type = Open.Type.STATIC
+    )
+    private static String[] openerTestModuleBreaking() {
+        throw new RuntimeException()
+    }
+
+    @Test
+    void testModuleBreaking() {
+        openerTestModuleBreaking()
     }
 }

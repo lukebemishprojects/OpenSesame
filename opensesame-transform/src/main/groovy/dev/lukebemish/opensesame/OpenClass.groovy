@@ -16,11 +16,11 @@ import java.lang.annotation.Target
 @CompileStatic
 @Target([ElementType.METHOD])
 @GroovyASTTransformationClass([
-        'dev.lukebemish.opensesame.transform.OpenSesameASTTransformation',
-        'dev.lukebemish.opensesame.transform.OpenSesameWriterTransformation',
-        'dev.lukebemish.opensesame.transform.OpenSesameBeforeCheckingTransformation'
+        'dev.lukebemish.opensesame.transform.OpenClassSetupTransformation',
+        'dev.lukebemish.opensesame.transform.OpenClassWriterTransformation',
+        'dev.lukebemish.opensesame.transform.OpenClassBeforeCheckingTransformation'
 ])
-@interface OpenSesame {
+@interface OpenClass {
     /**
      * The classes to open.
      */

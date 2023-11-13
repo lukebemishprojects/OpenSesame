@@ -13,11 +13,11 @@ import org.codehaus.groovy.transform.GroovyASTTransformation
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
-class OpenSesameASTTransformation extends AbstractASTTransformation {
+class OpenClassSetupTransformation extends AbstractASTTransformation {
     static final ClassNode COMPILE_STATIC = ClassHelper.makeWithoutCaching(CompileStatic)
     static final ClassNode COMPILE_DYNAMIC = ClassHelper.makeWithoutCaching(CompileDynamic)
     static final ClassNode TYPE_CHECKED = ClassHelper.makeWithoutCaching(TypeChecked)
-    static final String TYPE_CHECKER_PATH = 'dev.lukebemish.opensesame.transform.OpenedTypeCheckingExtension'
+    static final String TYPE_CHECKER_PATH = 'dev.lukebemish.opensesame.transform.OpenClassTypeCheckingExtension'
 
     private static boolean isStaticCompiled(AnnotatedNode node) {
         if (node.getAnnotations(COMPILE_STATIC).size() > 0) {

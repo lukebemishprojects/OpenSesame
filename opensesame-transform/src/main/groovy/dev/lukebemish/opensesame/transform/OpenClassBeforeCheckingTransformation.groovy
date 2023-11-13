@@ -18,7 +18,7 @@ import org.codehaus.groovy.transform.TransformWithPriority
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.INSTRUCTION_SELECTION)
-class OpenSesameBeforeCheckingTransformation extends AbstractASTTransformation implements TransformWithPriority {
+class OpenClassBeforeCheckingTransformation extends AbstractASTTransformation implements TransformWithPriority {
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
         this.init(nodes, source)
@@ -38,7 +38,7 @@ class OpenSesameBeforeCheckingTransformation extends AbstractASTTransformation i
                 if (expr instanceof ConstructorCallExpression && openedClasses.contains(expr.type)) {
                     var out = new MethodCallExpression(
                             new ClassExpression(expr.type),
-                            '$opensesame$$new',
+                            OpenClassTypeCheckingExtension.CTOR_DUMMY,
                             expr.arguments
                     )
                     return out
