@@ -51,7 +51,6 @@ class OpenTransformation extends AbstractASTTransformation {
         final String name = getMemberStringValue(annotationNode, 'name')
         final String desc = BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters)
         final Open.Type type = Open.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
-        final List<String> modules = getMemberStringList(annotationNode, 'module') ?: []
 
         Type asmDescType = Type.getType(desc)
         Type returnType = asmDescType.returnType
@@ -95,12 +94,11 @@ class OpenTransformation extends AbstractASTTransformation {
                                 Opcodes.H_INVOKESTATIC,
                                 BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
                                 'invoke',
-                                Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(String), Type.getType(String), Type.getType(String), Type.getType(int.class)),
+                                Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(String), Type.getType(String), Type.getType(int.class)),
                                 false
                         ),
                         target,
                         Type.getMethodDescriptor(returnType, parameterTypes.toArray(Type[]::new)),
-                        modules.join(';'),
                         methodType
                 )
 

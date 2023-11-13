@@ -1,6 +1,5 @@
 package dev.lukebemish.opensesame.test
 
-
 import dev.lukebemish.opensesame.Open
 import dev.lukebemish.opensesame.test.otherpackage.ToOpen
 import groovy.transform.CompileStatic

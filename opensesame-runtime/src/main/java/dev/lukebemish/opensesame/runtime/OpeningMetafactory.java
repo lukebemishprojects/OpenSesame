@@ -4,7 +4,6 @@ import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -25,8 +24,8 @@ public final class OpeningMetafactory {
             'D', double.class
     );
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
-    private static final ModuleHandler MODULE_HANDLER;
-    private static final Exception MODULE_HANDLER_EXCEPTION;
+    private static final LookupProvider LOOKUP_PROVIDER;
+    private static final Exception LOOKUP_PROVIDER_EXCEPTION;
 
     public static final int STATIC_TYPE = 0;
     public static final int INSTANCE_TYPE = 1;
@@ -38,17 +37,17 @@ public final class OpeningMetafactory {
     public static final int CTOR_TYPE = 7;
 
     static {
-        Exception MODULE_HANDLER_EXCEPTION1;
-        ModuleHandler MODULE_HANDLER1;
+        Exception LOOKUP_PROVIDER_EXCEPTION1;
+        LookupProvider LOOKUP_PROVIDER1;
         try {
-            MODULE_HANDLER1 = new ModuleHandlerUnsafe();
-            MODULE_HANDLER_EXCEPTION1 = null;
+            LOOKUP_PROVIDER1 = new LookupProviderUnsafe();
+            LOOKUP_PROVIDER_EXCEPTION1 = null;
         } catch (Exception e) {
-            MODULE_HANDLER_EXCEPTION1 = e;
-            MODULE_HANDLER1 = new ModuleHandlerFallback();
+            LOOKUP_PROVIDER_EXCEPTION1 = e;
+            LOOKUP_PROVIDER1 = new LookupProviderFallback();
         }
-        MODULE_HANDLER_EXCEPTION = MODULE_HANDLER_EXCEPTION1;
-        MODULE_HANDLER = MODULE_HANDLER1;
+        LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
+        LOOKUP_PROVIDER = LOOKUP_PROVIDER1;
     }
 
     private synchronized static RuntimeRemapper getRemapper(ClassLoader classLoader) {
@@ -85,11 +84,7 @@ public final class OpeningMetafactory {
         if (type != null) return type;
         if (first == '[') return getClassFromDescriptor(desc.substring(1), caller).arrayType();
         String className = desc.substring(1, desc.length()-1).replace('/','.');
-        try {
-            return Class.forName(className, false, caller.lookupClass().getClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new OpeningException("Could not find class '"+className+"'", e);
-        }
+        return getClass(className, caller);
     }
 
     private static MethodType makeMethodType(String desc, MethodHandles.Lookup caller) {
@@ -115,57 +110,16 @@ public final class OpeningMetafactory {
         return MethodType.methodType(returnType, argTypes);
     }
 
-    private static Class<?> getOpenedClass(String className, String[] modules, MethodHandles.Lookup caller) {
-        Class<?> lookupClass = caller.lookupClass();
-        ClassLoader classLoader = lookupClass.getClassLoader();
-
-        className = remapClass(caller, className);
-
-        Module from = lookupClass.getModule();
-        modules = Arrays.stream(modules).filter(s -> s != null && !s.isEmpty()).toArray(String[]::new);
-
-        boolean opened = false;
-
-        if (modules.length != 0) {
-            try {
-                for (String moduleName : modules) {
-                    Module targetModule = ModuleLayer.boot().findModule(moduleName).orElseThrow();
-                    opened = MODULE_HANDLER.openModule(from, targetModule, className);
-                    if (opened) break;
-                }
-            } catch (Exception e) {
-                var exception = new OpeningException("Could not open module for class '"+className+"', modules "+Arrays.toString(modules), e);
-                if (MODULE_HANDLER_EXCEPTION != null) {
-                    exception.addSuppressed(MODULE_HANDLER_EXCEPTION);
-                }
-
-                throw exception;
-            }
-        }
-
+    private static Class<?> getClass(String className, MethodHandles.Lookup caller) {
         try {
-            Class<?> clazz =  Class.forName(className, false, classLoader);
-            if (!opened) {
-                try {
-                    MODULE_HANDLER.openModule(from, clazz.getModule(), className);
-                } catch (Exception e) {
-                    var exception = new OpeningException("Could not open module for class '" + className + "', modules " + Arrays.toString(modules), e);
-                    if (MODULE_HANDLER_EXCEPTION != null) {
-                        exception.addSuppressed(MODULE_HANDLER_EXCEPTION);
-                    }
-
-                    throw exception;
-                }
-            }
-            return clazz;
+            return Class.forName(remapClass(caller, className), false, caller.lookupClass().getClassLoader());
         } catch (ClassNotFoundException e) {
             throw new OpeningException(e);
         }
     }
 
-    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String className, String desc, String modules, int type) {
-        var moduleNames = modules.split(";");
-        Class<?> holdingClass = getOpenedClass(className, moduleNames, caller);
+    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String className, String desc, int type) {
+        Class<?> holdingClass = getClass(className, caller);
         MethodType accessType = makeMethodType(desc, caller);
         return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
     }
@@ -186,7 +140,7 @@ public final class OpeningMetafactory {
 
     private static MethodHandle makeHandle(String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
         try {
-            var lookup = MethodHandles.privateLookupIn(holdingClass, MethodHandles.lookup());
+            var lookup = LOOKUP_PROVIDER.openingLookup(holdingClass);
             var handle = switch (type) {
                 case STATIC_TYPE -> lookup.findStatic(holdingClass, name, accessType);
                 case INSTANCE_TYPE -> lookup.findVirtual(holdingClass, name, accessType.dropParameterTypes(0, 1));
@@ -200,7 +154,13 @@ public final class OpeningMetafactory {
             };
             return handle.asType(factoryType);
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
-            throw new OpeningException(e);
+            var exception = new OpeningException(e);
+
+            if (LOOKUP_PROVIDER_EXCEPTION != null) {
+                exception.addSuppressed(LOOKUP_PROVIDER_EXCEPTION);
+            }
+
+            throw exception;
         }
     }
 

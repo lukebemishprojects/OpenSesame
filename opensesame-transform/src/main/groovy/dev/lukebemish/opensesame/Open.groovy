@@ -17,7 +17,6 @@ import java.lang.annotation.Target
     String name()
     String target()
     Type type()
-    String[] module() default []
 
     @CompileStatic
     enum Type {
