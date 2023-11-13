@@ -16,7 +16,6 @@ import java.lang.annotation.Target
 @interface Open {
     String name()
     String target()
-    String desc()
     Type type()
     String[] module() default []
 

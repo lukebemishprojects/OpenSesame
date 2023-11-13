@@ -19,7 +19,7 @@ import org.codehaus.groovy.transform.stc.TypeCheckingExtension
 
 @CompileStatic
 class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
-    private static final ClassNode OPEN_SESAME = ClassHelper.makeWithoutCaching(OpenClass)
+    private static final ClassNode OPEN_CLASS = ClassHelper.makeWithoutCaching(OpenClass)
 
     static final String CTOR_DUMMY = '$dev$lukebemish$opensesame$$new'
 
@@ -36,7 +36,7 @@ class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
     @Override
     boolean beforeVisitClass(ClassNode node) {
         Set<ClassNode> openedClasses = new HashSet<>()
-        node.getAnnotations(OPEN_SESAME).each {
+        node.getAnnotations(OPEN_CLASS).each {
             var expression = it.getMember('value')
             if (expression instanceof ListExpression) {
                 for (final classExpression : expression.expressions) {
@@ -55,7 +55,7 @@ class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
     @Override
     boolean beforeVisitMethod(MethodNode node) {
         Set<ClassNode> openedClasses = new HashSet<>()
-        node.getAnnotations(OPEN_SESAME).each {
+        node.getAnnotations(OPEN_CLASS).each {
             var expression = it.getMember('value')
             if (expression instanceof ListExpression) {
                 for (final classExpression : expression.expressions) {

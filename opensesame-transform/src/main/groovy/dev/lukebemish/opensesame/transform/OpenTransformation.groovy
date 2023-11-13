@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
+import dev.lukebemish.opensesame.Coerce
 import dev.lukebemish.opensesame.Open
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
@@ -27,7 +28,8 @@ import java.lang.invoke.MethodType
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
 class OpenTransformation extends AbstractASTTransformation {
-    private static final ClassNode OPENER = ClassHelper.makeWithoutCaching(Open)
+    private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
+    private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
     @Override
@@ -35,7 +37,7 @@ class OpenTransformation extends AbstractASTTransformation {
         this.init(nodes, source)
 
         MethodNode methodNode = (MethodNode) nodes[1]
-        if (methodNode.getAnnotations(OPENER).size() != 1) {
+        if (methodNode.getAnnotations(OPEN).size() != 1) {
             throw new RuntimeException("Opener annotation can only be used once per method")
         }
 
@@ -43,43 +45,38 @@ class OpenTransformation extends AbstractASTTransformation {
             throw new RuntimeException("Opener annotation can only be used on static methods")
         }
 
-        var annotationNode = methodNode.getAnnotations(OPENER).get(0)
+        var annotationNode = methodNode.getAnnotations(OPEN).get(0)
 
         final String target = getMemberStringValue(annotationNode, 'target')
         final String name = getMemberStringValue(annotationNode, 'name')
-        final String desc = getMemberStringValue(annotationNode, 'desc')
+        final String desc = BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters)
         final Open.Type type = Open.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
         final List<String> modules = getMemberStringList(annotationNode, 'module') ?: []
 
-        if (type.field && desc.startsWith('(')) {
-            throw new RuntimeException("Field opener, but provided with method descriptor ${desc}")
-        }
-
-        if (!type.field && !desc.startsWith('(')) {
-            throw new RuntimeException("Method opener, but provided with field descriptor ${desc}")
-        }
-
-        Type asmTarget = Type.getType("L${target.replace('.', '/')};")
-
         Type asmDescType = Type.getType(desc)
-        Type returnType = switch (type) {
-            case Open.Type.STATIC, Open.Type.VIRTUAL, Open.Type.SPECIAL -> asmDescType.getReturnType()
-            case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> Type.VOID_TYPE
-            case Open.Type.GET_STATIC, Open.Type.GET_INSTANCE -> asmDescType
-            case Open.Type.CONSTRUCT -> asmTarget
-        }
-        final List<Type> parameterTypes = []
-        if (type.takesInstance) {
-            parameterTypes.add(asmTarget)
-        }
-        parameterTypes.addAll(switch (type) {
-            case Open.Type.STATIC, Open.Type.VIRTUAL, Open.Type.SPECIAL, Open.Type.CONSTRUCT -> asmDescType.getArgumentTypes()
-            case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> [asmDescType]
-            default -> []
-        } as Collection<Type>)
+        Type returnType = asmDescType.returnType
+        List<Type> parameterTypes = []
+        parameterTypes.addAll(asmDescType.argumentTypes)
 
-        if (methodNode.parameters.length != parameterTypes.size()) {
-            throw new RuntimeException("Method ${methodNode.name} has ${methodNode.parameters.length} parameters, but the generated opener expects ${parameterTypes.size()}")
+        for (int i = 0; i < methodNode.parameters.size(); i++) {
+            var parameter = methodNode.parameters[i]
+            var coercions = parameter.getAnnotations(COERCE)
+            if (coercions.size() > 1) {
+                throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
+            } else if (!coercions.empty) {
+                parameterTypes[i] = Type.getType(getMemberStringValue(coercions.get(0), 'value'))
+            }
+        }
+
+        var coercions = methodNode.getAnnotations(COERCE)
+        if (coercions.size() > 1) {
+            throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
+        } else if (!coercions.empty) {
+            returnType = Type.getType(getMemberStringValue(coercions.get(0), 'value'))
+        }
+
+        if (type == Open.Type.CONSTRUCT) {
+            returnType = Type.getType("L${target.replace('.','/')};")
         }
 
         methodNode.code = new ExpressionStatement(new BytecodeExpression(methodNode.returnType) {
@@ -92,8 +89,8 @@ class OpenTransformation extends AbstractASTTransformation {
                 var methodType = type.ordinal()
 
                 methodVisitor.visitInvokeDynamicInsn(
-                        type == Open.Type.CONSTRUCT ? 'constructor' : name,
-                        BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters),
+                        type == Open.Type.CONSTRUCT ? OpenClassTypeCheckingExtension.CTOR_DUMMY : name,
+                        desc,
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
                                 BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
