@@ -112,14 +112,19 @@ public final class OpeningMetafactory {
 
     private static Class<?> getClass(String className, MethodHandles.Lookup caller) {
         try {
-            return Class.forName(remapClass(caller, className), false, caller.lookupClass().getClassLoader());
+            return Class.forName(remapClass(className, caller.lookupClass().getClassLoader()), false, caller.lookupClass().getClassLoader());
         } catch (ClassNotFoundException e) {
             throw new OpeningException(e);
         }
     }
 
-    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, String className, String desc, int type) {
-        Class<?> holdingClass = getClass(className, caller);
+    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, String desc, int type) {
+        Class<?> holdingClass;
+        try {
+            holdingClass = (Class<?>) classProvider.invoke(caller.lookupClass().getClassLoader());
+        } catch (Throwable throwable) {
+            throw new OpeningException(throwable);
+        }
         MethodType accessType = makeMethodType(desc, caller);
         return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
     }
@@ -130,9 +135,9 @@ public final class OpeningMetafactory {
 
     private static CallSite invoke0(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
         if (type < STATIC_GET_TYPE) {
-            name = remapMethod(caller, name, accessType, holdingClass);
+            name = remapMethod(name, accessType, holdingClass, caller.lookupClass().getClassLoader());
         } else if (type < CTOR_TYPE) {
-            name = remapField(caller, name, holdingClass);
+            name = remapField(name, holdingClass, caller.lookupClass().getClassLoader());
         }
         var handle = makeHandle(name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
@@ -164,8 +169,8 @@ public final class OpeningMetafactory {
         }
     }
 
-    private static String remapMethod(MethodHandles.Lookup caller, String targetMethodName, MethodType methodType, Class<?> holdingClass) {
-        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+    public static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
+        RuntimeRemapper remapper = getRemapper(classLoader);
         if (remapper != null) {
             String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray());
             if (remapMethodName != null) {
@@ -175,8 +180,8 @@ public final class OpeningMetafactory {
         return targetMethodName;
     }
 
-    private static String remapField(MethodHandles.Lookup caller, String targetFieldName, Class<?> holdingClass) {
-        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+    public static String remapField(String targetFieldName, Class<?> holdingClass, ClassLoader classLoader) {
+        RuntimeRemapper remapper = getRemapper(classLoader);
         if (remapper != null) {
             String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName);
             if (remapFieldName != null) {
@@ -186,8 +191,8 @@ public final class OpeningMetafactory {
         return targetFieldName;
     }
 
-    private static String remapClass(MethodHandles.Lookup caller, String className) {
-        RuntimeRemapper remapper = getRemapper(caller.lookupClass().getClassLoader());
+    public static String remapClass(String className, ClassLoader classLoader) {
+        RuntimeRemapper remapper = getRemapper(classLoader);
         if (remapper != null) {
             String remapClassName = remapper.remapClassName(className);
             if (remapClassName != null) {

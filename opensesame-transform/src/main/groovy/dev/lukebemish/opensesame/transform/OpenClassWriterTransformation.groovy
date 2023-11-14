@@ -96,7 +96,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                     }
 
                     String outMethodPart = "\$\$${field.declaringClass.name.replace('.','$')}\$\$${field.name}"
-                    String bridgeMethodName = "\$opensesame_bridge_getter${outMethodPart}"
+                    String bridgeMethodName = "\$dev_lukebemish_opensesame_bridge_getter${outMethodPart}"
                     Parameter[] parameters = new Parameter[field.static ? 0 : 1]
                     if (!field.static) {
                         parameters[0] = new Parameter(field.declaringClass, "it")
@@ -213,7 +213,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                         }
 
                         String outMethodPart = "\$\$${field.declaringClass.name.replace('.', '$')}\$\$${field.name}"
-                        String bridgeMethodName = "\$opensesame_bridge_setter${outMethodPart}"
+                        String bridgeMethodName = "\$dev_lukebemish_opensesame_bridge_setter${outMethodPart}"
                         Parameter[] parameters = new Parameter[field.static ? 1 : 2]
                         if (!field.static) {
                             parameters[0] = new Parameter(field.declaringClass, "it")
@@ -309,7 +309,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                         }
                     }
                     String outMethodPart = "\$\$${method.declaringClass.name.replace('.', '$')}\$\$${method.name}\$\$${method.parameters.collect { it.type.name.replace('.', '$') }.join('$')}"
-                    String bridgeMethodName = "\$opensesame_bridge${outMethodPart}"
+                    String bridgeMethodName = "\$dev_lukebemish_opensesame_bridge${outMethodPart}"
                     Parameter[] parameters = new Parameter[method.static ? method.parameters.size() : method.parameters.size() + 1]
                     if (!method.static) {
                         parameters[0] = new Parameter(method.declaringClass, "this")

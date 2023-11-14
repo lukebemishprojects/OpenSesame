@@ -15,7 +15,9 @@ import java.lang.annotation.Target
 ])
 @interface Open {
     String name()
-    String target()
+    String targetName() default ""
+    Class<?> targetClass() default Void
+    Class<? extends Closure<Class<?>>> targetProvider() default { }
     Type type()
 
     @CompileStatic

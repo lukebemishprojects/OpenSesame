@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 class TestOpen {
     @Open(
             name = 'testInstance',
-            target = 'dev.lukebemish.opensesame.test.otherpackage.ToOpen',
+            targetName = 'dev.lukebemish.opensesame.test.otherpackage.ToOpen',
             type = Open.Type.SPECIAL
     )
     private static String openerTestPrivateAccess(ToOpen instance) {
@@ -26,7 +26,7 @@ class TestOpen {
 
     @Open(
             name = 'invoke',
-            target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.STATIC
     )
     private static String openerTestPrivateClass() {
@@ -40,7 +40,7 @@ class TestOpen {
 
     @Open(
             name = '<init>',
-            target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.CONSTRUCT
     )
     private static Object openerTestPrivateCtor(String arg) {
@@ -49,7 +49,7 @@ class TestOpen {
 
     @Open(
             name = 'arg',
-            target = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.GET_INSTANCE
     )
     private static String openerTestPrivateCtorField(Object instance) {
@@ -64,7 +64,7 @@ class TestOpen {
 
     @Open(
             name = 'getRuntimeArguments',
-            target = 'jdk.internal.misc.VM',
+            targetName = 'jdk.internal.misc.VM',
             type = Open.Type.STATIC
     )
     private static String[] openerTestModuleBreaking() {
@@ -74,5 +74,21 @@ class TestOpen {
     @Test
     void testModuleBreaking() {
         openerTestModuleBreaking()
+    }
+
+    static class TestInstance extends ToOpen {
+        @Open(
+                name = 'testInstance',
+                targetClass = ToOpen,
+                type = Open.Type.SPECIAL
+        )
+        String openTestInstance() {
+            throw new RuntimeException()
+        }
+    }
+
+    @Test
+    void testInstance() {
+        assertEquals("ran private instance method", new TestInstance().openTestInstance())
     }
 }

@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.transform
 
+import dev.lukebemish.opensesame.OpenClass
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.transform.TypeChecked
@@ -85,7 +86,7 @@ class OpenClassSetupTransformation extends AbstractASTTransformation {
         MethodNode methodNode = (MethodNode) nodes[1]
 
         if (!isStaticCompiled(methodNode)) {
-            throw new RuntimeException('OpenSesame can only be used on methods that are statically compiled')
+            throw new RuntimeException("${OpenClass.simpleName} can only be used on methods that are statically compiled")
         }
 
         addTypeChecker(methodNode)
