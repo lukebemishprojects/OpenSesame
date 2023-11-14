@@ -13,6 +13,8 @@ import org.codehaus.groovy.ast.ASTNode
 import org.codehaus.groovy.ast.ClassHelper
 import org.codehaus.groovy.ast.ClassNode
 import org.codehaus.groovy.ast.MethodNode
+import org.codehaus.groovy.ast.expr.ClosureExpression
+import org.codehaus.groovy.ast.expr.Expression
 import org.codehaus.groovy.ast.expr.PropertyExpression
 import org.codehaus.groovy.ast.stmt.ExpressionStatement
 import org.codehaus.groovy.classgen.BytecodeExpression
@@ -52,6 +54,13 @@ class OpenTransformation extends AbstractASTTransformation {
         var targetName = getMemberStringValue(annotationNode, 'targetName')
         var targetClass = getMemberClassValue(annotationNode, 'targetClass')
         var targetProvider = getMemberClassValue(annotationNode, 'targetProvider')
+        if (targetProvider == null) {
+            Expression member = annotationNode.getMember('targetProvider')
+            if (member instanceof ClosureExpression) {
+                // TODO: implement class generation of closures in annotation
+                throw new RuntimeException("Not implemented yet")
+            }
+        }
         if (targetName === null && targetClass === null && targetProvider === null) {
             throw new RuntimeException("${Open.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
         } else if (targetName !== null) {

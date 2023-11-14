@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 class TestOpen {
     @Open(
             name = 'testInstance',
-            targetName = 'dev.lukebemish.opensesame.test.otherpackage.ToOpen',
+            targetProvider = { ClassLoader it -> Class.forName('dev.lukebemish.opensesame.test.otherpackage.ToOpen', false, it) },
             type = Open.Type.SPECIAL
     )
     private static String openerTestPrivateAccess(ToOpen instance) {
