@@ -1,4 +1,12 @@
 rootProject.name = 'opensesame'
 
-include 'opensesame-runtime'
-include 'opensesame-transform'
+def subprojects = [
+        'runtime',
+        'transform'
+]
+
+include subprojects
+
+subprojects.each {
+    project(":$it").name = "opensesame-$it"
+}

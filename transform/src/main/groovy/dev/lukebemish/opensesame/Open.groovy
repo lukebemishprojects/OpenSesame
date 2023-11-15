@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame
 
+import dev.lukebemish.opensesame.runtime.ErrorFunction
 import groovy.transform.CompileStatic
 import org.codehaus.groovy.transform.GroovyASTTransformationClass
 
@@ -17,7 +18,7 @@ import java.lang.annotation.Target
     String name()
     String targetName() default ""
     Class<?> targetClass() default Void
-    Class<? extends Closure<Class<?>>> targetProvider() default { }
+    Class<?> targetProvider() default ErrorFunction
     Type type()
 
     @CompileStatic

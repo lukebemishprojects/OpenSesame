@@ -11,7 +11,26 @@ import java.util.*;
 public final class OpeningMetafactory {
     private OpeningMetafactory() {}
 
-    private static final Map<ClassLoaderKey, RuntimeRemapper> REMAPPER_LOOKUP = new HashMap<>();
+    private static class ClassLoaderKey extends WeakReference<ClassLoader> {
+        final int hashCode;
+
+        public ClassLoaderKey(ClassLoader referent, ReferenceQueue<? super ClassLoader> q) {
+            super(referent, q);
+            this.hashCode = System.identityHashCode(referent);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof ClassLoaderKey key) && hashCode == key.hashCode && get() == key.get();
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+    }
+
+    private static final Map<ClassLoaderKey, List<RuntimeRemapper>> REMAPPER_LOOKUP = new HashMap<>();
     private static final Map<Character, Class<?>> PRIMITIVES = Map.of(
             'V', void.class,
             'Z', boolean.class,
@@ -50,32 +69,14 @@ public final class OpeningMetafactory {
         LOOKUP_PROVIDER = LOOKUP_PROVIDER1;
     }
 
-    private synchronized static RuntimeRemapper getRemapper(ClassLoader classLoader) {
+    private synchronized static List<RuntimeRemapper> getRemapper(ClassLoader classLoader) {
         ClassLoaderKey ref;
         while ((ref = (ClassLoaderKey) REMAPPER_LOOKUP_QUEUE.poll()) != null) {
             REMAPPER_LOOKUP.remove(ref);
         }
         return REMAPPER_LOOKUP.computeIfAbsent(new ClassLoaderKey(classLoader, REMAPPER_LOOKUP_QUEUE), k ->
-                ServiceLoader.load(RuntimeRemapper.class, classLoader).findFirst().orElse(null));
-    }
-
-    private static class ClassLoaderKey extends WeakReference<ClassLoader> {
-        final int hashCode;
-
-        public ClassLoaderKey(ClassLoader referent, ReferenceQueue<? super ClassLoader> q) {
-            super(referent, q);
-            this.hashCode = System.identityHashCode(referent);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return (obj instanceof ClassLoaderKey key) && hashCode == key.hashCode && get() == key.get();
-        }
-
-        @Override
-        public int hashCode() {
-            return hashCode;
-        }
+                ServiceLoader.load(RuntimeRemapper.class, classLoader).stream().map(ServiceLoader.Provider::get).toList()
+        );
     }
 
     private static Class<?> getClassFromDescriptor(String desc, MethodHandles.Lookup caller) {
@@ -159,7 +160,7 @@ public final class OpeningMetafactory {
             };
             return handle.asType(factoryType);
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
-            var exception = new OpeningException(e);
+            var exception = new OpeningException("Issue creating method handle for `"+name+"`", e);
 
             if (LOOKUP_PROVIDER_EXCEPTION != null) {
                 exception.addSuppressed(LOOKUP_PROVIDER_EXCEPTION);
@@ -170,33 +171,33 @@ public final class OpeningMetafactory {
     }
 
     public static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
-        RuntimeRemapper remapper = getRemapper(classLoader);
-        if (remapper != null) {
+        List<RuntimeRemapper> remappers = getRemapper(classLoader);
+        for (var remapper : remappers) {
             String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray());
             if (remapMethodName != null) {
-                targetMethodName = remapMethodName;
+                return remapMethodName;
             }
         }
         return targetMethodName;
     }
 
     public static String remapField(String targetFieldName, Class<?> holdingClass, ClassLoader classLoader) {
-        RuntimeRemapper remapper = getRemapper(classLoader);
-        if (remapper != null) {
+        List<RuntimeRemapper> remappers = getRemapper(classLoader);
+        for (var remapper : remappers) {
             String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName);
             if (remapFieldName != null) {
-                targetFieldName = remapFieldName;
+                return remapFieldName;
             }
         }
         return targetFieldName;
     }
 
     public static String remapClass(String className, ClassLoader classLoader) {
-        RuntimeRemapper remapper = getRemapper(classLoader);
-        if (remapper != null) {
+        List<RuntimeRemapper> remappers = getRemapper(classLoader);
+        for (var remapper : remappers) {
             String remapClassName = remapper.remapClassName(className);
             if (remapClassName != null) {
-                className = remapClassName;
+                return remapClassName;
             }
         }
         return className;
