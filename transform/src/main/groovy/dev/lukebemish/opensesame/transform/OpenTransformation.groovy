@@ -2,38 +2,24 @@ package dev.lukebemish.opensesame.transform
 
 import dev.lukebemish.opensesame.Coerce
 import dev.lukebemish.opensesame.Open
+import dev.lukebemish.opensesame.runtime.ErrorFunction
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
-import groovyjarjarasm.asm.ConstantDynamic
-import groovyjarjarasm.asm.Handle
-import groovyjarjarasm.asm.MethodVisitor
-import groovyjarjarasm.asm.Opcodes
-import groovyjarjarasm.asm.Type
-import org.codehaus.groovy.ast.ASTNode
-import org.codehaus.groovy.ast.ClassHelper
-import org.codehaus.groovy.ast.ClassNode
-import org.codehaus.groovy.ast.GenericsType
-import org.codehaus.groovy.ast.InnerClassNode
-import org.codehaus.groovy.ast.MethodNode
-import org.codehaus.groovy.ast.MixinNode
-import org.codehaus.groovy.ast.Parameter
+import groovyjarjarasm.asm.*
+import org.codehaus.groovy.ast.*
+import org.codehaus.groovy.ast.expr.ClassExpression
 import org.codehaus.groovy.ast.expr.ClosureExpression
 import org.codehaus.groovy.ast.expr.Expression
 import org.codehaus.groovy.ast.expr.PropertyExpression
 import org.codehaus.groovy.ast.stmt.ExpressionStatement
 import org.codehaus.groovy.classgen.BytecodeExpression
 import org.codehaus.groovy.classgen.asm.BytecodeHelper
-import org.codehaus.groovy.control.CompilationUnit
 import org.codehaus.groovy.control.CompilePhase
 import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.AbstractASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
 
-import java.lang.invoke.CallSite
-import java.lang.invoke.ConstantBootstraps
-import java.lang.invoke.MethodHandle
-import java.lang.invoke.MethodHandles
-import java.lang.invoke.MethodType
+import java.lang.invoke.*
 import java.util.function.Function
 
 @CompileStatic
@@ -49,6 +35,8 @@ class OpenTransformation extends AbstractASTTransformation {
         }})
     }
     private static final ClassNode CLASSLOADER = ClassHelper.makeWithoutCaching(ClassLoader)
+    private static final ClassNode ERROR_FUNCTION = ClassHelper.makeWithoutCaching(ErrorFunction)
+    private static final String METHOD_CLOSURE_COUNT_META = 'dev.lukebemish.opensesame:closureCount'
 
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
@@ -62,10 +50,11 @@ class OpenTransformation extends AbstractASTTransformation {
         var annotationNode = methodNode.getAnnotations(OPEN).get(0)
 
         String target = null
-        ConstantDynamic targetClassHandle = null
+        Object targetClassHandle = null
         var targetName = getMemberStringValue(annotationNode, 'targetName')
         var targetClass = getMemberClassValue(annotationNode, 'targetClass')
         var targetFunction = getMemberClassValue(annotationNode, 'targetProvider')
+        Handle targetClosureHandle = null
         if (targetFunction == null) {
             Expression member = annotationNode.getMember('targetProvider')
             if (member instanceof ClosureExpression) {
@@ -73,26 +62,13 @@ class OpenTransformation extends AbstractASTTransformation {
                     throw new RuntimeException("Closure passed to ${Open.simpleName} must have no parameters or a single parameter of type Object or ClassLoader")
                 }
 
-                int count = (int) (methodNode.getNodeMetaData('dev.lukebemish.opensesame:closureCount') ?: 0)
+                int count = (int) (methodNode.getNodeMetaData(METHOD_CLOSURE_COUNT_META) ?: 0)
 
-                String functionClassName = "${methodNode.declaringClass.name}\$dev\$lukebemish\$opensesame\$typeCoercion\$_${methodNode.name}\$${count++}"
+                String generatedMethodName = "\$dev_lukebemish_opensesame\$typeFinding\$${count++}\$_${methodNode.name}"
 
-                ClassNode functionClass = new InnerClassNode(
-                        methodNode.declaringClass,
-                        functionClassName,
-                        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
-                        ClassHelper.OBJECT_TYPE,
-                        new ClassNode[] {FUNCTION.getPlainNodeReference().tap {
-                            it.setGenericsTypes(new GenericsType[] {new GenericsType(CLASSLOADER), new GenericsType(GENERIC_CLASS)})
-                        }},
-                        new MixinNode[] {}
-                )
-
-                functionClass.setSynthetic(true)
-
-                functionClass.addMethod(
-                        'apply',
-                        Opcodes.ACC_PUBLIC,
+                var generatedMethod = methodNode.declaringClass.addMethod(
+                        generatedMethodName,
+                        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
                         GENERIC_CLASS,
                         new Parameter[] {
                                 new Parameter(CLASSLOADER, 'it')
@@ -101,14 +77,22 @@ class OpenTransformation extends AbstractASTTransformation {
                         member.code
                 )
 
-                sourceUnit.getAST().addClass(functionClass)
+                methodNode.setNodeMetaData(METHOD_CLOSURE_COUNT_META, count)
 
-                methodNode.setNodeMetaData('dev.lukebemish.opensesame:closureCount', count)
+                generatedMethod.synthetic = true
 
-                targetFunction = functionClass
+                targetClosureHandle = new Handle(
+                        Opcodes.H_INVOKESTATIC,
+                        BytecodeHelper.getClassInternalName(methodNode.declaringClass),
+                        generatedMethodName,
+                        MethodType.methodType(Class, ClassLoader).descriptorString(),
+                        methodNode.declaringClass.interface
+                )
+
+                annotationNode.setMember('targetProvider', new ClassExpression(ERROR_FUNCTION))
             }
         }
-        if (targetName === null && targetClass === null && targetFunction === null) {
+        if (targetName === null && targetClass === null && targetFunction === null && targetClosureHandle === null) {
             throw new RuntimeException("${Open.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
         } else if (targetName !== null) {
             target = targetName
@@ -129,7 +113,10 @@ class OpenTransformation extends AbstractASTTransformation {
             }
 
             targetClassHandle = conDynFromFunction(targetFunction)
+        } else if (targetClosureHandle !== null) {
+            targetClassHandle = targetClosureHandle
         }
+
         final String name = getMemberStringValue(annotationNode, 'name')
         final Open.Type type = Open.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
 
