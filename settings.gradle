@@ -1,8 +1,9 @@
 rootProject.name = 'opensesame'
 
 def subprojects = [
+        'annotations',
         'runtime',
-        'transform'
+        'groovy'
 ]
 
 include subprojects

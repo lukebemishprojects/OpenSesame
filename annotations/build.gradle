@@ -1,13 +1,19 @@
 java.withSourcesJar()
 java.withJavadocJar()
 
+dependencies {
+    compileOnly 'org.apache.groovy:groovy:4.0.12'
+
+    api project(':opensesame-runtime')
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             pom {
-                name = "OpenSesame - Runtime"
+                name = "OpenSesame - Annotations"
                 packaging = 'jar'
-                description = 'Runtime metafactory used for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'Annotations for OpenSesame, a tool for typesafe access normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

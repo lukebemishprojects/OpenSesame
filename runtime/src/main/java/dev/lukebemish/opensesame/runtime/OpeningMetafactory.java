@@ -119,14 +119,15 @@ public final class OpeningMetafactory {
         }
     }
 
-    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, String desc, int type) {
+    public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, MethodHandle accessTypeProvider, int type) {
         Class<?> holdingClass;
+        MethodType accessType;
         try {
             holdingClass = (Class<?>) classProvider.invoke(caller.lookupClass().getClassLoader());
+            accessType = (MethodType) accessTypeProvider.invoke(caller.lookupClass().getClassLoader());
         } catch (Throwable throwable) {
             throw new OpeningException(throwable);
         }
-        MethodType accessType = makeMethodType(desc, caller);
         return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
     }
 
