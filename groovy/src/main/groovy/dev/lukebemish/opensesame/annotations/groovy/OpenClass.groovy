@@ -12,7 +12,7 @@ import java.lang.annotation.Target
 /**
  * Opens members of the specified classes to be called within this method, even if they would otherwise be inaccessible.
  */
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.CLASS)
 @CompileStatic
 @Target([ElementType.METHOD])
 @GroovyASTTransformationClass([

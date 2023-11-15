@@ -68,7 +68,9 @@ class OpenTransformation extends AbstractASTTransformation {
         }
 
         if (!methodNode.static) {
-            if (!type.takesInstance) {
+            var takesInstance = (type == Open.Type.GET_INSTANCE || type == Open.Type.SET_INSTANCE || type == Open.Type.VIRTUAL || type == Open.Type.SPECIAL)
+
+            if (!takesInstance) {
                 throw new RuntimeException("Method ${methodNode.name} is not static, but ${Open.simpleName} expects a static context")
             }
             asmDescType = Type.getMethodType(
