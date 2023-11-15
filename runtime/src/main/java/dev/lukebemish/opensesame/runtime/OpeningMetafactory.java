@@ -171,7 +171,7 @@ public final class OpeningMetafactory {
         }
     }
 
-    public static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
+    private static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
             String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray());
@@ -182,7 +182,7 @@ public final class OpeningMetafactory {
         return targetMethodName;
     }
 
-    public static String remapField(String targetFieldName, Class<?> holdingClass, ClassLoader classLoader) {
+    private static String remapField(String targetFieldName, Class<?> holdingClass, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
             String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName);
