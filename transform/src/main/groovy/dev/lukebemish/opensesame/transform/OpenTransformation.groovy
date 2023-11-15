@@ -13,6 +13,7 @@ import org.codehaus.groovy.ast.ASTNode
 import org.codehaus.groovy.ast.ClassHelper
 import org.codehaus.groovy.ast.ClassNode
 import org.codehaus.groovy.ast.GenericsType
+import org.codehaus.groovy.ast.InnerClassNode
 import org.codehaus.groovy.ast.MethodNode
 import org.codehaus.groovy.ast.MixinNode
 import org.codehaus.groovy.ast.Parameter
@@ -22,6 +23,7 @@ import org.codehaus.groovy.ast.expr.PropertyExpression
 import org.codehaus.groovy.ast.stmt.ExpressionStatement
 import org.codehaus.groovy.classgen.BytecodeExpression
 import org.codehaus.groovy.classgen.asm.BytecodeHelper
+import org.codehaus.groovy.control.CompilationUnit
 import org.codehaus.groovy.control.CompilePhase
 import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.AbstractASTTransformation
@@ -75,9 +77,10 @@ class OpenTransformation extends AbstractASTTransformation {
 
                 String functionClassName = "${methodNode.declaringClass.name}\$dev\$lukebemish\$opensesame\$typeCoercion\$_${methodNode.name}\$${count++}"
 
-                ClassNode functionClass = new ClassNode(
+                ClassNode functionClass = new InnerClassNode(
+                        methodNode.declaringClass,
                         functionClassName,
-                        Opcodes.ACC_FINAL,
+                        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
                         ClassHelper.OBJECT_TYPE,
                         new ClassNode[] {FUNCTION.getPlainNodeReference().tap {
                             it.setGenericsTypes(new GenericsType[] {new GenericsType(CLASSLOADER), new GenericsType(GENERIC_CLASS)})

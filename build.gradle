@@ -81,4 +81,5 @@ test {
         exceptionFormat = 'full'
         events = ['passed', 'failed', 'skipped']
     }
+    outputs.upToDateWhen {false}
 }
