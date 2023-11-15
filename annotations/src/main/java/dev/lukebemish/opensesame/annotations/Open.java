@@ -78,6 +78,6 @@ public @interface Open {
         /**
          * Invoke a constructor
          */
-        CONSTRUCT;
+        CONSTRUCT
     }
 }
