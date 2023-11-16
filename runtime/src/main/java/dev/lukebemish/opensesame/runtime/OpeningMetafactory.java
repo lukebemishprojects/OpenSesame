@@ -11,7 +11,7 @@ import java.util.*;
 public final class OpeningMetafactory {
     private OpeningMetafactory() {}
 
-    private static class ClassLoaderKey extends WeakReference<ClassLoader> {
+    private static final class ClassLoaderKey extends WeakReference<ClassLoader> {
         final int hashCode;
 
         public ClassLoaderKey(ClassLoader referent, ReferenceQueue<? super ClassLoader> q) {

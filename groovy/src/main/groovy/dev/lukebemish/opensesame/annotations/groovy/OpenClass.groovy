@@ -16,9 +16,9 @@ import java.lang.annotation.Target
 @CompileStatic
 @Target([ElementType.METHOD])
 @GroovyASTTransformationClass([
-        'dev.lukebemish.opensesame.transform.groovy.OpenClassSetupTransformation',
-        'dev.lukebemish.opensesame.transform.groovy.OpenClassWriterTransformation',
-        'dev.lukebemish.opensesame.transform.groovy.OpenClassBeforeCheckingTransformation'
+        'dev.lukebemish.opensesame.compile.groovy.OpenClassSetupTransformation',
+        'dev.lukebemish.opensesame.compile.groovy.OpenClassWriterTransformation',
+        'dev.lukebemish.opensesame.compile.groovy.OpenClassBeforeCheckingTransformation'
 ])
 @interface OpenClass {
     /**

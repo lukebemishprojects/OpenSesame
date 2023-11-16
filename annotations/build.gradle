@@ -2,8 +2,6 @@ java.withSourcesJar()
 java.withJavadocJar()
 
 dependencies {
-    compileOnly 'org.apache.groovy:groovy:4.0.12'
-
     api project(':opensesame-runtime')
 }
 

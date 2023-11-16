@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.transform.groovy
+package dev.lukebemish.opensesame.compile.groovy
 
 import com.google.auto.service.AutoService
 import dev.lukebemish.opensesame.annotations.Open

@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.transform.groovy
+package dev.lukebemish.opensesame.compile.groovy
 
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory

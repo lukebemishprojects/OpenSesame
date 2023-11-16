@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.transform.groovy
+package dev.lukebemish.opensesame.compile.groovy
 
 import dev.lukebemish.opensesame.annotations.groovy.OpenClass
 import groovy.transform.CompileStatic
