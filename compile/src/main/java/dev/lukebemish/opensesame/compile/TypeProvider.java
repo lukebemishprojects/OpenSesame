@@ -15,9 +15,10 @@ public interface TypeProvider<T, CD, H> {
     default String internalName(String name) {
         return name.replace('.', '/');
     }
-    default T typeFromInternalName(String internalName) {
-        return type("L"+internalName+";");
-    }
+    String internalName(T type);
 
     boolean isPrimitiveOrVoid(T type);
+
+    T returnType(T methodType);
+    T[] parameterTypes(T methodType);
 }

@@ -4,7 +4,8 @@ def subprojects = [
         'annotations',
         'runtime',
         'compile',
-        'groovy'
+        'groovy',
+        'javac'
 ]
 
 include subprojects

@@ -2,7 +2,7 @@ java.withSourcesJar()
 java.withJavadocJar()
 
 dependencies {
-    implementation project(':opensesame-annotations')
+    api project(':opensesame-annotations')
 }
 
 publishing {

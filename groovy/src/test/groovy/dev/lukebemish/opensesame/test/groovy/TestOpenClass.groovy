@@ -1,8 +1,8 @@
-package dev.lukebemish.opensesame.groovy.test
+package dev.lukebemish.opensesame.test.groovy
 
 import dev.lukebemish.opensesame.annotations.groovy.OpenClass
-import dev.lukebemish.opensesame.groovy.test.otherpackage.HasPrivateCtor
-import dev.lukebemish.opensesame.groovy.test.otherpackage.ToOpen
+import dev.lukebemish.opensesame.test.target.HasPrivateCtor
+import dev.lukebemish.opensesame.test.target.ToOpen
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
 

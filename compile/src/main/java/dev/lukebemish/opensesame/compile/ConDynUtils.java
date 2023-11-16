@@ -112,8 +112,8 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public CD conDynFromFunction(String targetFunctionClassName) {
-        String internalName = types.internalName(targetFunctionClassName);
+    public CD conDynFromFunction(T targetFunction) {
+        String internalName = types.internalName(targetFunction);
 
         var functionCtor = types.handle(
                 Opcodes.H_NEWINVOKESPECIAL,
@@ -171,9 +171,7 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public CD conDynFromClass(String targetClassName) {
-        String internalName = types.internalName(targetClassName);
-        T targetTypeType = types.typeFromInternalName(internalName);
+    public CD conDynFromClass(T targetTypeType) {
         Object targetType = targetTypeType;
 
         if (types.isPrimitiveOrVoid(targetTypeType)) {

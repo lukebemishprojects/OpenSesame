@@ -1,7 +1,7 @@
-package dev.lukebemish.opensesame.groovy.test
+package dev.lukebemish.opensesame.test.groovy
 
 import dev.lukebemish.opensesame.annotations.Open
-import dev.lukebemish.opensesame.groovy.test.otherpackage.ToOpen
+import dev.lukebemish.opensesame.test.target.ToOpen
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
 
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 class TestOpen {
     @Open(
             name = 'testInstance',
-            targetProvider = { ClassLoader it -> Class.forName('dev.lukebemish.opensesame.groovy.test.otherpackage.ToOpen', false, it) },
+            targetProvider = { ClassLoader it -> Class.forName('dev.lukebemish.opensesame.test.target.ToOpen', false, it) },
             type = Open.Type.SPECIAL
     )
     private static String openerTestPrivateAccess(ToOpen instance) {
@@ -26,7 +26,7 @@ class TestOpen {
 
     @Open(
             name = 'invoke',
-            targetName = 'dev.lukebemish.opensesame.groovy.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.target.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.STATIC
     )
     private static String openerTestPrivateClass() {
@@ -40,7 +40,7 @@ class TestOpen {
 
     @Open(
             name = '<init>',
-            targetName = 'dev.lukebemish.opensesame.groovy.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.target.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.CONSTRUCT
     )
     private static Object openerTestPrivateCtor(String arg) {
@@ -49,7 +49,7 @@ class TestOpen {
 
     @Open(
             name = 'arg',
-            targetName = 'dev.lukebemish.opensesame.groovy.test.otherpackage.HasPrivateSubclass$PrivateSubclass',
+            targetName = 'dev.lukebemish.opensesame.test.target.HasPrivateSubclass$PrivateSubclass',
             type = Open.Type.GET_INSTANCE
     )
     private static String openerTestPrivateCtorField(Object instance) {

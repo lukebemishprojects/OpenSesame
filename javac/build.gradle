@@ -1,37 +1,25 @@
-plugins {
-    id 'groovy'
-}
-
 java.withSourcesJar()
-groovydoc.use = true
-
-tasks.register('groovydocJar', Jar) {
-    dependsOn groovydoc
-    archiveClassifier.set 'javadoc'
-    from groovydoc.destinationDir
-}
+java.withJavadocJar()
 
 dependencies {
-    implementation 'org.apache.groovy:groovy:4.0.12'
     implementation project(':opensesame-compile')
 
     testImplementation project(':opensesame-runtime').sourceSets.test.output
 }
 
-tasks.named('compileGroovy', GroovyCompile).configure {
-    it.groovyOptions.javaAnnotationProcessing = true
-    it.groovyOptions.optimizationOptions.indy = true
+tasks.named('compileTestJava', JavaCompile).configure {
+    it.options.compilerArgs.add '-Xplugin:OpenSesame'
+    it.dependsOn(tasks.compileJava)
+    it.inputs.files(sourceSets.main.output.classesDirs)
 }
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifact tasks.groovydocJar
-
             pom {
-                name = "OpenSesame - Groovy Transform"
+                name = "OpenSesame - Javac Compiler Plugin"
                 packaging = 'jar'
-                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'javac compiler plugin for OpenSesame, a tool for typesafe access normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

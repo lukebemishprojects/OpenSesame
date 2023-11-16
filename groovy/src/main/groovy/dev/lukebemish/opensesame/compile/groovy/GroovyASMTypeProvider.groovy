@@ -51,7 +51,22 @@ class GroovyASMTypeProvider implements TypeProvider<Type, ConstantDynamic, Handl
     }
 
     @Override
+    String internalName(Type type) {
+        return type.internalName
+    }
+
+    @Override
     boolean isPrimitiveOrVoid(Type type) {
         return type.sort <= Type.DOUBLE
+    }
+
+    @Override
+    Type returnType(Type methodType) {
+        return methodType.returnType
+    }
+
+    @Override
+    Type[] parameterTypes(Type methodType) {
+        return methodType.argumentTypes
     }
 }

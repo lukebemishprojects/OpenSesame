@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.groovy.test.otherpackage;
+package dev.lukebemish.opensesame.test.target;
 
 public class HasPrivateSubclass {
     private static class PrivateSubclass {

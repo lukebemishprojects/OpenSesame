@@ -3,7 +3,10 @@ package dev.lukebemish.opensesame.runtime;
 import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -31,17 +34,6 @@ public final class OpeningMetafactory {
     }
 
     private static final Map<ClassLoaderKey, List<RuntimeRemapper>> REMAPPER_LOOKUP = new HashMap<>();
-    private static final Map<Character, Class<?>> PRIMITIVES = Map.of(
-            'V', void.class,
-            'Z', boolean.class,
-            'C', char.class,
-            'B', byte.class,
-            'S', short.class,
-            'I', int.class,
-            'F', float.class,
-            'J', long.class,
-            'D', double.class
-    );
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
     private static final LookupProvider LOOKUP_PROVIDER;
     private static final Exception LOOKUP_PROVIDER_EXCEPTION;
@@ -79,46 +71,7 @@ public final class OpeningMetafactory {
         );
     }
 
-    private static Class<?> getClassFromDescriptor(String desc, MethodHandles.Lookup caller) {
-        char first = desc.charAt(0);
-        Class<?> type = PRIMITIVES.get(first);
-        if (type != null) return type;
-        if (first == '[') return getClassFromDescriptor(desc.substring(1), caller).arrayType();
-        String className = desc.substring(1, desc.length()-1).replace('/','.');
-        return getClass(className, caller);
-    }
-
-    private static MethodType makeMethodType(String desc, MethodHandles.Lookup caller) {
-        var argsEnd = desc.indexOf(')');
-        String args = desc.substring(1, desc.indexOf(')'));
-        List<Class<?>> argTypes = new ArrayList<>();
-        while (!args.isEmpty()) {
-            char c = args.charAt(0);
-            if (c == 'L' || c == '[') {
-                var end = args.indexOf(';');
-                if (end == -1) {
-                    throw new OpeningException("Descriptor '"+desc+"' is invalid");
-                }
-                String start = args.substring(0, end + 1);
-                args = args.substring(end + 1);
-                argTypes.add(getClassFromDescriptor(start, caller));
-            } else {
-                argTypes.add(Objects.requireNonNull(PRIMITIVES.get(c)));
-                args = args.substring(1);
-            }
-        }
-        Class<?> returnType = getClassFromDescriptor(desc.substring(argsEnd+1), caller);
-        return MethodType.methodType(returnType, argTypes);
-    }
-
-    private static Class<?> getClass(String className, MethodHandles.Lookup caller) {
-        try {
-            return Class.forName(remapClass(className, caller.lookupClass().getClassLoader()), false, caller.lookupClass().getClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new OpeningException(e);
-        }
-    }
-
+    @SuppressWarnings("unused")
     public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, MethodHandle accessTypeProvider, int type) {
         Class<?> holdingClass;
         MethodType accessType;
@@ -131,6 +84,7 @@ public final class OpeningMetafactory {
         return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
     }
 
+    @SuppressWarnings("unused")
     public static CallSite invoke(MethodHandles.Lookup caller, String name, MethodType factoryType, Class<?> holdingClass, int type) {
         return invoke0(caller, name, factoryType, factoryType, holdingClass, type);
     }
@@ -193,6 +147,7 @@ public final class OpeningMetafactory {
         return targetFieldName;
     }
 
+    @SuppressWarnings("unused")
     public static String remapClass(String className, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {

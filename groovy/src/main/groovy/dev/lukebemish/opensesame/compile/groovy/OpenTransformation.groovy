@@ -2,6 +2,9 @@ package dev.lukebemish.opensesame.compile.groovy
 
 import dev.lukebemish.opensesame.annotations.Coerce
 import dev.lukebemish.opensesame.annotations.Open
+import dev.lukebemish.opensesame.compile.ConDynUtils
+import dev.lukebemish.opensesame.compile.OpenProcessor
+import dev.lukebemish.opensesame.compile.TypeProvider
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
@@ -27,7 +30,7 @@ import java.lang.invoke.MethodType
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
-class OpenTransformation extends AbstractASTTransformation {
+class OpenTransformation extends AbstractASTTransformation implements OpenProcessor<Type, AnnotationNode, MethodNode> {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
@@ -48,52 +51,7 @@ class OpenTransformation extends AbstractASTTransformation {
             throw new RuntimeException("${Open.simpleName} annotation can only be used once per method")
         }
 
-        var annotationNode = methodNode.getAnnotations(OPEN).get(0)
-
-        Object targetClassHandle = null
-        targetClassHandle = typeProviderFromAnnotation(annotationNode, methodNode, Open)
-
-        final String name = getMemberStringValue(annotationNode, 'name')
-        final Open.Type type = Open.Type.valueOf((annotationNode.getMember('type') as PropertyExpression).propertyAsString)
-
-        Type asmDescType = Type.getType(BytecodeHelper.getMethodDescriptor(methodNode.returnType, methodNode.parameters))
-        Object returnType = GroovyASMTypeProvider.CON_DYN_UTILS.conDynFromClass(asmDescType.returnType.internalName)
-        List<Object> parameterTypes = []
-        parameterTypes.addAll(asmDescType.argumentTypes.collect { GroovyASMTypeProvider.CON_DYN_UTILS.conDynFromClass(it.internalName) })
-
-        for (int i = 0; i < methodNode.parameters.size(); i++) {
-            var parameter = methodNode.parameters[i]
-            var coercions = parameter.getAnnotations(COERCE)
-            if (coercions.size() > 1) {
-                throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
-            } else if (!coercions.empty) {
-                parameterTypes[i] = typeProviderFromAnnotation(coercions.get(0), methodNode, Coerce)
-            }
-        }
-
-        if (!methodNode.static) {
-            var takesInstance = (type == Open.Type.GET_INSTANCE || type == Open.Type.SET_INSTANCE || type == Open.Type.VIRTUAL || type == Open.Type.SPECIAL)
-
-            if (!takesInstance) {
-                throw new RuntimeException("Method ${methodNode.name} is not static, but ${Open.simpleName} expects a static context")
-            }
-            asmDescType = Type.getMethodType(
-                    asmDescType.returnType,
-                    (new Type[] {Type.getType("L${methodNode.declaringClass.name.replace('.','/')};")}) + asmDescType.argumentTypes
-            )
-            parameterTypes.add(0, targetClassHandle)
-        }
-
-        var coercions = methodNode.getAnnotations(COERCE)
-        if (coercions.size() > 1) {
-            throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
-        } else if (!coercions.empty) {
-            returnType = typeProviderFromAnnotation(coercions.get(0), methodNode, Coerce)
-        }
-
-        if (type == Open.Type.CONSTRUCT) {
-            returnType = targetClassHandle
-        }
+        Opening<Type> opening = opening(methodNode)
 
         methodNode.code = new ExpressionStatement(new BytecodeExpression(methodNode.returnType) {
             @Override
@@ -107,11 +65,11 @@ class OpenTransformation extends AbstractASTTransformation {
                     methodVisitor.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), methodNode.static ? i : i + 1)
                 }
 
-                var methodType = type.ordinal()
+                var methodType = opening.type().ordinal()
 
                 methodVisitor.visitInvokeDynamicInsn(
-                        type == Open.Type.CONSTRUCT ? OpenClassTypeCheckingExtension.CTOR_DUMMY : name,
-                        asmDescType.descriptor,
+                        opening.type() == Open.Type.CONSTRUCT ? OpenClassTypeCheckingExtension.CTOR_DUMMY : opening.name(),
+                        opening.factoryType().descriptor,
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
                                 BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
@@ -119,19 +77,29 @@ class OpenTransformation extends AbstractASTTransformation {
                                 Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(MethodHandle), Type.getType(MethodHandle), Type.getType(int.class)),
                                 false
                         ),
-                        targetClassHandle,
-                        GroovyASMTypeProvider.CON_DYN_UTILS.conDynMethodType(returnType, parameterTypes),
+                        opening.targetProvider(),
+                        opening.methodTypeProvider(),
                         methodType
                 )
 
-                if (asmDescType.sort == Type.VOID) {
+                if (opening.factoryType().sort == Type.VOID) {
                     methodVisitor.visitInsn(Opcodes.ACONST_NULL)
                 }
             }
         })
     }
 
-    private Object typeProviderFromAnnotation(AnnotationNode annotationNode, MethodNode methodNode, Class<?> annotationType) {
+    @Override
+    TypeProvider<Type, ?, ?> types() {
+        return GroovyASMTypeProvider.INSTANCE
+    }
+
+    @Override
+    ConDynUtils<Type, ?, ?> conDynUtils() {
+        return GroovyASMTypeProvider.CON_DYN_UTILS
+    }
+
+    Object typeProviderFromAnnotation(AnnotationNode annotationNode, MethodNode methodNode, Class<?> annotationType) {
         Object targetClassHandle = null
 
         var targetName = getMemberStringValue(annotationNode, 'targetName')
@@ -151,10 +119,10 @@ class OpenTransformation extends AbstractASTTransformation {
 
                 var generatedMethod = methodNode.declaringClass.addMethod(
                         generatedMethodName,
-                        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
+                        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
                         GENERIC_CLASS,
                         new Parameter[]{
-                                new Parameter(CLASSLOADER, 'it')
+                                new Parameter(CLASSLOADER, member.parameters.length === 0 ? 'it' : member.parameters[0].name)
                         },
                         new ClassNode[]{},
                         member.code
@@ -178,25 +146,89 @@ class OpenTransformation extends AbstractASTTransformation {
         if (targetName === null && targetClass === null && targetFunction === null && targetClosureHandle === null) {
             throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
         } else if (targetName !== null) {
-            targetClassHandle = GroovyASMTypeProvider.CON_DYN_UTILS.conDynFromName(targetName)
+            targetClassHandle = conDynUtils().conDynFromName(targetName)
         }
         if (targetClass !== null) {
             if (targetClassHandle !== null) {
                 throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
             }
 
-            targetClassHandle = GroovyASMTypeProvider.CON_DYN_UTILS.conDynFromClass(targetClass.name)
+            targetClassHandle = conDynUtils().conDynFromClass(types().type(BytecodeHelper.getTypeDescription(targetClass)))
         }
         if (targetFunction !== null) {
             if (targetClassHandle !== null) {
                 throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
             }
 
-            targetClassHandle = GroovyASMTypeProvider.CON_DYN_UTILS.conDynFromFunction(targetFunction.name)
+            targetClassHandle = conDynUtils().conDynFromFunction(types().type(BytecodeHelper.getTypeDescription(targetFunction)))
         } else if (targetClosureHandle !== null) {
             targetClassHandle = targetClosureHandle
         }
 
         return targetClassHandle
+    }
+
+    @Override
+    AnnotationNode annotation(MethodNode methodNode, Class<?> type) {
+        var members = methodNode.getAnnotations(ClassHelper.makeWithoutCaching(type))
+        if (members.size() > 1) {
+            throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
+        } else if (!members.empty) {
+            return members.get(0)
+        }
+        return null
+    }
+
+    @Override
+    List<MethodParameter<Type, AnnotationNode>> parameters(MethodNode method, Class<?> type) {
+        return method.parameters.collect {
+            AnnotationNode annotation = null
+            var members = it.getAnnotations(ClassHelper.makeWithoutCaching(type))
+            if (members.size() > 1) {
+                throw new RuntimeException("Parameter ${it.name} on method ${method.name} may have at most one return type coercion, but had two")
+            } else if (!members.empty) {
+                annotation = members.get(0)
+            }
+            return new MethodParameter<Type, AnnotationNode>(
+                    types().type(BytecodeHelper.getTypeDescription(it.type)),
+                    annotation
+            )
+        }
+    }
+
+    @Override
+    Open.Type type(AnnotationNode annotation) {
+        if (annotation.classNode != OPEN) {
+            throw new RuntimeException("Attempted to get type from non-${Open.simpleName} annotation ${annotation.toString()}")
+        }
+        return Open.Type.valueOf((annotation.getMember('type') as PropertyExpression).propertyAsString)
+    }
+
+    @Override
+    String name(AnnotationNode annotation) {
+        if (annotation.classNode != OPEN) {
+            throw new RuntimeException("Attempted to get name from non-${Open.simpleName} annotation ${annotation.toString()}")
+        }
+        return getMemberStringValue(annotation, 'name')
+    }
+
+    @Override
+    Type returnType(MethodNode method) {
+        return types().type(BytecodeHelper.getTypeDescription(method.returnType))
+    }
+
+    @Override
+    boolean isStatic(MethodNode method) {
+        return method.static
+    }
+
+    @Override
+    String methodName(MethodNode method) {
+        return method.name
+    }
+
+    @Override
+    Type declaringClass(MethodNode method) {
+        return types().type(BytecodeHelper.getTypeDescription(method.declaringClass))
     }
 }
