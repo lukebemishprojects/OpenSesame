@@ -4,7 +4,10 @@ import dev.lukebemish.opensesame.annotations.Coerce
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
-import groovyjarjarasm.asm.*
+import groovyjarjarasm.asm.Handle
+import groovyjarjarasm.asm.MethodVisitor
+import groovyjarjarasm.asm.Opcodes
+import groovyjarjarasm.asm.Type
 import org.codehaus.groovy.ast.*
 import org.codehaus.groovy.ast.expr.ClosureExpression
 import org.codehaus.groovy.ast.expr.Expression
@@ -17,8 +20,10 @@ import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.AbstractASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
 
-import java.lang.invoke.*
-import java.util.function.Function
+import java.lang.invoke.CallSite
+import java.lang.invoke.MethodHandle
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
@@ -26,7 +31,6 @@ class OpenTransformation extends AbstractASTTransformation {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
-    private static final ClassNode FUNCTION = ClassHelper.makeWithoutCaching(Function)
     private static final ClassNode GENERIC_CLASS = ClassHelper.makeWithoutCaching(Class).getPlainNodeReference().tap {
         it.setGenericsTypes(new GenericsType[] {new GenericsType(ClassHelper.OBJECT_TYPE).tap {
             it.wildcard = true

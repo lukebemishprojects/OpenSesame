@@ -10,22 +10,22 @@ import java.util.List;
 import java.util.function.Function;
 
 public class ConDynUtils<T, CD, H> {
-    private final TypeProvider<T, CD, H> typeProvider;
+    private final TypeProvider<T, CD, H> types;
 
-    public ConDynUtils(TypeProvider<T, CD, H> typeProvider) {
-        this.typeProvider = typeProvider;
+    public ConDynUtils(TypeProvider<T, CD, H> types) {
+        this.types = types;
     }
 
     public CD invoke(String descriptor, Object handle, Object... args) {
         Object[] fullArgs = new Object[args.length+1];
         System.arraycopy(args, 0, fullArgs, 1, args.length);
         fullArgs[0] = handle;
-        return typeProvider.constantDynamic(
+        return types.constantDynamic(
                 "invoke",
                 descriptor,
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(ConstantBootstraps.class),
+                        types.internalName(ConstantBootstraps.class),
                         "invoke",
                         MethodType.methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class, MethodHandle.class, Object[].class).descriptorString(),
                         false
@@ -35,39 +35,39 @@ public class ConDynUtils<T, CD, H> {
     }
 
     public CD booleanConstant(boolean bool) {
-        return typeProvider.constantDynamic(
+        return types.constantDynamic(
                 // booleans are fucky in ConstantDynamics. Here's an alternative...
                 bool ? "TRUE" : "FALSE",
                 Boolean.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(ConstantBootstraps.class),
+                        types.internalName(ConstantBootstraps.class),
                         "getStaticFinal",
                         MethodType.methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class, Class.class).descriptorString(),
                         false
                 ),
-                typeProvider.type(Boolean.class)
+                types.type(Boolean.class)
         );
     }
 
     public CD conDynMethodType(Object returnType, List<Object> parameterTypes) {
         var fixedArityMethodType = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                     Opcodes.H_INVOKEVIRTUAL,
-                    typeProvider.internalName(MethodHandle.class),
+                    types.internalName(MethodHandle.class),
                     "asCollector",
                     MethodType.methodType(MethodHandle.class, Class.class, int.class).descriptorString(),
                     false
                 ),
-                typeProvider.handle(
+                types.handle(
                     Opcodes.H_INVOKESTATIC,
-                    typeProvider.internalName(MethodType.class),
+                    types.internalName(MethodType.class),
                     "methodType",
                     MethodType.methodType(MethodType.class, Class.class, Class[].class).descriptorString(),
                     false
                 ),
-                typeProvider.type(Class[].class),
+                types.type(Class[].class),
                 parameterTypes.size()
         );
 
@@ -81,9 +81,9 @@ public class ConDynUtils<T, CD, H> {
 
         var manyClassloaderArg = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "filterArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, MethodHandle[].class).descriptorString(),
                         false
@@ -93,7 +93,7 @@ public class ConDynUtils<T, CD, H> {
 
         Object[] parameterPermutations = new Object[parameterTypes.size() + 3];
         parameterPermutations[0] = manyClassloaderArg;
-        parameterPermutations[1] = typeProvider.methodType(MethodType.class.descriptorString(), ClassLoader.class.descriptorString());
+        parameterPermutations[1] = types.methodType(MethodType.class.descriptorString(), ClassLoader.class.descriptorString());
 
         for (int i = 0; i < parameterTypes.size() + 1; i++) {
             parameterPermutations[i + 2] = 0;
@@ -101,9 +101,9 @@ public class ConDynUtils<T, CD, H> {
 
         return invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "permuteArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodType.class, int[].class).descriptorString(),
                         false
@@ -113,9 +113,9 @@ public class ConDynUtils<T, CD, H> {
     }
 
     public CD conDynFromFunction(String targetFunctionClassName) {
-        String internalName = typeProvider.internalName(targetFunctionClassName);
+        String internalName = types.internalName(targetFunctionClassName);
 
-        var functionCtor = typeProvider.handle(
+        var functionCtor = types.handle(
                 Opcodes.H_NEWINVOKESPECIAL,
                 internalName,
                 "<init>",
@@ -125,30 +125,30 @@ public class ConDynUtils<T, CD, H> {
 
         var asFunction = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKEVIRTUAL,
-                        typeProvider.internalName(MethodHandle.class),
+                        types.internalName(MethodHandle.class),
                         "asType",
                         MethodType.methodType(MethodHandle.class, MethodType.class).descriptorString(),
                         false
                 ),
                 functionCtor,
-                typeProvider.methodType(Function.class.descriptorString())
+                types.methodType(Function.class.descriptorString())
         );
 
         var fetchClass = invoke(
                 MethodHandle.class.descriptorString(),
 
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "collectArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, MethodHandle.class).descriptorString(),
                         false
                 ),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKEINTERFACE,
-                        typeProvider.internalName(Function.class),
+                        types.internalName(Function.class),
                         "apply",
                         MethodType.methodType(Object.class, Object.class).descriptorString(),
                         true
@@ -159,30 +159,30 @@ public class ConDynUtils<T, CD, H> {
 
         return invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKEVIRTUAL,
-                        typeProvider.internalName(MethodHandle.class),
+                        types.internalName(MethodHandle.class),
                         "asType",
                         MethodType.methodType(MethodHandle.class, MethodType.class).descriptorString(),
                         false
                 ),
                 fetchClass,
-                typeProvider.methodType(Class.class.descriptorString(), ClassLoader.class.descriptorString())
+                types.methodType(Class.class.descriptorString(), ClassLoader.class.descriptorString())
         );
     }
 
     public CD conDynFromClass(String targetClassName) {
-        String internalName = typeProvider.internalName(targetClassName);
-        T targetTypeType = typeProvider.typeFromInternalName(internalName);
+        String internalName = types.internalName(targetClassName);
+        T targetTypeType = types.typeFromInternalName(internalName);
         Object targetType = targetTypeType;
 
-        if (typeProvider.isPrimitiveOrVoid(targetTypeType)) {
-            targetType = typeProvider.constantDynamic(
-                    typeProvider.descriptor(targetTypeType),
+        if (types.isPrimitiveOrVoid(targetTypeType)) {
+            targetType = types.constantDynamic(
+                    types.descriptor(targetTypeType),
                     Class.class.descriptorString(),
-                    typeProvider.handle(
+                    types.handle(
                             Opcodes.H_INVOKESTATIC,
-                            typeProvider.internalName(ConstantBootstraps.class),
+                            types.internalName(ConstantBootstraps.class),
                             "primitiveClass",
                             MethodType.methodType(Class.class, MethodHandles.Lookup.class, String.class, Class.class).descriptorString(),
                             false
@@ -192,43 +192,43 @@ public class ConDynUtils<T, CD, H> {
 
         return invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "dropArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, Class[].class).descriptorString(),
                         false
                 ),
                 invoke(
                         MethodHandle.class.descriptorString(),
-                        typeProvider.handle(
+                        types.handle(
                                 Opcodes.H_INVOKESTATIC,
-                                typeProvider.internalName(MethodHandles.class),
+                                types.internalName(MethodHandles.class),
                                 "constant",
                                 MethodType.methodType(MethodHandle.class, Class.class, Object.class).descriptorString(),
                                 false
                         ),
-                        typeProvider.type(Class.class),
+                        types.type(Class.class),
                         targetType
                 ),
                 0,
-                typeProvider.type(ClassLoader.class)
+                types.type(ClassLoader.class)
         );
     }
 
     public CD conDynFromName(String targetName) {
         var classLookupFromNameAndClassloader = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "insertArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, Object[].class).descriptorString(),
                         false
                 ),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(Class.class),
+                        types.internalName(Class.class),
                         "forName",
                         MethodType.methodType(Class.class, String.class, boolean.class, ClassLoader.class).descriptorString(),
                         false
@@ -237,9 +237,9 @@ public class ConDynUtils<T, CD, H> {
                 booleanConstant(false)
         );
 
-        var remapper = typeProvider.handle(
+        var remapper = types.handle(
                 Opcodes.H_INVOKESTATIC,
-                typeProvider.internalName(OpeningMetafactory.class),
+                types.internalName(OpeningMetafactory.class),
                 "remapClass",
                 MethodType.methodType(String.class, String.class, ClassLoader.class).descriptorString(),
                 false
@@ -247,9 +247,9 @@ public class ConDynUtils<T, CD, H> {
 
         var twoClassloaderArguments = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "collectArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, MethodHandle.class).descriptorString(),
                         false
@@ -261,15 +261,15 @@ public class ConDynUtils<T, CD, H> {
 
         var remappingLookup = invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "permuteArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodType.class, int[].class).descriptorString(),
                         false
                 ),
                 twoClassloaderArguments,
-                typeProvider.methodType(Class.class.descriptorString(), String.class.descriptorString(), ClassLoader.class.descriptorString()),
+                types.methodType(Class.class.descriptorString(), String.class.descriptorString(), ClassLoader.class.descriptorString()),
                 0,
                 1,
                 1
@@ -277,9 +277,9 @@ public class ConDynUtils<T, CD, H> {
 
         return invoke(
                 MethodHandle.class.descriptorString(),
-                typeProvider.handle(
+                types.handle(
                         Opcodes.H_INVOKESTATIC,
-                        typeProvider.internalName(MethodHandles.class),
+                        types.internalName(MethodHandles.class),
                         "insertArguments",
                         MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, Object[].class).descriptorString(),
                         false
