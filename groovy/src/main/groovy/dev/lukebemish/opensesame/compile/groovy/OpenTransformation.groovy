@@ -7,6 +7,8 @@ import dev.lukebemish.opensesame.compile.OpenProcessor
 import dev.lukebemish.opensesame.compile.TypeProvider
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
+import groovy.transform.PackageScope
+import groovy.transform.PackageScopeTarget
 import groovyjarjarasm.asm.Handle
 import groovyjarjarasm.asm.MethodVisitor
 import groovyjarjarasm.asm.Opcodes
@@ -30,6 +32,7 @@ import java.lang.invoke.MethodType
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
+@PackageScope(PackageScopeTarget.CLASS)
 class OpenTransformation extends AbstractASTTransformation implements OpenProcessor<Type, AnnotationNode, MethodNode> {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
@@ -172,7 +175,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
     AnnotationNode annotation(MethodNode methodNode, Class<?> type) {
         var members = methodNode.getAnnotations(ClassHelper.makeWithoutCaching(type))
         if (members.size() > 1) {
-            throw new RuntimeException("Method ${methodNode.name} may have at most one return type coercion, but had two")
+            throw new RuntimeException("Method ${methodNode.name} may have at most annotation of type ${type.simpleName}, but had more than one")
         } else if (!members.empty) {
             return members.get(0)
         }

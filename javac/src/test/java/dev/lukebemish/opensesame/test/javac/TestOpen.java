@@ -29,6 +29,10 @@ class TestOpen {
         throw new RuntimeException();
     }
 
+    private static int test(int i) {
+        return 0;
+    }
+
     @Test
     void testPrivateAccess() {
         ToOpen testPrivate = new ToOpen();

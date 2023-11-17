@@ -1,41 +1,22 @@
 package dev.lukebemish.opensesame.compile.javac;
 
 import com.google.auto.service.AutoService;
-import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.util.*;
+import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;
-import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
+import java.util.ArrayList;
+import java.util.List;
 
 @AutoService(Plugin.class)
 public class OpenSesamePlugin implements Plugin {
-    // TODO: look at LambdaToMethod.makeMetafactoryIndyCall
-    // well, turns out that doesn't work because of how it handles indy an condyn - so instead, we'll generate a bouncer class with metafactory methos
-
     public static final String PLUGIN_NAME = "OpenSesame";
-
-    private static final MethodHandle JC_ANNOTATION_GET_ATTRIBUTE;
-
-    static {
-        try {
-            JC_ANNOTATION_GET_ATTRIBUTE = OpeningMetafactory.invoke(
-                    MethodHandles.lookup(),
-                    "attribute",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.code.Attribute$Compound"),
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCAnnotation")
-                    ),
-                    Class.forName("com.sun.tools.javac.tree.JCTree$JCAnnotation"),
-                    Open.Type.GET_INSTANCE.ordinal()
-            ).getTarget().asType(MethodType.methodType(Object.class, AnnotationTree.class));
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @Override
     public String getName() {
@@ -51,33 +32,42 @@ public class OpenSesamePlugin implements Plugin {
                     return;
                 }
 
+                Elements elements = task.getElements();
+                List<TypeMirror> types = new ArrayList<>();
+
                 e.getCompilationUnit().accept(new TreeScanner<Void, Void>() {
+                    JavacOpenProcessor processor = null;
+
                     @Override
-                    public Void visitMethod(MethodTree node, Void unused) {
-                        var annotations = node.getModifiers().getAnnotations().stream().filter(a -> {
-                            throw new RuntimeException(a.getAnnotationType().toString());
-                        });
-                        node.getParameters().forEach(p -> {
-                            p.getModifiers().getAnnotations().forEach(a -> { throw new RuntimeException(a.getAnnotationType().toString()); });
-                        });
-                        return super.visitMethod(node, unused);
+                    public Void visitClass(ClassTree node, Void unused) {
+                        processor = new JavacOpenProcessor(node, elements);
+                        return super.visitClass(node, unused);
                     }
 
                     @Override
-                    public Void visitAnnotation(AnnotationTree node, Void unused) {
-                        try {
-                            if (true) throw new RuntimeException(JC_ANNOTATION_GET_ATTRIBUTE.invoke(node).toString());
-                        } catch (Throwable e) {
-                            throw new RuntimeException(e);
+                    public Void visitMethod(MethodTree node, Void unused) {
+                        if (processor == null) {
+                            return super.visitMethod(node, unused);
                         }
-                        return super.visitAnnotation(node, unused);
+                        boolean[] hasOpen = new boolean[1];
+                        node.getModifiers().getAnnotations().forEach(a -> {
+                            try {
+                                AnnotationMirror annotation = (AnnotationMirror) Utils.JC_ANNOTATION_GET_ATTRIBUTE.invoke(a);
+                                var binaryName = elements.getBinaryName((TypeElement) annotation.getAnnotationType().asElement());
+                                if (binaryName.contentEquals(Open.class.getName())) {
+                                    hasOpen[0] = true;
+                                }
+                            } catch (Throwable ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        });
+                        if (hasOpen[0]) {
+                            throw new RuntimeException(processor.parameters(node, Coerce.class).toString());
+                        }
+                        return super.visitMethod(node, unused);
                     }
                 }, null);
             }
         });
-    }
-
-    private boolean shouldInstrument(AnnotationTree parameter) {
-        return false;
     }
 }

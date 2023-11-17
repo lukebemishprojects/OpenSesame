@@ -9,6 +9,10 @@ dependencies {
     api project(':opensesame-annotations')
 }
 
+tasks.named('compileJava', JavaCompile).configure {
+    it.options.compilerArgs.add '-Xlint:-opens'
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
