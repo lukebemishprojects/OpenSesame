@@ -3,7 +3,6 @@ package dev.lukebemish.opensesame.test.groovy
 import dev.lukebemish.opensesame.annotations.Coerce
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.test.target.Public
-import dev.lukebemish.opensesame.test.target.hidden.Hidden
 import groovy.transform.CompileStatic
 import org.junit.jupiter.api.Test
 
@@ -472,8 +471,9 @@ class TestOpen {
     void testModuleBreaking() {
         assertEquals('hiddenByModules', hiddenByModules())
         assertEquals('hiddenByModulesPrivate', hiddenByModulesPrivate())
-        assertThrows(IllegalAccessError, {
-            Hidden.hiddenByModules()
+        assertThrows(IllegalAccessException, {
+            Class<?> hidden = Class.forName("dev.lukebemish.opensesame.test.target.hidden.Hidden");
+            hidden.getDeclaredMethod("hiddenByModules").invoke(null);
         })
     }
 }

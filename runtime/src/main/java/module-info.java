@@ -1,6 +1,6 @@
 module dev.lukebemish.opensesame.runtime {
-    requires static org.jetbrains.annotations;
     requires jdk.unsupported;
+    requires static org.jetbrains.annotations;
 
     exports dev.lukebemish.opensesame.runtime;
 
