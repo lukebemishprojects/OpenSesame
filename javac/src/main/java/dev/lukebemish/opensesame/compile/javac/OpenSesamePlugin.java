@@ -13,6 +13,9 @@ import java.lang.invoke.MethodType;
 
 @AutoService(Plugin.class)
 public class OpenSesamePlugin implements Plugin {
+    // TODO: look at LambdaToMethod.makeMetafactoryIndyCall
+    // well, turns out that doesn't work because of how it handles indy an condyn - so instead, we'll generate a bouncer class with metafactory methos
+
     public static final String PLUGIN_NAME = "OpenSesame";
 
     private static final MethodHandle JC_ANNOTATION_GET_ATTRIBUTE;

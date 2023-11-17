@@ -95,13 +95,13 @@ public final class OpeningMetafactory {
         } else if (type < CTOR_TYPE) {
             name = remapField(name, holdingClass, caller.lookupClass().getClassLoader());
         }
-        var handle = makeHandle(name, factoryType, accessType, holdingClass, type);
+        var handle = makeHandle(caller, name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
     }
 
-    private static MethodHandle makeHandle(String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
+    private static MethodHandle makeHandle(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
         try {
-            var lookup = LOOKUP_PROVIDER.openingLookup(holdingClass);
+            var lookup = LOOKUP_PROVIDER.openingLookup(caller, holdingClass);
             var handle = switch (type) {
                 case STATIC_TYPE -> lookup.findStatic(holdingClass, name, accessType);
                 case INSTANCE_TYPE -> lookup.findVirtual(holdingClass, name, accessType.dropParameterTypes(0, 1));

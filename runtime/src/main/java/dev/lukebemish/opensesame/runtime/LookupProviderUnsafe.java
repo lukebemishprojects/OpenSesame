@@ -1,10 +1,12 @@
 package dev.lukebemish.opensesame.runtime;
 
+import org.jetbrains.annotations.ApiStatus;
 import sun.misc.Unsafe;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 
+@ApiStatus.Internal
 class LookupProviderUnsafe implements LookupProvider {
 
     private final MethodHandles.Lookup lookup;
@@ -24,7 +26,7 @@ class LookupProviderUnsafe implements LookupProvider {
     }
 
     @Override
-    public MethodHandles.Lookup openingLookup(Class<?> target) {
+    public MethodHandles.Lookup openingLookup(MethodHandles.Lookup original, Class<?> target) {
         return lookup;
     }
 }

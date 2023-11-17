@@ -13,3 +13,5 @@ include subprojects
 subprojects.each {
     project(":$it").name = "opensesame-$it"
 }
+
+include 'testtargets'

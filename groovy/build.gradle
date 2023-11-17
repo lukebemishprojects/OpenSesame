@@ -1,4 +1,8 @@
 plugins {
+    id 'opensesame.conventions'
+}
+
+plugins {
     id 'groovy'
 }
 
@@ -14,8 +18,6 @@ tasks.register('groovydocJar', Jar) {
 dependencies {
     implementation 'org.apache.groovy:groovy:4.0.12'
     implementation project(':opensesame-compile')
-
-    testImplementation project(':opensesame-runtime').sourceSets.test.output
 }
 
 tasks.named('compileGroovy', GroovyCompile).configure {
