@@ -308,7 +308,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                             return transform(out)
                         }
                     }
-                    String outMethodPart = "\$\$${method.declaringClass.name.replace('.', '$')}\$\$${method.name}\$\$${method.parameters.collect { it.type.name.replace('.', '$') }.join('$')}"
+                    String outMethodPart = "\$\$${method.declaringClass.name.replace('.', '$')}\$\$${method.name}\$\$${method.parameters.collect { BytecodeHelper.getTypeDescription(it.type).replace(';', '$$').replace('[', '$$').replace('/','$') }.join('$')}"
                     String bridgeMethodName = "\$dev_lukebemish_opensesame_bridge${outMethodPart}"
                     Parameter[] parameters = new Parameter[method.static ? method.parameters.size() : method.parameters.size() + 1]
                     if (!method.static) {

@@ -85,7 +85,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                         methodType
                 )
 
-                if (opening.factoryType().sort == Type.VOID) {
+                if (opening.factoryType().returnType.sort == Type.VOID) {
                     methodVisitor.visitInsn(Opcodes.ACONST_NULL)
                 }
             }

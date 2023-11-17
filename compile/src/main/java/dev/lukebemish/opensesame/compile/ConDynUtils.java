@@ -215,6 +215,19 @@ public class ConDynUtils<T, CD, H> {
     }
 
     public CD conDynFromName(String targetName) {
+        String targetClassName;
+
+        int arrayLevels = 0;
+        while (targetName.startsWith("[")) {
+            arrayLevels++;
+            targetName = targetName.substring(1);
+        }
+        if (targetName.contains(";")) {
+            targetClassName = targetName.substring(1, targetName.length() - 1).replace('/', '.');
+        } else {
+            targetClassName = targetName;
+        }
+
         var classLookupFromNameAndClassloader = invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
@@ -273,7 +286,7 @@ public class ConDynUtils<T, CD, H> {
                 1
         );
 
-        return invoke(
+        var classValue = invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
                         Opcodes.H_INVOKESTATIC,
@@ -284,7 +297,29 @@ public class ConDynUtils<T, CD, H> {
                 ),
                 remappingLookup,
                 0,
-                targetName
+                targetClassName
         );
+
+        for (int i = 0; i < arrayLevels; i++) {
+            classValue = invoke(
+                    MethodHandle.class.descriptorString(),
+                    types.handle(
+                            Opcodes.H_INVOKESTATIC,
+                            types.internalName(MethodHandles.class),
+                            "filterReturnValue",
+                            MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodHandle.class).descriptorString(),
+                            false
+                    ),
+                    types.handle(
+                            Opcodes.H_INVOKEVIRTUAL,
+                            types.internalName(Class.class),
+                            "arrayType",
+                            MethodType.methodType(Class.class, Class.class).descriptorString(),
+                            false
+                    )
+            );
+        }
+
+        return classValue;
     }
 }
