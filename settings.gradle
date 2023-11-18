@@ -1,4 +1,17 @@
 rootProject.name = 'opensesame'
 
-include 'opensesame-runtime'
-include 'opensesame-transform'
+def subprojects = [
+        'annotations',
+        'runtime',
+        'compile',
+        'groovy',
+        'javac'
+]
+
+include subprojects
+
+subprojects.each {
+    project(":$it").name = "opensesame-$it"
+}
+
+include 'testtargets'

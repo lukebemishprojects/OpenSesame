@@ -1,0 +1,48 @@
+plugins {
+    id 'opensesame.conventions'
+}
+
+java.withSourcesJar()
+java.withJavadocJar()
+
+dependencies {
+    api project(':opensesame-annotations')
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    it.options.compilerArgs.add '-Xlint:-opens'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = "OpenSesame - Compile"
+                packaging = 'jar'
+                description = 'Compile-time abstractions for OpenSesame, a tool for typesafe access normally inacessible members'
+                url = 'https://github.com/lukebemish/OpenSesame'
+                inceptionYear = '2023'
+
+                licenses {
+                    license {
+                        name = '3-Clause BSD License'
+                        url = 'https://opensource.org/license/bsd-3-clause/'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'lukebemish'
+                        name = 'Luke Bemish'
+                        email = 'lukebemish@lukebemish.dev'
+                        url = 'https://github.com/lukebemish/'
+                    }
+                }
+                scm {
+                    connection='scm:git:git://github.com/lukebemish/OpenSesame.git'
+                    developerConnection='scm:git:ssh://github.com/lukebemish/OpenSesame.git'
+                    url='https://github.com/lukebemish/OpenSesame'
+                }
+            }
+        }
+    }
+}

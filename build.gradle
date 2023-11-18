@@ -1,53 +1,8 @@
 plugins {
-    id 'groovy'
     id 'io.github.gradle-nexus.publish-plugin' version '1.3.0'
 }
 
 apply from: 'version.gradle'
-
-subprojects {
-    apply plugin: 'java-library'
-    apply plugin: 'signing'
-    apply plugin: 'maven-publish'
-
-    processResources {
-        from rootProject.file('LICENSE')
-    }
-
-    jar {
-        manifest {
-            attributes([
-                    'Specification-Version'   : rootProject.version,
-                    'Implementation-Commit-Time': versioning.getGitCommitDate(),
-                    'Implementation-Commit': versioning.getGitCommit()
-            ])
-        }
-    }
-
-    if (System.getenv('PR_NUMBER')) {
-        publishing {
-            repositories {
-                maven {
-                    name = 'LocalMaven'
-                    url = rootProject.layout.buildDirectory.dir('repo')
-                }
-            }
-        }
-    } else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-        publishing {
-            repositories {
-                maven {
-                    name = 'PersonalMaven'
-                    url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
-                    credentials {
-                        username = System.getenv('MAVEN_USER')
-                        password = System.getenv('MAVEN_PASSWORD')
-                    }
-                }
-            }
-        }
-    }
-}
 
 if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
     nexusPublishing {
@@ -58,27 +13,5 @@ if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
                 nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             }
         }
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.apache.groovy:groovy:4.0.12'
-    implementation project(':opensesame-runtime')
-    implementation project(':opensesame-transform')
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-}
-
-test {
-    useJUnitPlatform()
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events = ['passed', 'failed', 'skipped']
     }
 }
