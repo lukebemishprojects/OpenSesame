@@ -17,6 +17,7 @@ jobs:
         with:
           cache-read-only: ${{ !startsWith(github.ref, 'refs/heads/1.') }}
       - name: Build
+        id: build
         run: |
           ./gradlew build
       - name: Publish
@@ -33,7 +34,7 @@ jobs:
           ./gradlew test
       - name: Upload Test Report
         uses: actions/upload-artifact@v3
-        if: success() || failure()
+        if: (success() || failure()) && steps.build.conclusion == 'success'
         with:
           name: junit-test-results
           path: "*/build/test-results/test/TEST-*.xml"
