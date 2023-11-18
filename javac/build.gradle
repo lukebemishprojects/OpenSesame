@@ -7,7 +7,7 @@ java.withJavadocJar()
 
 dependencies {
     implementation project(':opensesame-compile')
-    implementation 'org.ow2.asm:asm:9.4'
+    implementation libs.asm
 }
 
 tasks.named('compileTestJava', JavaCompile).configure {

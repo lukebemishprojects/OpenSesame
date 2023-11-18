@@ -1,0 +1,20 @@
+version: 2
+registries:
+  maven-central:
+    type: maven-repository
+    url: https://repo.maven.apache.org/maven2/
+  lukebemish:
+    type: maven-repository
+    url: https://maven.lukebemish.dev/
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    registries:
+      - maven-central
+      - lukebemish
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

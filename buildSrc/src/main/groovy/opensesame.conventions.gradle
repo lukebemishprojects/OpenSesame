@@ -15,11 +15,11 @@ configurations {
 }
 
 dependencies {
-    compileOnly 'org.jetbrains:annotations:24.0.1'
-    compileOnly(annotationProcessor('com.google.auto.service:auto-service:1.0.1'))
+    compileOnly libs.jetbrains.annotations
+    compileOnly(annotationProcessor(libs.autoservice))
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation libs.junit.api
+    testRuntimeOnly libs.junit.engine
 
     testImplementation project(':testtargets')
     testModuleClasspath project(':testtargets')
@@ -48,8 +48,8 @@ jar {
     manifest {
         attributes([
                 'Specification-Version'   : rootProject.version,
-                'Implementation-Commit-Time': versioning.getGitCommitDate(),
-                'Implementation-Commit': versioning.getGitCommit(),
+                'Implementation-Commit-Time': managedVersioning.timestamp.get(),
+                'Implementation-Commit': managedVersioning.hash.get(),
                 'Automatic-Module-Name'   : "dev.lukebemish.opensesame.${project.name.replace("opensesame-", "")}".toString()
         ])
     }

@@ -1,0 +1,19 @@
+name: Report Test Results
+on:
+  workflow_run:
+    workflows: [Build PR, Snapshot]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+  checks: write
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/test-reporter@v1
+        with:
+          artifact: junit-test-results
+          name: Test Results
+          path: '**/*.xml'
+          reporter: java-junit

@@ -16,7 +16,7 @@ tasks.register('groovydocJar', Jar) {
 }
 
 dependencies {
-    implementation 'org.apache.groovy:groovy:4.0.12'
+    implementation libs.groovy.core
     implementation project(':opensesame-compile')
 }
 

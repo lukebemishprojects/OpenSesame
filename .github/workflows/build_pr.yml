@@ -1,9 +1,6 @@
-name: Snapshot
+name: Build PR
 concurrency: ci-${{ github.ref }}
-on:
-  push:
-    branches:
-      - main
+on: [pull_request]
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -17,18 +14,20 @@ jobs:
       - uses: fregante/setup-git-user@v2
       - uses: gradle/gradle-build-action@v2
         name: Setup Gradle
+        with:
+          cache-read-only: ${{ !startsWith(github.ref, 'refs/heads/1.') }}
       - name: Build
         run: |
           ./gradlew build
       - name: Publish
         run: |
-          ./gradlew publish closeAndReleaseSonatypeStagingRepository
-        env:
-          MAVEN_USER: github
-          MAVEN_PASSWORD: ${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
+          ./gradlew publish
+      - name: Archive publishable artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: build/repo
+          retention-days: 1
       - name: Test
         run: |
           ./gradlew test
