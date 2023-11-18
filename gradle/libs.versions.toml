@@ -2,7 +2,7 @@
 
 junit = "5.8.1"
 jetbrains_annotations = "24.0.1"
-autoservice = "1.0.1"
+autoservice = "1.1.1"
 
 groovy = "4.0.12"
 asm = "9.4"
