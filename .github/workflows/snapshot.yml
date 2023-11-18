@@ -29,8 +29,6 @@ jobs:
         env:
           MAVEN_USER: github
           MAVEN_PASSWORD: ${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
       - name: Test
         run: |

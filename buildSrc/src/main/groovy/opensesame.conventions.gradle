@@ -88,7 +88,7 @@ publishing {
     }
 }
 
-if (System.getenv('IS_RELEASE') || System.getenv('SNAPSHOT_MAVEN_URL')) {
+if (System.getenv('IS_RELEASE')) {
     signing {
         final signingKey = System.getenv('SIGNING_KEY') ?: ''
         final signingPassword = System.getenv('SIGNING_PASSWORD') ?: ''
