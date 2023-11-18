@@ -21,6 +21,8 @@ jobs:
         id: build
         run: |
           ./gradlew build
+        env:
+          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
       - name: Publish
         run: |
           ./gradlew publish
@@ -33,6 +35,8 @@ jobs:
       - name: Test
         run: |
           ./gradlew test
+        env:
+          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
       - name: Upload Test Report
         uses: actions/upload-artifact@v3
         if: (success() || failure()) && steps.build.conclusion == 'success'
