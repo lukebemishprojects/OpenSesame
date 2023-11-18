@@ -1,14 +1,11 @@
 package dev.lukebemish.opensesame.compile;
 
+import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.runtime.ClassProvider;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 
-import java.lang.invoke.ConstantBootstraps;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.invoke.*;
 import java.util.List;
-import java.util.function.Function;
 
 public class ConDynUtils<T, CD, H> {
     private final TypeProvider<T, CD, H> types;
@@ -114,17 +111,46 @@ public class ConDynUtils<T, CD, H> {
     }
 
     public CD conDynFromFunction(T targetFunction, String targetName) {
-        String internalName = types.internalName(targetFunction);
-
-        var functionCtor = types.handle(
-                Opcodes.H_NEWINVOKESPECIAL,
-                internalName,
-                "<init>",
-                MethodType.methodType(void.class).descriptorString(),
-                false
+        var lookup = invoke(
+                MethodHandles.Lookup.class.descriptorString(),
+                types.handle(
+                        Opcodes.H_INVOKESTATIC,
+                        types.internalName(MethodHandles.class),
+                        "lookup",
+                        MethodType.methodType(MethodHandles.Lookup.class).descriptorString(),
+                        false
+                )
         );
 
-        var asFunction = invoke(
+        var functionCtorCallsite = invoke(
+                CallSite.class.descriptorString(),
+                types.handle(
+                        Opcodes.H_INVOKESTATIC,
+                        types.internalName(OpeningMetafactory.class),
+                        "invokeKnown",
+                        MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, Class.class, int.class).descriptorString(),
+                        false
+                ),
+                lookup,
+                "<init>",
+                types.methodType(types.descriptor(targetFunction)),
+                targetFunction,
+                Open.Type.CONSTRUCT.ordinal()
+        );
+
+        var functionCtor = invoke(
+                MethodHandle.class.descriptorString(),
+                types.handle(
+                        Opcodes.H_INVOKEVIRTUAL,
+                        types.internalName(CallSite.class),
+                        "getTarget",
+                        MethodType.methodType(MethodHandle.class).descriptorString(),
+                        false
+                ),
+                functionCtorCallsite
+        );
+
+        functionCtor = invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
                         Opcodes.H_INVOKEVIRTUAL,
@@ -148,16 +174,16 @@ public class ConDynUtils<T, CD, H> {
                 ),
                 types.handle(
                         Opcodes.H_INVOKEINTERFACE,
-                        types.internalName(Function.class),
+                        types.internalName(ClassProvider.class),
                         "provide",
                         MethodType.methodType(Class.class, ClassLoader.class, String.class).descriptorString(),
                         true
                 ),
                 0,
-                asFunction
+                functionCtor
         );
 
-        fetchClass = invoke(
+        return invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
                         Opcodes.H_INVOKESTATIC,
@@ -167,21 +193,8 @@ public class ConDynUtils<T, CD, H> {
                         false
                 ),
                 fetchClass,
-                2,
+                1,
                 targetName
-        );
-
-        return invoke(
-                MethodHandle.class.descriptorString(),
-                types.handle(
-                        Opcodes.H_INVOKEVIRTUAL,
-                        types.internalName(MethodHandle.class),
-                        "asType",
-                        MethodType.methodType(MethodHandle.class, MethodType.class).descriptorString(),
-                        false
-                ),
-                fetchClass,
-                types.methodType(Class.class.descriptorString(), ClassLoader.class.descriptorString())
         );
     }
 

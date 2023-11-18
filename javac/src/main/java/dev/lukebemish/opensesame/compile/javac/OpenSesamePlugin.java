@@ -58,43 +58,50 @@ public class OpenSesamePlugin implements Plugin {
                     throw new RuntimeException(ex);
                 }
 
-                e.getCompilationUnit().accept(new TreeScanner<Void, Void>() {
-                    JavacOpenProcessor processor = null;
-                    ClassWriter writer = null;
-                    ClassTree enclosingClass = null;
+                var element = e.getTypeElement();
+                if (element == null) {
+                    return;
+                }
+                String targetBinName = elements.getBinaryName(element).toString().replace('.', '/');
+                e.getCompilationUnit().accept(new TreeScanner<Void, Context>() {
 
                     @Override
-                    public Void visitClass(ClassTree node, Void unused) {
-                        enclosingClass = node;
-                        processor = new JavacOpenProcessor(node, elements);
-                        var out = super.visitClass(node, unused);
-                        if (writer != null) {
-                            writer.visitEnd();
+                    public Void visitClass(ClassTree node, Context unused) {
+                        Context inner = new Context();
+                        inner.enclosingClass = node;
+                        inner.processor = new JavacOpenProcessor(node, elements);
+                        String binName = inner.processor.declaringClassType.getInternalName();
+                        if (!binName.equals(targetBinName)) {
+                            return super.visitClass(node, new Context());
+                        }
+                        var out = super.visitClass(node, inner);
+                        if (inner.writer != null) {
+                            inner.writer.visitEnd();
                             try {
                                 var file = processingEnv.getFiler().createClassFile(
-                                         processor.declaringClassType.getClassName() + GENERATED_SUFFIX
+                                        inner.processor.declaringClassType.getClassName() + GENERATED_SUFFIX
                                 );
                                 try (var os = file.openOutputStream()) {
-                                    os.write(writer.toByteArray());
+                                    os.write(inner.writer.toByteArray());
                                 }
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }
-                            writer = null;
+                            inner.writer = null;
                         }
-                        processor = null;
-                        enclosingClass = null;
+                        inner.processor = null;
+                        inner.enclosingClass = null;
                         return out;
                     }
 
-                    void fillMethod(MethodTree method) {
-                        OpenProcessor.Opening<Type> opening = processor.opening(method);
+                    void fillMethod(MethodTree method, Context inner) {
+                        OpenProcessor.Opening<Type> opening = inner.processor.opening(method);
 
                         var name = method.getName().toString() +
                                 opening.factoryType().getDescriptor().replace('/','$').replace(";","$$").replace("[","$_Array$").replace("(", "$_Args$").replace(")", "$$");
 
-                        setupClassWriter();
-                        var methodWriter = writer.visitMethod(
+                        setupClassWriter(inner);
+                        var methodWriter = inner.writer.visitMethod(
                                 Opcodes.ACC_STATIC,
                                 name,
                                 MethodType.methodType(
@@ -131,8 +138,8 @@ public class OpenSesamePlugin implements Plugin {
                         fillBody(
                                 method,
                                 name,
-                                processor.declaringClassType.getClassName() + GENERATED_SUFFIX,
-                                enclosingClass,
+                                inner.processor.declaringClassType.getClassName() + GENERATED_SUFFIX,
+                                inner.enclosingClass,
                                 elements,
                                 types,
                                 treemaker,
@@ -141,19 +148,19 @@ public class OpenSesamePlugin implements Plugin {
                         );
                     }
 
-                    void setupClassWriter() {
-                        if (writer == null) {
-                            writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                            writer.visit(
+                    void setupClassWriter(Context inner) {
+                        if (inner.writer == null) {
+                            inner.writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                            inner.writer.visit(
                                     Opcodes.V17,
                                     Opcodes.ACC_FINAL,
-                                    processor.declaringClassType.getInternalName()+GENERATED_SUFFIX,
+                                    inner.processor.declaringClassType.getInternalName()+GENERATED_SUFFIX,
                                     null,
                                     Type.getInternalName(Object.class),
                                     new String[0]
                             );
 
-                            var init = writer.visitMethod(
+                            var init = inner.writer.visitMethod(
                                     Opcodes.ACC_PRIVATE,
                                     "<init>",
                                     "()V",
@@ -177,9 +184,9 @@ public class OpenSesamePlugin implements Plugin {
                     }
 
                     @Override
-                    public Void visitMethod(MethodTree node, Void unused) {
-                        if (processor == null) {
-                            return super.visitMethod(node, unused);
+                    public Void visitMethod(MethodTree node, Context inner) {
+                        if (inner.processor == null) {
+                            return super.visitMethod(node, inner);
                         }
                         boolean[] hasOpen = new boolean[1];
                         node.getModifiers().getAnnotations().forEach(a -> {
@@ -194,13 +201,19 @@ public class OpenSesamePlugin implements Plugin {
                             }
                         });
                         if (hasOpen[0]) {
-                            fillMethod(node);
+                            fillMethod(node, inner);
                         }
-                        return super.visitMethod(node, unused);
+                        return super.visitMethod(node, inner);
                     }
-                }, null);
+                }, new Context());
             }
         });
+    }
+
+    private static final class Context {
+        JavacOpenProcessor processor = null;
+        ClassWriter writer = null;
+        ClassTree enclosingClass = null;
     }
 
     private static void fillBody(MethodTree method, String methodName, String outClass, ClassTree enclosingClass, Elements elements, Types types, Object tm, Object symtab, Object names) {
