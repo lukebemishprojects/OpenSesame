@@ -33,7 +33,7 @@ jobs:
         if: (success() || failure()) && steps.assemble.conclusion == 'success'
         with:
           name: junit-test-results
-          path: "*/build/test-results/test/TEST-*.xml"
+          path: "*/build/test-results/*/TEST-*.xml"
           retention-days: 1
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v3
