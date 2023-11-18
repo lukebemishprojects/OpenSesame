@@ -22,7 +22,7 @@ jobs:
           ./gradlew build
       - name: Publish
         run: |
-          ./gradlew publish closeAndReleaseSonatypeStagingRepository
+          ./gradlew publish
         env:
           MAVEN_USER: github
           MAVEN_PASSWORD: ${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}
