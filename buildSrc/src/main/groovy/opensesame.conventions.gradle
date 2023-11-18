@@ -16,7 +16,8 @@ configurations {
 
 dependencies {
     compileOnly libs.jetbrains.annotations
-    compileOnly(annotationProcessor(libs.autoservice))
+    annotationProcessor(libs.autoservice)
+    compileOnly(libs.autoservice)
 
     testImplementation libs.junit.api
     testRuntimeOnly libs.junit.engine
