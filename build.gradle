@@ -1,6 +1,9 @@
 plugins {
     alias libs.plugins.managedversioning
     alias libs.plugins.nexuspublish
+    id 'jacoco-report-aggregation'
+    id 'test-report-aggregation'
+    id 'jvm-test-suite'
 }
 
 managedVersioning {
@@ -14,6 +17,19 @@ managedVersioning {
 
 managedVersioning.apply()
 
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    subprojects.each { p ->
+        if (p.name.startsWith('opensesame-')) {
+            jacocoAggregation p
+            testReportAggregation p
+        }
+    }
+}
+
 println "Building: ${rootProject.version}"
 
 if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
@@ -26,4 +42,23 @@ if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
             }
         }
     }
+}
+
+reporting {
+    reports {
+        testCodeCoverageReport(JacocoCoverageReport) {
+            testType = TestSuiteType.UNIT_TEST
+            reportTask.configure {
+                reports.xml.required = true
+            }
+        }
+        testAggregateTestReport(AggregateTestReport) {
+            testType = TestSuiteType.UNIT_TEST
+        }
+    }
+}
+
+tasks.named('check').configure {
+    dependsOn tasks.testCodeCoverageReport
+    dependsOn tasks.testAggregateTestReport
 }

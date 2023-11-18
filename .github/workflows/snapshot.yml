@@ -17,28 +17,46 @@ jobs:
       - uses: fregante/setup-git-user@v2
       - uses: gradle/gradle-build-action@v2
         name: Setup Gradle
-      - name: Build
-        id: build
+      - name: Assemble
+        id: assemble
         run: |
-          ./gradlew build
+          ./gradlew assemble
         env:
           SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
+      - name: Test
+        run: |
+          ./gradlew check --continue
+        env:
+          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v3
+        if: (success() || failure()) && steps.assemble.conclusion == 'success'
+        with:
+          name: junit-test-results
+          path: "*/build/test-results/test/TEST-*.xml"
+          retention-days: 1
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        if: (success() || failure()) && steps.assemble.conclusion == 'success'
+        with:
+          name: jacoco-coverage
+          path: "build/reports/jacoco/testCodeCoverageReport"
       - name: Publish
+        if: steps.assemble.conclusion == 'success'
         run: |
           ./gradlew publish
         env:
           MAVEN_USER: github
           MAVEN_PASSWORD: ${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}
           SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
-      - name: Test
-        run: |
-          ./gradlew test
-        env:
-          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v3
-        if: (success() || failure()) && steps.build.conclusion == 'success'
+      - name: Submit Dependencies
+        uses: mikepenz/gradle-dependency-submission@v0.9.0
         with:
-          name: junit-test-results
-          path: "*/build/test-results/test/TEST-*.xml"
-          retention-days: 1
+          gradle-build-module: |-
+            :annotations
+            :runtime
+            :compile
+            :groovy
+            :javac
+          gradle-build-configuration: |-
+            compileClasspath

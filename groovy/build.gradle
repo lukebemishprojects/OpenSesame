@@ -1,9 +1,6 @@
 plugins {
-    id 'opensesame.conventions'
-}
-
-plugins {
     id 'groovy'
+    id 'opensesame.conventions'
 }
 
 java.withSourcesJar()
@@ -24,6 +21,64 @@ tasks.named('compileGroovy', GroovyCompile).configure {
     it.groovyOptions.javaAnnotationProcessing = true
     it.groovyOptions.optimizationOptions.indy = true
 }
+
+def testCompileOn(int v) {
+    var singleTest = tasks.register('testCompileOn'+v, JavaExec) {
+        javaLauncher.set javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(v)
+        }
+
+        var task = it
+        dependsOn configurations.testRuntimeClasspath
+        dependsOn sourceSets.test.groovy.sourceDirectories
+
+        var dirProvider = layout.buildDirectory.dir('testClasses')
+
+        outputs.dir(dirProvider)
+        inputs.files(sourceSets.test.groovy.sourceDirectories)
+
+        group = "Verification"
+        description = "Compile test sources with groovy"
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass.set 'org.codehaus.groovy.tools.FileSystemCompiler'
+        argumentProviders.add(
+                new CommandLineArgumentProvider() {
+                    @Override
+                    List<String> asArguments() {
+                        return [
+                                '-cp', configurations.testCompileClasspath.asPath,
+                                '--temp', task.temporaryDirFactory.create().path,
+                                '-d', dirProvider.get().asFile.path
+                        ] +
+                                sourceSets.test.groovy.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }
+                    }
+                }
+        )
+
+        jacoco.applyTo(it)
+        extensions.configure(JacocoTaskExtension) {
+            it.excludes += 'dev/lukebemish/opensesame/test/target/*'
+        }
+        outputs.upToDateWhen { false }
+
+        finalizedBy tasks.named('testCompileOn'+v+'CodeCoverateReport')
+    }
+
+    var report = tasks.register('testCompileOn'+v+'CodeCoverateReport', JacocoReport) {
+        dependsOn singleTest.get()
+        executionData singleTest.get()
+        sourceSets sourceSets.main
+    }
+
+    artifacts {
+        add('coverageDataElementsForTest', report.get().executionData.singleFile) {
+            builtBy report.get()
+        }
+    }
+}
+
+testCompileOn(17)
+testCompileOn(21)
 
 publishing {
     publications {

@@ -2,7 +2,13 @@ plugins {
     id 'java-library'
     id 'signing'
     id 'maven-publish'
+    id 'jacoco'
 }
+
+java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
+
+group = rootProject.group
+version = rootProject.version
 
 repositories {
     mavenCentral()
@@ -26,19 +32,72 @@ dependencies {
     testModuleClasspath project(':testtargets')
 }
 
-test {
-    useJUnitPlatform()
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events = ['passed', 'failed', 'skipped']
+testing {
+    suites.create('testOn21', JvmTestSuite) {
+        targets.configureEach {
+            testTask.configure {
+                javaLauncher = javaToolchains.launcherFor {
+                    languageVersion = JavaLanguageVersion.of(21)
+                }
+            }
+        }
     }
 
-    testClassesDirs += files(
-            configurations.testModuleClasspath
-    )
+    suites.create('testOn17', JvmTestSuite) {
+        targets.configureEach {
+            testTask.configure {
+                javaLauncher = javaToolchains.launcherFor {
+                    languageVersion = JavaLanguageVersion.of(17)
+                }
+            }
+        }
+    }
 
-    outputs.upToDateWhen {false}
+    suites.configureEach {
+        if (it.name == 'test') {
+            return
+        }
+
+        dependencies {
+            implementation sourceSets.test.output
+        }
+
+        targets.configureEach {
+            testTask.configure {
+                useJUnitPlatform()
+
+                testLogging {
+                    showStandardStreams = true
+                    exceptionFormat = 'full'
+                    events = ['passed', 'failed', 'skipped']
+                }
+
+                testClassesDirs += files(
+                        sourceSets.test.output,
+                        configurations.testModuleClasspath
+                )
+
+                outputs.upToDateWhen {false}
+
+                jacoco {
+                    excludes += 'dev/lukebemish/opensesame/test/target/*'
+                }
+            }
+        }
+    }
+}
+
+configurations {
+    testOn17RuntimeClasspath.extendsFrom testRuntimeClasspath
+    testOn21RuntimeClasspath.extendsFrom testRuntimeClasspath
+
+    testResultsElementsForTest.extendsFrom testResultsElementsForTestOn17
+    testResultsElementsForTest.extendsFrom testResultsElementsForTestOn21
+}
+
+tasks.named('check') {
+    dependsOn(testing.suites.testOn21)
+    dependsOn(testing.suites.testOn17)
 }
 
 processResources {

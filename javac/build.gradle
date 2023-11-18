@@ -16,6 +16,63 @@ tasks.named('compileTestJava', JavaCompile).configure {
     it.inputs.files(sourceSets.main.output.classesDirs)
 }
 
+def testCompileOn(int v) {
+    var singleTest = tasks.register('testCompileOn'+v, JavaExec) {
+        javaLauncher.set javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(v)
+        }
+
+        dependsOn configurations.testRuntimeClasspath
+        dependsOn sourceSets.test.java.sourceDirectories
+
+        var dirProvider = layout.buildDirectory.dir('testClasses')
+
+        outputs.dir(dirProvider)
+        inputs.files(sourceSets.test.java.sourceDirectories)
+
+        group = "Verification"
+        description = "Compile test sources with java"
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass.set 'com.sun.tools.javac.Main'
+        argumentProviders.add(
+                new CommandLineArgumentProvider() {
+                    @Override
+                    List<String> asArguments() {
+                        return [
+                                '-cp', configurations.testCompileClasspath.asPath,
+                                '-d', dirProvider.get().asFile.path,
+                                '-Xplugin:OpenSesame'
+                        ] +
+                                sourceSets.test.java.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }
+                    }
+                }
+        )
+
+        jacoco.applyTo(it)
+        extensions.configure(JacocoTaskExtension) {
+            it.excludes += 'dev/lukebemish/opensesame/test/target/*'
+        }
+        outputs.upToDateWhen { false }
+
+        finalizedBy tasks.named('testCompileOn'+v+'CodeCoverateReport')
+    }
+
+    var report = tasks.register('testCompileOn'+v+'CodeCoverateReport', JacocoReport) {
+        dependsOn singleTest.get()
+        executionData singleTest.get()
+        sourceSets sourceSets.main
+    }
+
+    artifacts {
+        add('coverageDataElementsForTest', report.get().executionData.singleFile) {
+            builtBy report.get()
+        }
+    }
+}
+
+testCompileOn(17)
+testCompileOn(21)
+
 publishing {
     publications {
         mavenJava(MavenPublication) {

@@ -11,9 +11,11 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: dorny/test-reporter@v1
+      - name: JUnit Test Report
+        uses: dorny/test-reporter@v1
         with:
           artifact: junit-test-results
           name: Test Results
-          path: '**/*.xml'
+          path: '**/TEST-*.xml'
           reporter: java-junit
+          fail-on-empty: 'true'
