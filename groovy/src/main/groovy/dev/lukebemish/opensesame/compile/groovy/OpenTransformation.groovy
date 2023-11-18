@@ -24,6 +24,7 @@ import org.codehaus.groovy.control.CompilePhase
 import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.AbstractASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
+import org.jetbrains.annotations.Nullable
 
 import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandle
@@ -76,7 +77,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
                                 BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                'invoke',
+                                opening.unsafe() ? 'invokeUnsafe' : 'invoke',
                                 Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(MethodHandle), Type.getType(MethodHandle), Type.getType(int.class)),
                                 false
                         ),
@@ -183,14 +184,16 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
     }
 
     @Override
-    List<MethodParameter<Type, AnnotationNode>> parameters(MethodNode method, Class<?> type) {
+    List<MethodParameter<Type, AnnotationNode>> parameters(MethodNode method, @Nullable Class<?> type) {
         return method.parameters.collect {
             AnnotationNode annotation = null
-            var members = it.getAnnotations(ClassHelper.makeWithoutCaching(type))
-            if (members.size() > 1) {
-                throw new RuntimeException("Parameter ${it.name} on method ${method.name} may have at most one return type coercion, but had two")
-            } else if (!members.empty) {
-                annotation = members.get(0)
+            if (type !== null) {
+                var members = it.getAnnotations(ClassHelper.makeWithoutCaching(type))
+                if (members.size() > 1) {
+                    throw new RuntimeException("Parameter ${it.name} on method ${method.name} may have at most one return type coercion, but had two")
+                } else if (!members.empty) {
+                    annotation = members.get(0)
+                }
             }
             return new MethodParameter<Type, AnnotationNode>(
                     types().type(BytecodeHelper.getTypeDescription(it.type)),
@@ -213,6 +216,11 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
             throw new RuntimeException("Attempted to get name from non-${Open.simpleName} annotation ${annotation.toString()}")
         }
         return getMemberStringValue(annotation, 'name')
+    }
+
+    @Override
+    boolean unsafe(AnnotationNode annotation) {
+        return getMemberValue(annotation, 'unsafe')
     }
 
     @Override

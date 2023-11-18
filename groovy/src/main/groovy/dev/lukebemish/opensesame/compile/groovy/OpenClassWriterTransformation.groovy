@@ -124,7 +124,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                                 new Handle(
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                        'invoke',
+                                                        'invokeKnown',
                                                         Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                         false
                                                 ),
@@ -243,7 +243,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                                     new Handle(
                                                             Opcodes.H_INVOKESTATIC,
                                                             BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                            'invoke',
+                                                            'invokeKnown',
                                                             Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                             false
                                                     ),
@@ -353,7 +353,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                                 new Handle(
                                                         Opcodes.H_INVOKESTATIC,
                                                         BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                                        'invoke',
+                                                        'invokeKnown',
                                                         Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(Class), Type.getType(int.class)),
                                                         false
                                                 ),

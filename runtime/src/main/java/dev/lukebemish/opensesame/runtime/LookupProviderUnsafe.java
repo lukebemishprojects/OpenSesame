@@ -1,10 +1,10 @@
 package dev.lukebemish.opensesame.runtime;
 
 import org.jetbrains.annotations.ApiStatus;
-import sun.misc.Unsafe;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 @ApiStatus.Internal
 class LookupProviderUnsafe implements LookupProvider {
@@ -13,13 +13,17 @@ class LookupProviderUnsafe implements LookupProvider {
 
     LookupProviderUnsafe() {
         try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            Class<?> unsafe = Class.forName("sun.misc.Unsafe");
+            Field f = unsafe.getDeclaredField("theUnsafe");
             f.setAccessible(true);
-            Unsafe theUnsafe = (Unsafe) f.get(null);
+            Object theUnsafe = f.get(null);
 
             var implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
+            Method staticFieldBase = unsafe.getDeclaredMethod("staticFieldBase", Field.class);
+            Method staticFieldOffset = unsafe.getDeclaredMethod("staticFieldOffset", Field.class);
+            Method getObject = unsafe.getDeclaredMethod("getObject", Object.class, long.class);
             this.lookup = (MethodHandles.Lookup)
-                    theUnsafe.getObject(theUnsafe.staticFieldBase(implLookupField), theUnsafe.staticFieldOffset(implLookupField));
+                    getObject.invoke(theUnsafe, staticFieldBase.invoke(theUnsafe, implLookupField), staticFieldOffset.invoke(theUnsafe, implLookupField));
         } catch (Exception e) {
             throw new RuntimeException("Issue setting up unsafe lookup provider", e);
         }

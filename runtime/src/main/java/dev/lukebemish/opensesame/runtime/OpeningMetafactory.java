@@ -35,7 +35,8 @@ public final class OpeningMetafactory {
 
     private static final Map<ClassLoaderKey, List<RuntimeRemapper>> REMAPPER_LOOKUP = new HashMap<>();
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
-    private static final LookupProvider LOOKUP_PROVIDER;
+    private static final LookupProvider LOOKUP_PROVIDER_UNSAFE;
+    private static final LookupProvider LOOKUP_PROVIDER_SAFE = new LookupProviderFallback();
     private static final Exception LOOKUP_PROVIDER_EXCEPTION;
 
     public static final int STATIC_TYPE = 0;
@@ -46,6 +47,7 @@ public final class OpeningMetafactory {
     public static final int STATIC_SET_TYPE = 5;
     public static final int INSTANCE_SET_TYPE = 6;
     public static final int CTOR_TYPE = 7;
+    public static final int ARRAY_TYPE = 8;
 
     static {
         Exception LOOKUP_PROVIDER_EXCEPTION1;
@@ -58,7 +60,7 @@ public final class OpeningMetafactory {
             LOOKUP_PROVIDER1 = new LookupProviderFallback();
         }
         LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
-        LOOKUP_PROVIDER = LOOKUP_PROVIDER1;
+        LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1;
     }
 
     private synchronized static List<RuntimeRemapper> getRemapper(ClassLoader classLoader) {
@@ -73,6 +75,23 @@ public final class OpeningMetafactory {
 
     @SuppressWarnings("unused")
     public static CallSite invoke(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, MethodHandle accessTypeProvider, int type) {
+        return invoke0(caller, targetMethodName, factoryType, classProvider, accessTypeProvider, type, false);
+    }
+
+    @SuppressWarnings("unused")
+    public static CallSite invokeUnsafe(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, MethodHandle accessTypeProvider, int type) {
+        try {
+            return invoke0(caller, targetMethodName, factoryType, classProvider, accessTypeProvider, type, true);
+        } catch (RuntimeException e) {
+            var exception = new OpeningException(e);
+            if (LOOKUP_PROVIDER_EXCEPTION != null) {
+                exception.addSuppressed(LOOKUP_PROVIDER_EXCEPTION);
+            }
+            throw exception;
+        }
+    }
+
+    public static CallSite invoke0(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle classProvider, MethodHandle accessTypeProvider, int type, boolean unsafe) {
         Class<?> holdingClass;
         MethodType accessType;
         try {
@@ -81,27 +100,41 @@ public final class OpeningMetafactory {
         } catch (Throwable throwable) {
             throw new OpeningException(throwable);
         }
-        return invoke0(caller, targetMethodName, factoryType, accessType, holdingClass, type);
+        return invoke1(caller, targetMethodName, factoryType, accessType, holdingClass, type, unsafe);
     }
 
     @SuppressWarnings("unused")
-    public static CallSite invoke(MethodHandles.Lookup caller, String name, MethodType factoryType, Class<?> holdingClass, int type) {
-        return invoke0(caller, name, factoryType, factoryType, holdingClass, type);
+    public static CallSite invokeKnown(MethodHandles.Lookup caller, String name, MethodType factoryType, Class<?> holdingClass, int type) {
+        return invoke1(caller, name, factoryType, factoryType, holdingClass, type, false);
     }
 
-    private static CallSite invoke0(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
+    @SuppressWarnings("unused")
+    public static CallSite invokeKnownUnsafe(MethodHandles.Lookup caller, String name, MethodType factoryType, Class<?> holdingClass, int type) {
+        return invoke1(caller, name, factoryType, factoryType, holdingClass, type, true);
+    }
+
+    private static CallSite invoke1(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type, boolean unsafe) {
+        MethodHandles.Lookup lookup;
+        try {
+            if (unsafe) {
+                lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, holdingClass);
+            } else {
+                lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, holdingClass);
+            }
+        } catch (IllegalAccessException e) {
+            throw new OpeningException("Issue creating lookup", e);
+        }
         if (type < STATIC_GET_TYPE) {
             name = remapMethod(name, accessType, holdingClass, caller.lookupClass().getClassLoader());
         } else if (type < CTOR_TYPE) {
             name = remapField(name, holdingClass, caller.lookupClass().getClassLoader());
         }
-        var handle = makeHandle(caller, name, factoryType, accessType, holdingClass, type);
+        var handle = makeHandle(lookup, name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
     }
 
-    private static MethodHandle makeHandle(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
+    private static MethodHandle makeHandle(MethodHandles.Lookup lookup, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type) {
         try {
-            var lookup = LOOKUP_PROVIDER.openingLookup(caller, holdingClass);
             var handle = switch (type) {
                 case STATIC_TYPE -> lookup.findStatic(holdingClass, name, accessType);
                 case INSTANCE_TYPE -> lookup.findVirtual(holdingClass, name, accessType.dropParameterTypes(0, 1));
@@ -111,17 +144,12 @@ public final class OpeningMetafactory {
                 case STATIC_SET_TYPE -> lookup.findStaticSetter(holdingClass, name, accessType.parameterType(0));
                 case INSTANCE_SET_TYPE -> lookup.findSetter(holdingClass, name, accessType.parameterType(1));
                 case CTOR_TYPE -> lookup.findConstructor(holdingClass, accessType.changeReturnType(Void.TYPE));
+                case ARRAY_TYPE -> MethodHandles.arrayConstructor(holdingClass.arrayType());
                 default -> throw new OpeningException("Unexpected opening type: " + type);
             };
             return handle.asType(factoryType);
         } catch (NoSuchMethodException | IllegalAccessException | NoSuchFieldException e) {
-            var exception = new OpeningException("Issue creating method handle for `"+name+"`", e);
-
-            if (LOOKUP_PROVIDER_EXCEPTION != null) {
-                exception.addSuppressed(LOOKUP_PROVIDER_EXCEPTION);
-            }
-
-            throw exception;
+            throw new OpeningException("Issue creating method handle for `"+name+"`", e);
         }
     }
 

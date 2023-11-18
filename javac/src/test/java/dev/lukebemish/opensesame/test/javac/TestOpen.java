@@ -450,7 +450,8 @@ class TestOpen {
     @Open(
             name = "hiddenByModules",
             targetName = "dev.lukebemish.opensesame.test.target.hidden.Hidden",
-            type = Open.Type.STATIC
+            type = Open.Type.STATIC,
+            unsafe = true
     )
     private static String hiddenByModules() {
         throw new RuntimeException();
@@ -459,7 +460,8 @@ class TestOpen {
     @Open(
             name = "hiddenByModulesPrivate",
             targetName = "dev.lukebemish.opensesame.test.target.hidden.Hidden",
-            type = Open.Type.STATIC
+            type = Open.Type.STATIC,
+            unsafe = true
     )
     private static String hiddenByModulesPrivate() {
         throw new RuntimeException();

@@ -15,12 +15,17 @@ import javax.lang.model.util.Elements;
 import java.util.List;
 
 class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTree> {
-    private final ClassTree enclosingClass;
     private final Elements elements;
+    public final Type declaringClassType;
 
     JavacOpenProcessor(ClassTree enclosingClass, Elements elements) {
-        this.enclosingClass = enclosingClass;
         this.elements = elements;
+        try {
+            String name = elements.getBinaryName((TypeElement) Utils.JC_CLASS_GET_SYMBOL.invoke(enclosingClass)).toString().replace('.','/');
+            this.declaringClassType = types().type("L"+name+";");
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -35,8 +40,68 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
 
     @Override
     public Object typeProviderFromAnnotation(AnnotationTree annotation, MethodTree method, Class<?> annotationType) {
-        // TODO implement
-        return null;
+        Object targetClassHandle = null;
+
+        String targetName = null;
+        Type targetClass = null;
+        Type targetFunction = null;
+
+        Tree targetNameTree = findAnnotationArgument(annotation, "targetName");
+        if (targetNameTree instanceof LiteralTree literalTree) {
+            targetName = (String) literalTree.getValue();
+        } else if (targetNameTree != null) {
+            throw new RuntimeException("Expected argument targetName to be a string in "+annotation);
+        }
+
+        Tree targetClassTree = findAnnotationArgument(annotation, "targetClass");
+        if (targetClassTree instanceof MemberSelectTree memberSelectTree) {
+            var target = memberSelectTree.getExpression();
+            if (target instanceof IdentifierTree identifierTree) {
+                try {
+                    TypeElement type = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
+                    targetClass = types().type("L"+elements.getBinaryName(type).toString().replace('.','/')+";");
+                } catch (Throwable ignored) {}
+            }
+        }
+        if (targetClass == null && targetClassTree != null) {
+            throw new RuntimeException("Expected argument targetName to be a string in "+annotation);
+        }
+
+        Tree targetFunctionTree = findAnnotationArgument(annotation, "targetProvider");
+        if (targetFunctionTree instanceof MemberSelectTree memberSelectTree) {
+            var target = memberSelectTree.getExpression();
+            if (target instanceof IdentifierTree identifierTree) {
+                try {
+                    TypeElement type = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
+                    targetFunction = types().type("L"+elements.getBinaryName(type).toString().replace('.','/')+";");
+                } catch (Throwable ignored) {}
+            }
+        }
+        if (targetFunction == null && targetFunctionTree != null) {
+            throw new RuntimeException("Expected argument targetProvider to be a string in "+annotation);
+        }
+
+        if (targetName == null && targetClass == null && targetFunction == null) {
+            throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
+        } else if (targetName != null) {
+            targetClassHandle = conDynUtils().conDynFromName(targetName);
+        }
+        if (targetClass != null) {
+            if (targetClassHandle != null) {
+                throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
+            }
+
+            targetClassHandle = conDynUtils().conDynFromClass(targetClass);
+        }
+        if (targetFunction != null) {
+            if (targetClassHandle != null) {
+                throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
+            }
+
+            targetClassHandle = conDynUtils().conDynFromFunction(targetFunction);
+        }
+
+        return targetClassHandle;
     }
 
     @Override
@@ -60,14 +125,14 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
     }
 
     @Override
-    public List<MethodParameter<Type, AnnotationTree>> parameters(MethodTree method, Class<?> type) {
+    public List<MethodParameter<Type, AnnotationTree>> parameters(MethodTree method, @Nullable Class<?> type) {
         return method.getParameters().stream().map(variableTree -> {
             AnnotationTree[] found = new AnnotationTree[1];
             variableTree.getModifiers().getAnnotations().forEach(a -> {
                 try {
                     AnnotationMirror annotation = (AnnotationMirror) Utils.JC_ANNOTATION_GET_ATTRIBUTE.invoke(a);
                     var binaryName = elements.getBinaryName((TypeElement) annotation.getAnnotationType().asElement());
-                    if (binaryName.contentEquals(type.getName())) {
+                    if (type != null && binaryName.contentEquals(type.getName())) {
                         if (found[0] != null) {
                             throw new RuntimeException("Method " + method.getName() + " parameter " + variableTree.getName() + " may have at most one annotation of type " + type.getSimpleName() + ", but had more than one");
                         }
@@ -77,56 +142,65 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
                     throw new RuntimeException(ex);
                 }
             });
-            try {
-                String descriptor;
-                if (variableTree.getType() instanceof IdentifierTree identifierTree) {
-                    TypeElement paramType = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
-                    descriptor = "L"+elements.getBinaryName(paramType).toString().replace('.','/')+";";
-                } else {
-                    PrimitiveTypeTree primitiveTypeTree = (PrimitiveTypeTree) variableTree.getType();
-                    descriptor = switch (primitiveTypeTree.getPrimitiveTypeKind()) {
-                        case BOOLEAN -> "Z";
-                        case BYTE -> "B";
-                        case SHORT -> "S";
-                        case INT -> "I";
-                        case LONG -> "J";
-                        case CHAR -> "C";
-                        case FLOAT -> "F";
-                        case DOUBLE -> "D";
-                        case VOID -> "V";
-                        default -> throw new RuntimeException("Unknown primitive type " + primitiveTypeTree.getPrimitiveTypeKind());
-                    };
-                }
-                return new MethodParameter<>(types().type(descriptor), found[0]);
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
+            Type paramType = types().type(typeFromTree(variableTree.getType()));
+            return new MethodParameter<>(paramType, found[0]);
         }).toList();
     }
 
     @Override
     public Open.Type type(AnnotationTree annotation) {
-        // TODO implement
-        return null;
+        Tree name = findAnnotationArgument(annotation, "type");
+        if (name instanceof MemberSelectTree memberSelectTree) {
+            return Open.Type.valueOf(memberSelectTree.getIdentifier().toString());
+        }
+        throw new RuntimeException("Could not find type argument in annotation "+annotation);
     }
 
     @Override
     public String name(AnnotationTree annotation) {
-        // TODO implement
+        Tree name = findAnnotationArgument(annotation, "name");
+        if (name instanceof LiteralTree literalTree) {
+            return (String) literalTree.getValue();
+        }
+        throw new RuntimeException("Could not find name argument in annotation "+annotation);
+    }
+
+    @Override
+    public boolean unsafe(AnnotationTree annotation) {
+        Tree unsafe = findAnnotationArgument(annotation, "unsafe");
+        if (unsafe instanceof LiteralTree literalTree) {
+            return literalTree.getValue().equals(true);
+        }
+        return false;
+    }
+
+    private @Nullable Tree findAnnotationArgument(AnnotationTree annotation, String name) {
+        for (ExpressionTree argument : annotation.getArguments()) {
+            if (argument instanceof AssignmentTree assignmentTree) {
+                if (assignmentTree.getVariable().toString().equals(name)) {
+                    return assignmentTree.getExpression();
+                }
+            }
+        }
         return null;
     }
 
     @Override
     public Type returnType(MethodTree method) {
         Tree outType = method.getReturnType();
+        return types().type(typeFromTree(outType));
+    }
+
+    private String typeFromTree(Tree outType) {
         try {
-            String descriptor;
             if (outType instanceof IdentifierTree identifierTree) {
                 TypeElement paramType = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
-                descriptor = "L"+elements.getBinaryName(paramType).toString().replace('.','/')+";";
+                return "L"+elements.getBinaryName(paramType).toString().replace('.','/')+";";
+            } else if (outType instanceof ArrayTypeTree arrayTypeTree) {
+                return "["+typeFromTree(arrayTypeTree.getType());
             } else {
                 PrimitiveTypeTree primitiveTypeTree = (PrimitiveTypeTree) outType;
-                descriptor = switch (primitiveTypeTree.getPrimitiveTypeKind()) {
+                return switch (primitiveTypeTree.getPrimitiveTypeKind()) {
                     case BOOLEAN -> "Z";
                     case BYTE -> "B";
                     case SHORT -> "S";
@@ -139,7 +213,6 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
                     default -> throw new RuntimeException("Unknown primitive type " + primitiveTypeTree.getPrimitiveTypeKind());
                 };
             }
-            return types().type(descriptor);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
@@ -157,11 +230,6 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
 
     @Override
     public Type declaringClass(MethodTree method) {
-        try {
-            String name = elements.getBinaryName((TypeElement) Utils.JC_CLASS_GET_SYMBOL.invoke(enclosingClass)).toString().replace('.','/');
-            return types().type("L"+name+";");
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return declaringClassType;
     }
 }

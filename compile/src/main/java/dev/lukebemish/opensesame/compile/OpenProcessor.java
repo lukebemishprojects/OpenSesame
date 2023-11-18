@@ -4,6 +4,7 @@ import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,15 +14,16 @@ public interface OpenProcessor<T, A, M> {
 
     Object typeProviderFromAnnotation(A annotation, M method, Class<?> annotationType);
 
-    record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, Open.Type type, String name) {}
+    record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, Open.Type type, String name, boolean unsafe) {}
 
     record MethodParameter<T,A>(T type, @Nullable A annotation) {}
 
     @Nullable A annotation(M method, Class<?> type);
-    List<MethodParameter<T,A>> parameters(M method, Class<?> type);
+    List<MethodParameter<T,A>> parameters(M method, @Nullable Class<?> type);
 
     Open.Type type(A annotation);
     String name(A annotation);
+    boolean unsafe(A annotation);
 
     T returnType(M method);
     boolean isStatic(M method);
@@ -89,12 +91,31 @@ public interface OpenProcessor<T, A, M> {
             returnType = targetClassHandle;
         }
 
+        if (type == Open.Type.ARRAY) {
+            returnType = conDynUtils().invoke(
+                    MethodHandle.class.descriptorString(),
+                    types().handle(
+                            Opcodes.H_INVOKEVIRTUAL,
+                            types().internalName(Class.class),
+                            "arrayType",
+                            types().descriptor(types().methodType(Class.class.descriptorString())),
+                            false
+                    ),
+                    targetClassHandle
+            );
+            if (parameterTypes.size() != 1) {
+                throw new RuntimeException("Array constructor must have exactly one parameter");
+            }
+            parameterTypes.set(0, conDynUtils().conDynFromClass(types().type(int.class)));
+        }
+
         return new Opening<>(
                 asmDescType,
                 targetClassHandle,
                 conDynUtils().conDynMethodType(returnType, parameterTypes),
                 type,
-                name
+                name,
+                unsafe(annotation)
         );
     }
 }

@@ -44,6 +44,11 @@ public @interface Open {
     Type type();
 
     /**
+     * @return whether this invocation should be done unsafely, breaking module boundaries
+     */
+    boolean unsafe() default false;
+
+    /**
      * Different types of members that can be invoked
      */
     enum Type {
@@ -78,6 +83,10 @@ public @interface Open {
         /**
          * Invoke a constructor
          */
-        CONSTRUCT
+        CONSTRUCT,
+        /**
+         * Create an array
+         */
+        ARRAY
     }
 }
