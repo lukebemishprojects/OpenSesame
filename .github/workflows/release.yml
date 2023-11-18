@@ -41,10 +41,10 @@ jobs:
         uses: mikepenz/gradle-dependency-submission@v0.9.0
         with:
           gradle-build-module: |-
-            :annotations
-            :runtime
-            :compile
-            :groovy
-            :javac
+            :opensesame-annotations
+            :opensesame-runtime
+            :opensesame-compile
+            :opensesame-groovy
+            :opensesame-javac
           gradle-build-configuration: |-
             compileClasspath

@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.test.groovy
+package dev.lukebemish.opensesame.test.groovy.OpenClass
 
 
 import dev.lukebemish.opensesame.annotations.groovy.OpenClass
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals
 
 @CompileStatic
 @SuppressWarnings('GroovyAccessibility')
-class TestOpenClass {
+class TestMisc {
     @Test
     @OpenClass(Public)
     void testPrivateInstance() {
