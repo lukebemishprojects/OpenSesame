@@ -5,6 +5,8 @@ import dev.lukebemish.opensesame.annotations.Open;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +24,7 @@ public interface OpenProcessor<T, A, M> {
     List<MethodParameter<T,A>> parameters(M method, @Nullable Class<?> type);
 
     Open.Type type(A annotation);
-    String name(A annotation);
+    @Nullable String name(A annotation);
     boolean unsafe(A annotation);
 
     T returnType(M method);
@@ -35,7 +37,10 @@ public interface OpenProcessor<T, A, M> {
 
         Object targetClassHandle = typeProviderFromAnnotation(annotation, method, Open.class);
 
-        final String name = name(annotation);
+        String name = name(annotation);
+        if (name == null || name.isEmpty()) {
+            name = "$dev$lukebemish$opensesame$$unspecified";
+        }
         final Open.Type type = type(annotation);
 
         var parameters = parameters(method, Coerce.class);
@@ -95,13 +100,20 @@ public interface OpenProcessor<T, A, M> {
             returnType = conDynUtils().invoke(
                     MethodHandle.class.descriptorString(),
                     types().handle(
+                            Opcodes.H_INVOKESTATIC,
+                            types().internalName(MethodHandles.class),
+                            "filterReturnValue",
+                            MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodHandle.class).descriptorString(),
+                            false
+                    ),
+                    targetClassHandle,
+                    types().handle(
                             Opcodes.H_INVOKEVIRTUAL,
                             types().internalName(Class.class),
                             "arrayType",
-                            types().descriptor(types().methodType(Class.class.descriptorString())),
+                            MethodType.methodType(Class.class).descriptorString(),
                             false
-                    ),
-                    targetClassHandle
+                    )
             );
             if (parameterTypes.size() != 1) {
                 throw new RuntimeException("Array constructor must have exactly one parameter");

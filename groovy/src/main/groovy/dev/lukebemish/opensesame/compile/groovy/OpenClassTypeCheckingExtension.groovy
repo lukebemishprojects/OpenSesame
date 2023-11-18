@@ -21,7 +21,7 @@ import org.codehaus.groovy.transform.stc.TypeCheckingExtension
 class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
     private static final ClassNode OPEN_CLASS = ClassHelper.makeWithoutCaching(OpenClass)
 
-    static final String CTOR_DUMMY = '$dev$lukebemish$opensesame$$new'
+    static final String CTOR_DUMMY = '$$dev$lukebemish$opensesame$$new'
 
     OpenClassTypeCheckingExtension(StaticTypeCheckingVisitor typeCheckingVisitor) {
         super(typeCheckingVisitor)

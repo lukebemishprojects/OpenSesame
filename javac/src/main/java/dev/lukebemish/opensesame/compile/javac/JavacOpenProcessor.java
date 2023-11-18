@@ -83,7 +83,7 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
 
         if (targetName == null && targetClass == null && targetFunction == null) {
             throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
-        } else if (targetName != null) {
+        } else if (targetName != null && targetFunction == null) {
             targetClassHandle = conDynUtils().conDynFromName(targetName);
         }
         if (targetClass != null) {
@@ -98,7 +98,7 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
                 throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
             }
 
-            targetClassHandle = conDynUtils().conDynFromFunction(targetFunction);
+            targetClassHandle = conDynUtils().conDynFromFunction(targetFunction, targetName);
         }
 
         return targetClassHandle;
@@ -157,12 +157,12 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
     }
 
     @Override
-    public String name(AnnotationTree annotation) {
+    public @Nullable String name(AnnotationTree annotation) {
         Tree name = findAnnotationArgument(annotation, "name");
         if (name instanceof LiteralTree literalTree) {
             return (String) literalTree.getValue();
         }
-        throw new RuntimeException("Could not find name argument in annotation "+annotation);
+        return null;
     }
 
     @Override

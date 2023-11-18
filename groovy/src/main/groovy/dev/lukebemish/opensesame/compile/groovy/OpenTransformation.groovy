@@ -113,20 +113,27 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         if (targetFunction == null) {
             Expression member = annotationNode.getMember('targetProvider')
             if (member instanceof ClosureExpression) {
-                if (member.parameters.length !== 0 && member.parameters[0].type != ClassHelper.OBJECT_TYPE && member.parameters[0].type != CLASSLOADER) {
-                    throw new RuntimeException("Closure passed to ${annotationType.simpleName} must have no parameters or a single parameter of type Object or ClassLoader")
+                if (member.parameters.length >= 1 && member.parameters[0].type != ClassHelper.OBJECT_TYPE && member.parameters[0].type != CLASSLOADER) {
+                    throw new RuntimeException("First parameter of closure passed to ${annotationType.simpleName}, if it exists, must be either an Object or a ClassLoader")
+                }
+                if (member.parameters.length >= 2 && member.parameters[1].type != ClassHelper.OBJECT_TYPE && member.parameters[1].type != ClassHelper.STRING_TYPE) {
+                    throw new RuntimeException("First parameter of closure passed to ${annotationType.simpleName}, if it exists, must be either an Object or a String")
                 }
 
                 int count = (int) (methodNode.getNodeMetaData(METHOD_CLOSURE_COUNT_META) ?: 0)
 
                 String generatedMethodName = "\$dev_lukebemish_opensesame\$typeFinding\$${count++}\$_${methodNode.name}"
 
+                var pName1 = member.parameters.length === 0 ? 'it' : member.parameters[0].name
+                var pName2 = member.parameters.length === 1 ? 'not$$$'+pName1 : member.parameters[1].name
+
                 var generatedMethod = methodNode.declaringClass.addMethod(
                         generatedMethodName,
                         Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
                         GENERIC_CLASS,
                         new Parameter[]{
-                                new Parameter(CLASSLOADER, member.parameters.length === 0 ? 'it' : member.parameters[0].name)
+                                new Parameter(CLASSLOADER, pName1),
+                                new Parameter(ClassHelper.STRING_TYPE, pName2)
                         },
                         new ClassNode[]{},
                         member.code
@@ -140,7 +147,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                         Opcodes.H_INVOKESTATIC,
                         BytecodeHelper.getClassInternalName(methodNode.declaringClass),
                         generatedMethodName,
-                        MethodType.methodType(Class, ClassLoader).descriptorString(),
+                        MethodType.methodType(Class, ClassLoader, String).descriptorString(),
                         methodNode.declaringClass.interface
                 )
 
@@ -149,7 +156,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         }
         if (targetName === null && targetClass === null && targetFunction === null && targetClosureHandle === null) {
             throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
-        } else if (targetName !== null) {
+        } else if (targetName !== null && targetFunction === null) {
             targetClassHandle = conDynUtils().conDynFromName(targetName)
         }
         if (targetClass !== null) {
@@ -164,7 +171,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                 throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
             }
 
-            targetClassHandle = conDynUtils().conDynFromFunction(types().type(BytecodeHelper.getTypeDescription(targetFunction)))
+            targetClassHandle = conDynUtils().conDynFromFunction(types().type(BytecodeHelper.getTypeDescription(targetFunction)), targetName)
         } else if (targetClosureHandle !== null) {
             targetClassHandle = targetClosureHandle
         }
@@ -211,7 +218,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
     }
 
     @Override
-    String name(AnnotationNode annotation) {
+    @Nullable String name(AnnotationNode annotation) {
         if (annotation.classNode != OPEN) {
             throw new RuntimeException("Attempted to get name from non-${Open.simpleName} annotation ${annotation.toString()}")
         }

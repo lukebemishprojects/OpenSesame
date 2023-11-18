@@ -283,7 +283,6 @@ class TestOpen {
     }
 
     @Open(
-            name = "<init>",
             targetName = "dev.lukebemish.opensesame.test.target.Public$Private",
             type = Open.Type.CONSTRUCT
     )
@@ -308,7 +307,6 @@ class TestOpen {
     }
 
     @Open(
-            name = "<init>",
             targetName = "dev.lukebemish.opensesame.test.target.Public$PrivateCtor",
             type = Open.Type.CONSTRUCT
     )
@@ -323,7 +321,6 @@ class TestOpen {
     }
 
     @Open(
-            name = "<init>",
             targetName = "dev.lukebemish.opensesame.test.target.PackagePrivate",
             type = Open.Type.CONSTRUCT
     )
@@ -474,6 +471,25 @@ class TestOpen {
         assertThrows(IllegalAccessException.class, () -> {
             Class<?> hidden = Class.forName("dev.lukebemish.opensesame.test.target.hidden.Hidden");
             hidden.getDeclaredMethod("hiddenByModules").invoke(null);
+        });
+    }
+
+    @Open(
+            targetName = "dev.lukebemish.opensesame.test.target.Public$Private",
+            type = Open.Type.ARRAY
+    )
+    private static Object[] privateArrayConstructor(int i) {
+        throw new RuntimeException();
+    }
+
+    @Test
+    void testPrivateArrayConstructor() {
+        Object[] array = privateArrayConstructor(2);
+        assertEquals(2, array.length);
+        array[0] = privatePrivateConstructor();
+        assertEquals("Private", array[0].toString());
+        assertThrows(ArrayStoreException.class, () -> {
+            array[1] = "stuff";
         });
     }
 }

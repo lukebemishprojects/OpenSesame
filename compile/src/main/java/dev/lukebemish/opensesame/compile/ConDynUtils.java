@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.compile;
 
+import dev.lukebemish.opensesame.runtime.ClassProvider;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 
 import java.lang.invoke.ConstantBootstraps;
@@ -112,7 +113,7 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public CD conDynFromFunction(T targetFunction) {
+    public CD conDynFromFunction(T targetFunction, String targetName) {
         String internalName = types.internalName(targetFunction);
 
         var functionCtor = types.handle(
@@ -133,12 +134,11 @@ public class ConDynUtils<T, CD, H> {
                         false
                 ),
                 functionCtor,
-                types.methodType(Function.class.descriptorString())
+                types.methodType(ClassProvider.class.descriptorString())
         );
 
         var fetchClass = invoke(
                 MethodHandle.class.descriptorString(),
-
                 types.handle(
                         Opcodes.H_INVOKESTATIC,
                         types.internalName(MethodHandles.class),
@@ -149,12 +149,26 @@ public class ConDynUtils<T, CD, H> {
                 types.handle(
                         Opcodes.H_INVOKEINTERFACE,
                         types.internalName(Function.class),
-                        "apply",
-                        MethodType.methodType(Object.class, Object.class).descriptorString(),
+                        "provide",
+                        MethodType.methodType(Class.class, ClassLoader.class, String.class).descriptorString(),
                         true
                 ),
                 0,
                 asFunction
+        );
+
+        fetchClass = invoke(
+                MethodHandle.class.descriptorString(),
+                types.handle(
+                        Opcodes.H_INVOKESTATIC,
+                        types.internalName(MethodHandles.class),
+                        "insertArguments",
+                        MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, Object[].class).descriptorString(),
+                        false
+                ),
+                fetchClass,
+                2,
+                targetName
         );
 
         return invoke(
@@ -221,6 +235,11 @@ public class ConDynUtils<T, CD, H> {
         while (targetName.startsWith("[")) {
             arrayLevels++;
             targetName = targetName.substring(1);
+        }
+        if (targetName.length() == 1) {
+            if ("ZBCSIFJDV".contains(targetName)) {
+                return conDynFromClass(types.type(targetName));
+            }
         }
         if (targetName.contains(";")) {
             targetClassName = targetName.substring(1, targetName.length() - 1).replace('/', '.');
@@ -310,11 +329,12 @@ public class ConDynUtils<T, CD, H> {
                             MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodHandle.class).descriptorString(),
                             false
                     ),
+                    classValue,
                     types.handle(
                             Opcodes.H_INVOKEVIRTUAL,
                             types.internalName(Class.class),
                             "arrayType",
-                            MethodType.methodType(Class.class, Class.class).descriptorString(),
+                            MethodType.methodType(Class.class).descriptorString(),
                             false
                     )
             );
