@@ -6,7 +6,7 @@ java.withSourcesJar()
 java.withJavadocJar()
 
 dependencies {
-    api project(':opensesame-annotations')
+    implementation project(':opensesame-annotations')
 }
 
 tasks.named('compileJava', JavaCompile).configure {

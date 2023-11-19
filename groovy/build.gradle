@@ -15,6 +15,7 @@ tasks.register('groovydocJar', Jar) {
 dependencies {
     implementation libs.groovy.core
     implementation project(':opensesame-compile')
+    api project(':opensesame-annotations')
 }
 
 tasks.named('compileGroovy', GroovyCompile).configure {

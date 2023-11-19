@@ -7,14 +7,15 @@ java.withJavadocJar()
 
 dependencies {
     implementation project(':opensesame-compile')
+    api project(':opensesame-annotations')
     implementation libs.asm
 }
 
 tasks.named('compileTestJava', JavaCompile).configure {
-    it.options.compilerArgs.add '-Xplugin:OpenSesame'
-    it.dependsOn(tasks.compileJava)
-    it.inputs.files(sourceSets.main.output.classesDirs)
-    it.inputs.files(sourceSets.main.runtimeClasspath)
+    options.compilerArgs.add '-Xplugin:OpenSesame'
+    dependsOn(tasks.compileJava)
+    inputs.files(sourceSets.main.output.classesDirs)
+    inputs.files(sourceSets.main.runtimeClasspath)
 }
 
 def testCompileOn(int v) {
