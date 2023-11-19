@@ -56,15 +56,7 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
         Tree targetClassTree = findAnnotationArgument(annotation, "targetClass");
         if (targetClassTree instanceof MemberSelectTree memberSelectTree) {
             var target = memberSelectTree.getExpression();
-            if (target instanceof IdentifierTree identifierTree) {
-                try {
-                    TypeElement type = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
-                    targetClass = types().type("L"+elements.getBinaryName(type).toString().replace('.','/')+";");
-                } catch (Throwable ignored) {}
-            }
-        }
-        if (targetClass == null && targetClassTree != null) {
-            throw new RuntimeException("Expected argument targetName to be a string in "+annotation);
+            targetClass = types().type(typeFromTree(target));
         }
 
         Tree targetFunctionTree = findAnnotationArgument(annotation, "targetProvider");

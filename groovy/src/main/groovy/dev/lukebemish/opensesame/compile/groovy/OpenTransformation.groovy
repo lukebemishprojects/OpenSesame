@@ -109,14 +109,14 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         var targetName = getMemberStringValue(annotationNode, 'targetName')
         var targetClass = getMemberClassValue(annotationNode, 'targetClass')
         var targetFunction = getMemberClassValue(annotationNode, 'targetProvider')
-        Handle targetClosureHandle = null
+        Object targetClosureHandle = null
         if (targetFunction == null) {
             Expression member = annotationNode.getMember('targetProvider')
             if (member instanceof ClosureExpression) {
-                if (member.parameters.length >= 1 && member.parameters[0].type != ClassHelper.OBJECT_TYPE && member.parameters[0].type != CLASSLOADER) {
+                if (member.parameters !== null && member.parameters.length >= 1 && member.parameters[0].type != ClassHelper.OBJECT_TYPE && member.parameters[0].type != CLASSLOADER) {
                     throw new RuntimeException("First parameter of closure passed to ${annotationType.simpleName}, if it exists, must be either an Object or a ClassLoader")
                 }
-                if (member.parameters.length >= 2 && member.parameters[1].type != ClassHelper.OBJECT_TYPE && member.parameters[1].type != ClassHelper.STRING_TYPE) {
+                if (member.parameters !== null && member.parameters.length >= 2 && member.parameters[1].type != ClassHelper.OBJECT_TYPE && member.parameters[1].type != ClassHelper.STRING_TYPE) {
                     throw new RuntimeException("First parameter of closure passed to ${annotationType.simpleName}, if it exists, must be either an Object or a String")
                 }
 
@@ -124,8 +124,8 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
 
                 String generatedMethodName = "\$dev_lukebemish_opensesame\$typeFinding\$${count++}\$_${methodNode.name}"
 
-                var pName1 = member.parameters.length === 0 ? 'it' : member.parameters[0].name
-                var pName2 = member.parameters.length === 1 ? 'not$$$'+pName1 : member.parameters[1].name
+                var pName1 = member.parameters === null || member.parameters.length <= 0 ? 'it' : member.parameters[0].name
+                var pName2 = member.parameters === null || member.parameters.length <= 1 ? 'not$$$'+pName1 : member.parameters[1].name
 
                 var generatedMethod = methodNode.declaringClass.addMethod(
                         generatedMethodName,
@@ -149,6 +149,20 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                         generatedMethodName,
                         MethodType.methodType(Class, ClassLoader, String).descriptorString(),
                         methodNode.declaringClass.interface
+                )
+
+                targetClosureHandle = conDynUtils().invoke(
+                        MethodHandle.class.descriptorString(),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                Type.getInternalName(MethodHandles.class),
+                                "insertArguments",
+                                MethodType.methodType(MethodHandle.class, MethodHandle.class, int.class, Object[].class).descriptorString(),
+                                false
+                        ),
+                        targetClosureHandle,
+                        1,
+                        targetName == null ? conDynUtils().makeNull(Type.getType(String)) : targetName
                 )
 
                 annotationNode.members.remove('targetProvider')

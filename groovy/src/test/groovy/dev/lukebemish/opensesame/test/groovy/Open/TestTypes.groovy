@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.test.groovy.Open
 
-import dev.lukebemish.opensesame.annotations.Coerce
+
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.test.target.Public
 import groovy.transform.CompileStatic
@@ -42,17 +42,17 @@ class TestTypes {
     }
 
     @Open(
-            name = 'privateReturn',
+            name = "primitiveArrayReturn",
             targetClass = Public,
             type = Open.Type.STATIC
     )
-    private static @Coerce(targetName = 'dev.lukebemish.opensesame.test.target.Public$Private') Object publicPrivateReturn() {
+    private static int[] publicPrimitiveArrayReturn() {
         throw new RuntimeException()
     }
 
     @Test
-    void testPrivateReturn() {
-        assertEquals("Private", publicPrivateReturn().toString())
+    void testPrimitiveArrayReturn() {
+        assertArrayEquals(new int[] {1, 2}, publicPrimitiveArrayReturn())
     }
 
     @Open(
@@ -84,17 +84,17 @@ class TestTypes {
     }
 
     @Open(
-            name = 'privateArgument',
+            name = "primitiveArrayArgument",
             targetClass = Public,
             type = Open.Type.STATIC
     )
-    private static String publicPrivateArgument(@Coerce(targetName = 'dev.lukebemish.opensesame.test.target.Public$Private') Object value) {
+    private static String publicPrimitiveArrayArgument(int[] value) {
         throw new RuntimeException()
     }
 
     @Test
-    void testPrivateArgument() {
-        assertEquals("Private1", publicPrivateArgument(TestMisc.privatePrivateConstructor()))
+    void testPrimitiveArrayArgument() {
+        assertEquals("1", publicPrimitiveArrayArgument(new int[] {1, 2}))
     }
 
     @Open(

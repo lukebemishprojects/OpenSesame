@@ -194,7 +194,21 @@ public class ConDynUtils<T, CD, H> {
                 ),
                 fetchClass,
                 1,
-                targetName
+                targetName == null ? makeNull(types.type(String.class)) : targetName
+        );
+    }
+
+    public CD makeNull(T type) {
+        return types.constantDynamic(
+                "nullConstant",
+                types.descriptor(type),
+                types.handle(
+                        Opcodes.H_INVOKESTATIC,
+                        types.internalName(ConstantBootstraps.class),
+                        "nullConstant",
+                        MethodType.methodType(Object.class, MethodHandles.Lookup.class, String.class, Class.class).descriptorString(),
+                        false
+                )
         );
     }
 

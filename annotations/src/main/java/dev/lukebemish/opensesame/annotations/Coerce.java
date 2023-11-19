@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.PARAMETER})
 public @interface Coerce {
     /**
-     * @return the internal name of the target class, or the name ot be passed to {@link #targetProvider()}
+     * @return the internal name or descriptor of the target class, or the name ot be passed to {@link #targetProvider()}
      */
     String targetName() default "";
 

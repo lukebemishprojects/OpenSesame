@@ -24,7 +24,7 @@ public @interface Open {
     String name() default "";
 
     /**
-     * @return the internal name of the target class, or the name ot be passed to {@link #targetProvider()}
+     * @return the internal name or descriptor of the target class, or the name ot be passed to {@link #targetProvider()}
      */
     String targetName() default "";
 

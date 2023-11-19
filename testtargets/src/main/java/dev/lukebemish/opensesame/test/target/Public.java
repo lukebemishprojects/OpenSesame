@@ -70,12 +70,21 @@ public class Public {
     }
 
     public static int voidReturnCounter = 0;
+    private static String simpleReturn() {
+        return "simpleReturn";
+    }
     private static void voidReturn() {
         voidReturnCounter++;
     }
 
     private static int primitiveReturn() {
         return 5;
+    }
+    private static Integer boxedReturn() {
+        return 5;
+    }
+    private static int[] primitiveArrayReturn() {
+        return new int[] {1, 2};
     }
 
     private static Private privateReturn() {
@@ -86,8 +95,17 @@ public class Public {
         return new String[] {"a", "b"};
     }
 
+    private static String simpleArgument(String s) {
+        return s;
+    }
     private static String primitiveArgument(int i) {
         return i + "";
+    }
+    private static String boxedArgument(Integer i) {
+        return i + "";
+    }
+    private static String primitiveArrayArgument(int[] i) {
+        return i[0] + "";
     }
 
     private static String privateArgument(Private p) {

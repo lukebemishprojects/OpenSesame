@@ -8,7 +8,7 @@ import org.objectweb.asm.Opcodes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TestProvider {
+class TestProvider {
     private static class SimpleProvider implements ClassProvider {
         @Override
         public Class<?> provide(ClassLoader loader, String name) {
@@ -31,7 +31,7 @@ public class TestProvider {
     }
 
     @Test
-    void testSimpleProviderTarget() {
+    void testSimpleProvider() {
         assertEquals("privateStatic", simpleProviderTarget());
     }
 
@@ -104,12 +104,12 @@ public class TestProvider {
             targetProvider = InaccessibleProvider.class,
             type = Open.Type.CONSTRUCT
     )
-    private static Object inaccessibleProviderCtor() {
+    private static Object inaccessibleProviderTarget() {
         throw new RuntimeException();
     }
 
     @Test
     void testInaccessibleProvider() {
-        assertEquals("Generated", inaccessibleProviderCtor().getClass().getSimpleName());
+        assertEquals("Generated", inaccessibleProviderTarget().getClass().getSimpleName());
     }
 }
