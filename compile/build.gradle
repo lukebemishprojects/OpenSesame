@@ -6,7 +6,7 @@ java.withSourcesJar()
 java.withJavadocJar()
 
 dependencies {
-    implementation project(':opensesame-annotations')
+    implementation project(':opensesame-core')
 }
 
 tasks.named('compileJava', JavaCompile).configure {
@@ -19,7 +19,7 @@ publishing {
             pom {
                 name = "OpenSesame - Compile"
                 packaging = 'jar'
-                description = 'Compile-time abstractions for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'Compile-time abstractions for OpenSesame, a tool for typesafe access to normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

@@ -48,9 +48,11 @@ class LookupProviderUnsafe implements LookupProvider {
         var implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
         Method staticFieldBase = unsafe.getDeclaredMethod("staticFieldBase", Field.class);
         Method staticFieldOffset = unsafe.getDeclaredMethod("staticFieldOffset", Field.class);
+        Object base = staticFieldBase.invoke(theUnsafe, implLookupField);
+        long offset = (long) staticFieldOffset.invoke(theUnsafe, implLookupField);
         Method getObject = unsafe.getDeclaredMethod("getObject", Object.class, long.class);
         return (MethodHandles.Lookup)
-                getObject.invoke(theUnsafe, staticFieldBase.invoke(theUnsafe, implLookupField), staticFieldOffset.invoke(theUnsafe, implLookupField));
+                getObject.invoke(theUnsafe, base, offset);
     }
 
     @Override

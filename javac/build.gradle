@@ -7,7 +7,7 @@ java.withJavadocJar()
 
 dependencies {
     implementation project(':opensesame-compile')
-    api project(':opensesame-annotations')
+    api project(':opensesame-core')
     implementation libs.asm
 }
 
@@ -81,7 +81,7 @@ publishing {
             pom {
                 name = "OpenSesame - Javac Compiler Plugin"
                 packaging = 'jar'
-                description = 'javac compiler plugin for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'javac compiler plugin for OpenSesame, a tool for typesafe access to normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

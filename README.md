@@ -1,10 +1,11 @@
 # OpenSesame
 
- [![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-annotations?style=for-the-badge&label=javadoc%20(annotations)&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-annotations) 
+ [![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-core?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-core) 
 
 OpenSesame provides a tool to break through basically any form of encapsulation in the JVM, in a way that allows you to work with simple accessor method in your code, instead of worrying about `MethodHandle`s or reflection. These accessors are turned
 into `INVOKEDYNAMIC` instructions at compile time which call a lightweight runtime component; the use of `INVOKEDYNAMIC` allows the runtime dependency to be extremely lightweight, and for the JVM to inline calls to members you are accessing when the
 call site is first evaluated, assuring that your code runs as fast as code accessing your target without breaking encapsulation. Normally, OpenSesame simply breaks though access control, but it can be told to break through module boundaries as well.
+OpenSesame requires Java 17 or higher.
 
 ## Setup
 
@@ -26,12 +27,12 @@ dependencies {
 }
 ```
 
-If you do not need the ASTT present at runtime, you may split the dependency and at runtime depend only on `opensesame-runtime`:
+If you do not need the ASTT present at runtime, you may split the dependency and at runtime depend only on `opensesame-core`:
 
 ```gradle
 dependencies {
     compileOnly 'dev.lukebemish.opensesame:opensesame-groovy:<version>'
-    runtimeOnly 'dev.lukebemish.opensesame:opensesame-runtime:<version>'
+    runtimeOnly 'dev.lukebemish.opensesame:opensesame-core:<version>'
 }
 ```
 
@@ -43,7 +44,7 @@ plugin present at runtime, you will likely want to split it into its runtime and
 ```gradle
 dependencies {
     compileOnly 'dev.lukebemish.opensesame:opensesame-javac:<version>'
-    runtimeOnly 'dev.lukebemish.opensesame:opensesame-runtime:<version>'
+    runtimeOnly 'dev.lukebemish.opensesame:opensesame-core:<version>'
 }
 
 tasks.named('compileJava', JavaCompile).configure {
@@ -87,7 +88,7 @@ can use `@Coerce` annotation to specify the real type of an argument or return t
 
 If you are using Groovy, OpenSesame has several useful additional features. The first is `@OpenClass`, which gets rid of the need for accessor methods when accessing public classes:
 
-```java
+```groovy
 class Target {
     private static void someMethod() {
         ...

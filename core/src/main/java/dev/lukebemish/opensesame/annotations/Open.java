@@ -19,34 +19,34 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 public @interface Open {
     /**
-     * @return the name of the target method, constructor, or field operation
+     * {@return the name of the target method, constructor, or field operation}
      */
     String name() default "";
 
     /**
-     * @return the internal name or descriptor of the target class, or the name ot be passed to {@link #targetProvider()}
+     * {@return the internal name or descriptor of the target class, or the name ot be passed to {@link #targetProvider()}}
      */
     String targetName() default "";
 
     /**
-     * @return the target class
+     * {@return the target class}
      */
-    Class<?> targetClass() default Void.class;
+    Class<?> targetClass() default void.class;
 
     /**
-     * @return a class implementing {@link dev.lukebemish.opensesame.runtime.ClassProvider} with a no-arg constructor
+     * {@return a class implementing {@link dev.lukebemish.opensesame.runtime.ClassProvider} with a no-arg constructor
      *         that returns the target class. This function will be passed {@link #targetName()} if it is specified, or
-     *         null otherwise. On groovy, may be a closure
+     *         null otherwise. On groovy, may be a closure}
      */
     Class<?> targetProvider() default ErrorProvider.class;
 
     /**
-     * @return the type of member o the target class to invoke
+     * {@return the type of member o the target class to invoke}
      */
     Type type();
 
     /**
-     * @return whether this invocation should be done unsafely, breaking module boundaries
+     * {@return whether this invocation should be done unsafely, breaking module boundaries}
      */
     boolean unsafe() default false;
 

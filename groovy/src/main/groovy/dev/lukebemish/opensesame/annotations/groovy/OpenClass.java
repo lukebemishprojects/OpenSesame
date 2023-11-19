@@ -21,7 +21,7 @@ import java.lang.annotation.Target;
 })
 public @interface OpenClass {
     /**
-     * The classes to open.
+     * {@return The classes to open.}
      */
     Class<?>[] value();
 }

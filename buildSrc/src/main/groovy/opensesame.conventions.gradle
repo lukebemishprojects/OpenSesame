@@ -110,7 +110,8 @@ jar {
                 'Specification-Version'   : rootProject.version,
                 'Implementation-Commit-Time': managedVersioning.timestamp.get(),
                 'Implementation-Commit': managedVersioning.hash.get(),
-                'Automatic-Module-Name'   : "dev.lukebemish.opensesame.${project.name.replace("opensesame-", "")}".toString()
+                'Automatic-Module-Name'   : "dev.lukebemish.opensesame.${project.name.replace("opensesame-", "")}".toString(),
+                'FMLModType': 'LIBRARY'
         ])
     }
 }

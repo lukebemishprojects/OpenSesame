@@ -15,7 +15,7 @@ tasks.register('groovydocJar', Jar) {
 dependencies {
     implementation libs.groovy.core
     implementation project(':opensesame-compile')
-    api project(':opensesame-annotations')
+    api project(':opensesame-core')
 }
 
 tasks.named('compileGroovy', GroovyCompile).configure {
@@ -89,7 +89,7 @@ publishing {
             pom {
                 name = "OpenSesame - Groovy Transform"
                 packaging = 'jar'
-                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for typesafe access to normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 

@@ -9,9 +9,9 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             pom {
-                name = "OpenSesame - Runtime"
+                name = "OpenSesame - Core"
                 packaging = 'jar'
-                description = 'Runtime metafactory used for OpenSesame, a tool for typesafe access normally inacessible members'
+                description = 'Core annotations and runtime metafactory used for OpenSesame, a tool for typesafe access to normally inacessible members'
                 url = 'https://github.com/lukebemish/OpenSesame'
                 inceptionYear = '2023'
 
