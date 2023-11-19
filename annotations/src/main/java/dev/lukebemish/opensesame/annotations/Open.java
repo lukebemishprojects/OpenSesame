@@ -51,7 +51,7 @@ public @interface Open {
     boolean unsafe() default false;
 
     /**
-     * Different types of members that can be invoked
+     * Different types of members that can be invoked. The orginals of this enum match the constants in {@link dev.lukebemish.opensesame.runtime.OpeningMetafactory}
      */
     enum Type {
         /**
