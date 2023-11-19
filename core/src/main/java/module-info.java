@@ -1,4 +1,4 @@
-module dev.lukebemish.opensesame.runtime {
+module dev.lukebemish.opensesame.core {
     requires jdk.unsupported;
     requires static org.jetbrains.annotations;
 
