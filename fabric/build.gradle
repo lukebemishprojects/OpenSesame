@@ -1,0 +1,59 @@
+plugins {
+    id 'opensesame.conventions'
+}
+
+java.withSourcesJar()
+java.withJavadocJar()
+
+repositories {
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+configurations {
+    bundle
+}
+
+dependencies {
+    compileOnly libs.fabric.loader
+    api project(':opensesame-core')
+    bundle project(':opensesame-core')
+}
+
+
+import dev.lukebemish.opensesame.convention.FabricModJson
+import dev.lukebemish.opensesame.convention.Bundler
+
+tasks.register('bundle', Bundler) {
+    dependsOn configurations.bundle
+    bundleConfiguration = configurations.bundle
+    outputDirectory = layout.buildDirectory.dir("bundler")
+    modType = 'LIBRARY'
+    modulePrefix = 'org.groovymc.groovybundler.jij'
+}
+
+tasks.register('generateFMJ', FabricModJson) {
+    projectGroup = project.group
+    projectVersion = project.version
+    projectName = project.name
+    outputDirectory = layout.buildDirectory.dir("fabricModJson")
+}
+
+jar {
+    dependsOn tasks.bundle
+    from(tasks.bundle.outputDirectory)
+    from(tasks.generateFMJ.outputDirectory)
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                openSesameConvention.pomShared(it, 'Fabric')
+                description = 'Fabric compatibility for OpenSesame, a tool for typesafe access to normally inacessible members'
+            }
+        }
+    }
+}

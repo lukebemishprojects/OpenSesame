@@ -28,7 +28,9 @@ def subprojects = [
         'core',
         'compile',
         'groovy',
-        'javac'
+        'javac',
+        'plugin',
+        'fabric'
 ]
 
 include subprojects

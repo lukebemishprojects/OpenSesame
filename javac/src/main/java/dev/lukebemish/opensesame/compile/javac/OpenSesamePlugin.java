@@ -113,6 +113,11 @@ public class OpenSesamePlugin implements Plugin {
                                 null,
                                 null
                         );
+
+                        var annotationVisitor = methodWriter.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
+                        annotationVisitor.visitEnum("value", OpenSesameGenerated.Type.class.descriptorString(), "OPEN");
+                        annotationVisitor.visitEnd();
+
                         methodWriter.visitCode();
 
                         methodWriter.visitVarInsn(Opcodes.ALOAD, 0);

@@ -198,7 +198,15 @@ public final class OpeningMetafactory {
         if (type < STATIC_GET_TYPE) {
             name = remapMethod(name, accessType, holdingClass, caller.lookupClass().getClassLoader());
         } else if (type < CONSTRUCT_TYPE) {
-            name = remapField(name, holdingClass, caller.lookupClass().getClassLoader());
+            Class<?> fieldType;
+            if (type == STATIC_GET_TYPE || type == INSTANCE_GET_TYPE) {
+                fieldType = accessType.returnType();
+            } else if (type == STATIC_SET_TYPE) {
+                fieldType = accessType.parameterType(0);
+            } else {
+                fieldType = accessType.parameterType(1);
+            }
+            name = remapField(name, fieldType, holdingClass, caller.lookupClass().getClassLoader());
         }
         var handle = makeHandle(lookup, name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
@@ -227,7 +235,7 @@ public final class OpeningMetafactory {
     private static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
-            String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray());
+            String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray(), methodType.returnType());
             if (remapMethodName != null) {
                 return remapMethodName;
             }
@@ -235,10 +243,10 @@ public final class OpeningMetafactory {
         return targetMethodName;
     }
 
-    private static String remapField(String targetFieldName, Class<?> holdingClass, ClassLoader classLoader) {
+    private static String remapField(String targetFieldName, Class<?> targetType, Class<?> holdingClass, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
-            String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName);
+            String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName, targetType);
             if (remapFieldName != null) {
                 return remapFieldName;
             }
