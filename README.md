@@ -37,24 +37,17 @@ dependencies {
 
 ### Java
 
-OpenSesame provides a javac plugin. Note that this will not work with eclipse's ecj compiler. To use, simply add the `opensesame-javac` dependency and specify the plugin in the compiler arguments:
-
-```gradle
-dependencies {
-    implementation 'dev.lukebemish.opensesame:opensesame-javac:<version>'
-}
-
-tasks.named('compileJava', JavaCompile).configure {
-    options.compilerArgs.add '-Xplugin:OpenSesame'
-}
-```
-
-Once again, the dependency can be split up into it's runtime and compile time components:
+OpenSesame provides a javac plugin. Note that this will not work with eclipse's ecj compiler. To use, simply add the `opensesame-javac` dependency and specify the plugin in the compiler arguments. As there is almost no reason to have the compiler
+plugin present at runtime, you will likely want to split it into its runtime and compile time components:
 
 ```gradle
 dependencies {
     compileOnly 'dev.lukebemish.opensesame:opensesame-javac:<version>'
     runtimeOnly 'dev.lukebemish.opensesame:opensesame-runtime:<version>'
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    options.compilerArgs.add '-Xplugin:OpenSesame'
 }
 ```
 
