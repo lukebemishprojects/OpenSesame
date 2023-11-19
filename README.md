@@ -1,6 +1,6 @@
 # OpenSesame
 
- [![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-annotations?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-annotations) 
+ [![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-annotations?style=for-the-badge&label=javadoc%20(annotations)&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-annotations) 
 
 OpenSesame provides a tool to break through basically any form of encapsulation in the JVM, in a way that allows you to work with simple accessor method in your code, instead of worrying about `MethodHandle`s or reflection. These accessors are turned
 into `INVOKEDYNAMIC` instructions at compile time which call a lightweight runtime component; the use of `INVOKEDYNAMIC` allows the runtime dependency to be extremely lightweight, and for the JVM to inline calls to members you are accessing when the
