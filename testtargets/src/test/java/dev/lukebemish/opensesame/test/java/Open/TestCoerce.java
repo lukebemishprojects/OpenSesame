@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.test.javac.Open;
+package dev.lukebemish.opensesame.test.java.Open;
 
 import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;

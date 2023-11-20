@@ -5,6 +5,7 @@ import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.compile.ConDynUtils;
 import dev.lukebemish.opensesame.compile.OpenProcessor;
 import dev.lukebemish.opensesame.compile.TypeProvider;
+import dev.lukebemish.opensesame.compile.asm.ASMTypeProvider;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 

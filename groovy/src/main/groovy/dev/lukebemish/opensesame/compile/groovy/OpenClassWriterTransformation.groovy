@@ -1,6 +1,8 @@
 package dev.lukebemish.opensesame.compile.groovy
 
 import dev.lukebemish.opensesame.annotations.Open
+import dev.lukebemish.opensesame.annotations.groovy.OpenClass
+import dev.lukebemish.opensesame.compile.OpenSesameGenerated
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovyjarjarasm.asm.Handle
@@ -28,6 +30,9 @@ import java.lang.invoke.MethodType
 @GroovyASTTransformation(phase = CompilePhase.INSTRUCTION_SELECTION)
 class OpenClassWriterTransformation extends AbstractASTTransformation implements TransformWithPriority {
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
+    private static final ClassNode GENERATED = ClassHelper.makeWithoutCaching(OpenSesameGenerated)
+    private static final ClassNode OPENCLASS = ClassHelper.makeWithoutCaching(OpenClass)
+
 
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
@@ -134,6 +139,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                     }
                                 })
                         )
+                        bridgeMethod.addAnnotation(GENERATED).addMember("value", new ClassExpression(OPENCLASS))
                         methodNode.declaringClass.addMethod(bridgeMethod)
                     }
                     MethodNode bridgeMethod = methodNode.declaringClass.getMethods(bridgeMethodName)[0]
@@ -254,6 +260,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                         }
                                     })
                             )
+                            bridgeMethod.addAnnotation(GENERATED).addMember("value", new ClassExpression(OPENCLASS))
                             methodNode.declaringClass.addMethod(bridgeMethod)
                         }
                         MethodNode bridgeMethod = methodNode.declaringClass.getMethods(bridgeMethodName)[0]
@@ -366,6 +373,7 @@ class OpenClassWriterTransformation extends AbstractASTTransformation implements
                                     }
                                 })
                         )
+                        bridgeMethod.addAnnotation(GENERATED).addMember("value", new ClassExpression(OPENCLASS))
                         methodNode.declaringClass.addMethod(bridgeMethod)
                     }
                     MethodNode bridgeMethod = methodNode.declaringClass.getMethods(bridgeMethodName)[0]

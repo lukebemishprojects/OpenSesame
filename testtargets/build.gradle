@@ -1,3 +1,25 @@
 plugins {
     id 'java-library'
 }
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    testSource {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    testImplementation project(':opensesame-core')
+    testImplementation libs.asm
+    testImplementation libs.junit.api
+}
+
+artifacts {
+    testSource sourceSets.test.java.sourceDirectories.singleFile
+}

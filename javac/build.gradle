@@ -5,13 +5,28 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
+configurations {
+    testSource {
+        canBeResolved = true
+    }
+}
+
 dependencies {
     implementation project(':opensesame-compile')
+    implementation(project(':opensesame-compile')) {
+        capabilities {
+            requireCapability 'dev.lukebemish.opensesame:opensesame-compile-asm'
+        }
+    }
     api project(':opensesame-core')
     implementation libs.asm
+
+    testSource project(path: ':testtargets', configuration: 'testSource')
 }
 
 tasks.named('compileTestJava', JavaCompile).configure {
+    dependsOn(configurations.testSource)
+    source(configurations.testSource)
     options.compilerArgs.add '-Xplugin:OpenSesame'
     dependsOn(tasks.compileJava)
     inputs.files(sourceSets.main.output.classesDirs)
@@ -26,11 +41,13 @@ def testCompileOn(int v) {
 
         dependsOn configurations.testRuntimeClasspath
         dependsOn sourceSets.test.java.sourceDirectories
+        dependsOn configurations.testSource
 
         var dirProvider = layout.buildDirectory.dir('testClasses')
 
         outputs.dir(dirProvider)
         inputs.files(sourceSets.test.java.sourceDirectories)
+        inputs.files(configurations.testSource)
 
         group = "Verification"
         description = "Compile test sources with java"
@@ -45,7 +62,8 @@ def testCompileOn(int v) {
                                 '-d', dirProvider.get().asFile.path,
                                 '-Xplugin:OpenSesame'
                         ] +
-                                sourceSets.test.java.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }
+                                (sourceSets.test.java.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }) +
+                                (configurations.testSource.files.collectMany { fileTree(it.path).files.collect { it.path } })
                     }
                 }
         )

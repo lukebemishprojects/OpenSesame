@@ -48,7 +48,7 @@ def testCompileOn(int v) {
                     List<String> asArguments() {
                         return [
                                 '-cp', configurations.testCompileClasspath.asPath,
-                                '--temp', task.temporaryDirFactory.create().path,
+                                '--temp', task.temporaryDir.path,
                                 '-d', dirProvider.get().asFile.path
                         ] +
                                 sourceSets.test.groovy.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }

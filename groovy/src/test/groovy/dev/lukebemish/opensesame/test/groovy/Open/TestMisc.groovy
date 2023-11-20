@@ -1,11 +1,11 @@
 package dev.lukebemish.opensesame.test.groovy.Open
 
-
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.test.target.Public
 import groovy.transform.CompileStatic
 import groovy.transform.PackageScope
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.function.Executable
 
 import static org.junit.jupiter.api.Assertions.assertEquals
 import static org.junit.jupiter.api.Assertions.assertThrows
@@ -114,7 +114,7 @@ class TestMisc {
     void testModuleBreaking() {
         assertEquals('hiddenByModules', hiddenByModules())
         assertEquals('hiddenByModulesPrivate', hiddenByModulesPrivate())
-        assertThrows(IllegalAccessException, {
+        assertThrows((Class) IllegalAccessException, (Executable) {
             Class<?> hidden = Class.forName("dev.lukebemish.opensesame.test.target.hidden.Hidden")
             hidden.getDeclaredMethod("hiddenByModules").invoke(null)
         })
@@ -134,7 +134,7 @@ class TestMisc {
         assertEquals(2, array.length)
         array[0] = privatePrivateConstructor()
         assertEquals("Private", array[0].toString())
-        assertThrows(ArrayStoreException, {
+        assertThrows((Class) ArrayStoreException, (Executable) {
             array[1] = "stuff"
         })
     }

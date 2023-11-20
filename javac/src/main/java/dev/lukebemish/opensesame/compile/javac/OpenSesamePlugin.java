@@ -5,6 +5,7 @@ import com.sun.source.tree.*;
 import com.sun.source.util.*;
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.compile.OpenProcessor;
+import dev.lukebemish.opensesame.compile.OpenSesameGenerated;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -27,7 +28,7 @@ import java.util.List;
 @AutoService(Plugin.class)
 public class OpenSesamePlugin implements Plugin {
     public static final String PLUGIN_NAME = "OpenSesame";
-    private static final String GENERATED_SUFFIX = "$$dev$lukebemish$opensesame$bridge";
+    private static final String GENERATED_SUFFIX = "$$dev$lukebemish$opensesame$bridge$Open";
 
     @Override
     public String getName() {
@@ -102,7 +103,7 @@ public class OpenSesamePlugin implements Plugin {
 
                         setupClassWriter(inner);
                         var methodWriter = inner.writer.visitMethod(
-                                Opcodes.ACC_STATIC,
+                                Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
                                 name,
                                 MethodType.methodType(
                                         CallSite.class,
@@ -115,7 +116,7 @@ public class OpenSesamePlugin implements Plugin {
                         );
 
                         var annotationVisitor = methodWriter.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
-                        annotationVisitor.visitEnum("value", OpenSesameGenerated.Type.class.descriptorString(), "OPEN");
+                        annotationVisitor.visit("value", Type.getType(Open.class));
                         annotationVisitor.visitEnd();
 
                         methodWriter.visitCode();
@@ -158,15 +159,19 @@ public class OpenSesamePlugin implements Plugin {
                             inner.writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                             inner.writer.visit(
                                     Opcodes.V17,
-                                    Opcodes.ACC_FINAL,
+                                    Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC,
                                     inner.processor.declaringClassType.getInternalName()+GENERATED_SUFFIX,
                                     null,
                                     Type.getInternalName(Object.class),
                                     new String[0]
                             );
 
+                            var annotationVisitor = inner.writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
+                            annotationVisitor.visit("value", Type.getType(Open.class));
+                            annotationVisitor.visitEnd();
+
                             var init = inner.writer.visitMethod(
-                                    Opcodes.ACC_PRIVATE,
+                                    Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC,
                                     "<init>",
                                     "()V",
                                     null,

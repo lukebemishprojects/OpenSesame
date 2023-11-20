@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.compile.javac;
+package dev.lukebemish.opensesame.compile.asm;
 
 import dev.lukebemish.opensesame.compile.ConDynUtils;
 import dev.lukebemish.opensesame.compile.TypeProvider;
@@ -6,7 +6,7 @@ import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Type;
 
-class ASMTypeProvider implements TypeProvider<Type, ConstantDynamic, Handle> {
+public class ASMTypeProvider implements TypeProvider<Type, ConstantDynamic, Handle> {
     public static final ASMTypeProvider INSTANCE = new ASMTypeProvider();
     public static final ConDynUtils<Type, ConstantDynamic, Handle> CON_DYN_UTILS = new ConDynUtils<>(INSTANCE);
 

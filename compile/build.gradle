@@ -5,12 +5,70 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
-dependencies {
-    implementation project(':opensesame-core')
+sourceSets {
+    asm {}
 }
 
-tasks.named('compileJava', JavaCompile).configure {
-    it.options.compilerArgs.add '-Xlint:-opens'
+java.registerFeature('asm') {
+    usingSourceSet(sourceSets.asm)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+configurations {
+    testSource {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    api project(':opensesame-core')
+    asmImplementation libs.asm
+    asmImplementation project
+    asmCompileOnly libs.jetbrains.annotations
+
+    testImplementation libs.asm
+
+    testSource project(path: ':testtargets', configuration: 'testSource')
+}
+
+def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
+
+tasks.named('compileTestJava', JavaCompile).configure {
+    dependsOn(configurations.testSource)
+    source(configurations.testSource)
+    destinationDirectory.set(tempClassesDir)
+}
+
+tasks.register('processTestClasses', JavaExec) {
+    dependsOn compileTestJava
+    dependsOn configurations.asmRuntimeClasspath
+    inputs.dir(tempClassesDir)
+    inputs.files(sourceSets.asm.runtimeClasspath)
+    outputs.dir(sourceSets.test.output.classesDirs)
+    classpath = sourceSets.asm.runtimeClasspath
+    mainClass.set 'dev.lukebemish.opensesame.compile.asm.Processor'
+    args = compileTestJava.outputs.files.files.collectMany { [it.canonicalPath, it.canonicalPath] }
+}
+
+tasks.testClasses.dependsOn processTestClasses
+
+processAsmResources {
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+    }
+}
+
+asmJar {
+    manifest {
+        attributes([
+                'Specification-Version'   : rootProject.version,
+                'Implementation-Commit-Time': managedVersioning.timestamp.get(),
+                'Implementation-Commit': managedVersioning.hash.get(),
+                'Automatic-Module-Name'   : 'dev.lukebemish.opensesame.compile.asm',
+                'FMLModType': 'LIBRARY'
+        ])
+    }
 }
 
 publishing {

@@ -25,8 +25,8 @@ dependencies {
     annotationProcessor(libs.autoservice)
     compileOnly(libs.autoservice)
 
-    testImplementation libs.junit.api
     testRuntimeOnly libs.junit.engine
+    testImplementation libs.junit.api
 
     testImplementation project(':testtargets')
     testModuleClasspath project(':testtargets')
@@ -101,7 +101,9 @@ tasks.named('check') {
 }
 
 processResources {
-    from rootProject.file('LICENSE')
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+    }
 }
 
 jar {
