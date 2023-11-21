@@ -189,3 +189,7 @@ class OpenSesameConventionExtension {
 }
 
 project.extensions.add('openSesameConvention', OpenSesameConventionExtension)
+
+tasks.register('release') {
+    dependsOn('publish')
+}
