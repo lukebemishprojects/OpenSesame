@@ -1,6 +1,8 @@
 # OpenSesame
 
- [![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-core?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-core) 
+[![Central](https://img.shields.io/badge/maven_central-blue?style=for-the-badge)](https://central.sonatype.com/artifact/dev.lukebemish.opensesame/opensesame-core)
+[![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-core?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame-core)
+[![Snapshot](https://img.shields.io/github/actions/workflow/status/lukebemishprojects/OpenSesame/snapshot.yml?style=for-the-badge)](https://github.com/lukebemishprojects/OpenSesame/actions/workflows/snapshot.yml)
 
 OpenSesame provides a tool to break through basically any form of encapsulation in the JVM, in a way that allows you to work with simple accessor method in your code, instead of worrying about `MethodHandle`s or reflection. These accessors are turned
 into `INVOKEDYNAMIC` instructions at compile time which call a lightweight runtime component; the use of `INVOKEDYNAMIC` allows the runtime dependency to be extremely lightweight, and for the JVM to inline calls to members you are accessing when the
@@ -38,7 +40,7 @@ dependencies {
 
 ### Java
 
-OpenSesame can be used with Java in several different ways, depending on your used case.
+OpenSesame can be used with Java in several different ways, depending on your use case.
 
 #### Javac Compiler Plugin
 
