@@ -9,6 +9,7 @@ asm = "9.4"
 
 managedversioning = "1.1.0"
 nexuspublish = "1.3.0"
+gradlepublish = "1.1.0"
 
 fabric_loom = "1.4.4"
 fabric_loader = "0.14.9"
@@ -32,3 +33,4 @@ fabric_loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric_l
 
 managedversioning = { id = "dev.lukebemish.managedversioning", version.ref = "managedversioning" }
 nexuspublish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexuspublish" }
+gradlepublish = { id = "com.gradle.plugin-publish", version.ref = "gradlepublish" }

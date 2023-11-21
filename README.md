@@ -38,6 +38,10 @@ dependencies {
 
 ### Java
 
+OpenSesame can be used with Java in several different ways, depending on your used case.
+
+#### Javac Compiler Plugin
+
 OpenSesame provides a javac plugin. Note that this will not work with eclipse's ecj compiler. To use, simply add the `opensesame-javac` dependency and specify the plugin in the compiler arguments. As there is almost no reason to have the compiler
 plugin present at runtime, you will likely want to split it into its runtime and compile time components:
 
@@ -49,6 +53,24 @@ dependencies {
 
 tasks.named('compileJava', JavaCompile).configure {
     options.compilerArgs.add '-Xplugin:OpenSesame'
+}
+```
+
+#### Gradle Plugin (WIP)
+
+Using the gradle plugin, OpenSesame can insert a processing step into the compilation of a source set with ease. This
+should have greater compatibility than the javac plugin. To use, simply apply the plugin, and then apply it to the source
+set you want to process.
+
+```gradle
+plugins {
+    id 'dev.lukebemish.opensesame' version '<version>'
+}
+
+opensesame.apply(sourceSets.main)
+
+dependencies {
+    implementation 'dev.lukebemish.opensesame:opensesame-core:<version>'
 }
 ```
 

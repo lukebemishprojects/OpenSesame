@@ -6,8 +6,8 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectories
 import org.gradle.api.tasks.TaskAction
 
@@ -22,7 +22,7 @@ import java.util.zip.ZipEntry
 // Stole my own code from groovybundler... it works though
 @CompileStatic
 abstract class Bundler extends DefaultTask {
-    @Classpath
+    @InputFiles
     abstract Property<Configuration> getBundleConfiguration()
 
     @OutputDirectories

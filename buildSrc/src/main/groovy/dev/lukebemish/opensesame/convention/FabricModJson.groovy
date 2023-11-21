@@ -3,9 +3,11 @@ package dev.lukebemish.opensesame.convention
 import groovy.json.JsonBuilder
 import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectories
 import org.gradle.api.tasks.TaskAction
 
@@ -20,6 +22,8 @@ abstract class FabricModJson extends DefaultTask {
     abstract Property<String> getProjectName()
     @Input
     abstract Property<String> getProjectVersion()
+    @InputFiles
+    abstract Property<Configuration> getBundledDependencies()
 
     @TaskAction
     void generateFabricModJson() {
@@ -29,9 +33,9 @@ abstract class FabricModJson extends DefaultTask {
                 'id': modid,
                 'version': projectName.get(),
                 'name': projectName.get(),
-                'custom': [
-                        'opensesame.bundler:generated': true,
-                ]
+                'jars': getBundledDependencies().get().files.collect {
+                    ['file': "META-INF/jarjar/${it.name}" as String]
+                },
         ]
         getOutputDirectory().get().file("fabric.mod.json").asFile.withWriter { writer ->
             writer.write(new JsonBuilder(fmj).toPrettyString())

@@ -38,6 +38,7 @@ tasks.register('generateFMJ', FabricModJson) {
     projectGroup = project.group
     projectVersion = project.version
     projectName = project.name
+    bundledDependencies = configurations.bundle
     outputDirectory = layout.buildDirectory.dir("fabricModJson")
 }
 

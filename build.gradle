@@ -41,6 +41,7 @@ if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
                 nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             }
         }
+
     }
 }
 

@@ -1,6 +1,6 @@
 plugins {
     id 'java-gradle-plugin'
-    id 'com.gradle.plugin-publish' version '1.1.0'
+    alias libs.plugins.gradlepublish
 }
 
 java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
@@ -17,7 +17,6 @@ repositories {
 }
 
 java.withSourcesJar()
-java.withJavadocJar()
 
 dependencies {
     compileOnly libs.jetbrains.annotations
@@ -36,8 +35,8 @@ dependencies {
 }
 
 gradlePlugin {
-    website = 'https://github.com/lukebemish/OpenSesame'
-    vcsUrl = 'https://github.com/lukebemish/OpenSesame.git'
+    website = 'https://github.com/lukebemishprojects/OpenSesame'
+    vcsUrl = 'https://github.com/lukebemishprojects/OpenSesame.git'
 
     plugins {
         openSesame {
@@ -54,25 +53,40 @@ processResources {
     from rootProject.file('LICENSE')
 }
 
-if (System.getenv('PR_NUMBER')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'LocalMaven'
-                url = rootProject.layout.buildDirectory.dir('repo')
+if (System.getenv('GRADLE_PLUGIN_KEY')) {
+    ext['gradle.publish.key'] = System.getenv('GRADLE_PLUGIN_KEY')
+    ext['gradle.publish.secret'] = System.getenv('GRADLE_PLUGIN_SECRET')
+}
+
+afterEvaluate {
+    publishing.repositories.clear()
+
+    if (System.getenv('PR_NUMBER')) {
+        publishing {
+            repositories {
+                maven {
+                    name = 'LocalMaven'
+                    url = rootProject.layout.buildDirectory.dir('repo')
+                }
             }
         }
-    }
-} else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'PersonalMaven'
-                url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
-                credentials {
-                    username = System.getenv('MAVEN_USER')
-                    password = System.getenv('MAVEN_PASSWORD')
+    } else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
+        publishing {
+            repositories {
+                maven {
+                    name = 'PersonalMaven'
+                    url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
+                    credentials {
+                        username = System.getenv('MAVEN_USER')
+                        password = System.getenv('MAVEN_PASSWORD')
+                    }
                 }
+            }
+        }
+    } else {
+        publishing {
+            repositories {
+                gradlePluginPortal()
             }
         }
     }

@@ -163,7 +163,7 @@ class OpenSesameConventionExtension {
     def pomShared(MavenPom it, String name) {
         it.name = "OpenSesame - $name".toString()
         it.packaging = 'jar'
-        it.url = 'https://github.com/lukebemish/OpenSesame'
+        it.url = 'https://github.com/lukebemishprojects/OpenSesame'
         it.inceptionYear = '2023'
 
         it.licenses {
@@ -181,9 +181,9 @@ class OpenSesameConventionExtension {
             }
         }
         it.scm {
-            connection='scm:git:git://github.com/lukebemish/OpenSesame.git'
-            developerConnection='scm:git:ssh://github.com/lukebemish/OpenSesame.git'
-            url='https://github.com/lukebemish/OpenSesame'
+            connection='scm:git:git://github.com/lukebemishprojects/OpenSesame.git'
+            developerConnection='scm:git:ssh://github.com/lukebemishprojects/OpenSesame.git'
+            url='https://github.com/lukebemishprojects/OpenSesame'
         }
     }
 }
