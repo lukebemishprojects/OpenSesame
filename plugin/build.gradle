@@ -83,11 +83,5 @@ afterEvaluate {
                 }
             }
         }
-    } else {
-        publishing {
-            repositories {
-                gradlePluginPortal()
-            }
-        }
     }
 }
