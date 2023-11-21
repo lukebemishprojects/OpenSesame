@@ -28,6 +28,13 @@ jobs:
           ./gradlew check --continue
         env:
           SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
+      - name: Test Plugin
+        if: (success() || failure()) && steps.assemble.conclusion == 'success'
+        working-directory: ./testplugin
+        run: |
+          ./gradlew check --continue
+        env:
+          SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
       - name: Upload Test Report
         uses: actions/upload-artifact@v3
         if: (success() || failure()) && steps.assemble.conclusion == 'success'

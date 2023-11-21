@@ -10,7 +10,11 @@ repositories {
 
 configurations {
     testSource {
-        canBeResolved = true
+        canBeResolved = false
+        canBeConsumed = true
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
+        }
     }
 }
 
@@ -21,5 +25,8 @@ dependencies {
 }
 
 artifacts {
-    testSource sourceSets.test.java.sourceDirectories.singleFile
+    testSource(sourceSets.test.java.sourceDirectories.singleFile) {
+        type 'directory'
+        classifier 'testsources'
+    }
 }

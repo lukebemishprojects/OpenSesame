@@ -40,15 +40,35 @@ tasks.named('compileTestJava', JavaCompile).configure {
     destinationDirectory.set(tempClassesDir)
 }
 
-tasks.register('processTestClasses', JavaExec) {
+var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
     dependsOn compileTestJava
     dependsOn configurations.asmRuntimeClasspath
     inputs.dir(tempClassesDir)
     inputs.files(sourceSets.asm.runtimeClasspath)
     outputs.dir(sourceSets.test.output.classesDirs)
     classpath = sourceSets.asm.runtimeClasspath
-    mainClass.set 'dev.lukebemish.opensesame.compile.asm.Processor'
-    args = compileTestJava.outputs.files.files.collectMany { [it.canonicalPath, it.canonicalPath] }
+    mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor'
+    args = compileTestJava.outputs.files.files.collectMany { [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath] }
+
+    jacoco.applyTo(it)
+    extensions.configure(JacocoTaskExtension) {
+        it.excludes += 'dev/lukebemish/opensesame/test/target/*'
+    }
+    outputs.upToDateWhen { false }
+
+    finalizedBy tasks.named('testAsmCompileCodeCoverateReport')
+}
+
+var report = tasks.register('testAsmCompileCodeCoverateReport', JacocoReport) {
+    dependsOn asmCompileTest.get()
+    executionData asmCompileTest.get()
+    sourceSets sourceSets.main
+}
+
+artifacts {
+    add('coverageDataElementsForTest', report.get().executionData.singleFile) {
+        builtBy report.get()
+    }
 }
 
 tasks.testClasses.dependsOn processTestClasses

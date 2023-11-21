@@ -1,0 +1,60 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'dev.lukebemish.opensesame'
+}
+
+group='dev.lukebemish.opensesame'
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+configurations {
+    testSource {
+        canBeResolved = true
+    }
+    testModuleClasspath {
+        canBeResolved = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testSource('dev.lukebemish.opensesame:testtargets:testsources') {
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
+        }
+    }
+    testImplementation 'dev.lukebemish.opensesame:testtargets'
+    testModuleClasspath 'dev.lukebemish.opensesame:testtargets'
+    testImplementation 'dev.lukebemish.opensesame:opensesame-core'
+    testImplementation libs.asm
+    testImplementation libs.junit.api
+    testRuntimeOnly libs.junit.engine
+}
+
+opensesame.apply(sourceSets.test)
+
+tasks.named('compileTestJava', JavaCompile).configure {
+    dependsOn(configurations.testSource)
+    source(configurations.testSource)
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events = ['passed', 'failed', 'skipped']
+    }
+
+    testClassesDirs += files(
+            sourceSets.test.output,
+            configurations.testModuleClasspath
+    )
+
+    outputs.upToDateWhen {false}
+}

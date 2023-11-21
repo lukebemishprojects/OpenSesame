@@ -9,10 +9,13 @@ import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
 
+import java.io.IOException;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,6 +25,50 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
     private final Set<String> annotationDescriptors;
     private Type type;
+
+    public static void main(String[] args) {
+        if ((~args.length & 1) != 1) {
+            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.Processor <input> <output> <input> <output> ...");
+            System.exit(1);
+        }
+        for (int i = 0; i < args.length; i += 2) {
+            var input = Path.of(args[0]);
+            var output = Path.of(args[1]);
+            try {
+                process(input, output);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static void process(Path input, Path output) throws IOException {
+        if (Files.isRegularFile(input)) {
+            processFile(input, output);
+        } else {
+            try (var paths = Files.walk(input)) {
+                paths.filter(Files::isRegularFile).forEach(file -> {
+                    try {
+                        var relative = input.relativize(file);
+                        var out = output.resolve(relative);
+                        Files.createDirectories(out.getParent());
+                        processFile(file, out);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+        }
+    }
+
+    private static void processFile(Path file, Path out) throws IOException {
+        try (var inputStream = Files.newInputStream(file)) {
+            ClassReader reader = new ClassReader(inputStream);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+            reader.accept(new VisitingOpenProcessor(writer, VisitingOpenProcessor.ANNOTATIONS), 0);
+            Files.write(out, writer.toByteArray());
+        }
+    }
 
     public VisitingOpenProcessor(ClassVisitor delegate, Set<Type> annotations) {
         super(Opcodes.ASM9, delegate);
