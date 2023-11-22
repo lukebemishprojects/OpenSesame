@@ -1,11 +1,15 @@
 package dev.lukebemish.opensesame.plugin;
 
-import dev.lukebemish.opensesame.plugin.task.ProcessAnnotationsTask;
+import dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.compile.AbstractCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.file.Path;
 
 public abstract class OpenSesameExtension {
     private final Project project;
@@ -15,18 +19,20 @@ public abstract class OpenSesameExtension {
         this.project = project;
     }
 
+    public void apply(TaskProvider<? extends AbstractCompile> compileTaskProvider) {
+        compileTaskProvider.configure(compileTask ->
+                compileTask.doLast("processOpenSesame", task -> {
+                    try {
+                        Path classesPath = compileTask.getDestinationDirectory().get().getAsFile().toPath();
+                        VisitingOpenProcessor.process(classesPath, classesPath);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+        );
+    }
+
     public void apply(SourceSet sourceSet) {
-        var unprocessedClasses = project.getLayout().getBuildDirectory().dir("opensesame/raw/" + sourceSet.getName());
-        var compileJava = project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class, task -> {
-            task.getDestinationDirectory().set(unprocessedClasses);
-        });
-        var processOpenSesame = project.getTasks().register(sourceSet.getTaskName("process", "openSesame"), ProcessAnnotationsTask.class, task -> {
-            task.dependsOn(compileJava);
-            task.getInputClassesDir().set(unprocessedClasses);
-        });
-        sourceSet.getJava().compiledBy(processOpenSesame, ProcessAnnotationsTask::getOutputClassesDir);
-        project.getTasks().named(sourceSet.getClassesTaskName(), task -> {
-            task.dependsOn(processOpenSesame);
-        });
+        apply(project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class));
     }
 }
