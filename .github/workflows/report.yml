@@ -15,7 +15,20 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           artifact: junit-test-results
-          name: Test Results
-          path: '**/TEST-*.xml'
+          name: Test Results - Java 17
+          path: |
+            **/test-results/testOn17/**/TEST-*.xml
+            **/test-results/test/**/TEST-*.xml
           reporter: java-junit
           fail-on-empty: 'true'
+          list-tests: 'failed'
+      - name: JUnit Test Report
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: junit-test-results
+          name: Test Results - Java 21
+          path: |
+            **/test-results/testOn21/**/TEST-*.xml
+          reporter: java-junit
+          fail-on-empty: 'true'
+          list-tests: 'failed'
