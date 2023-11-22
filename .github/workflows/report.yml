@@ -16,9 +16,7 @@ jobs:
         with:
           artifact: junit-test-results
           name: Test Results - Java 17
-          path: |
-            **/test-results/testOn17/TEST-*.xml
-            **/test-results/test/TEST-*.xml
+          path: "**/test-results/testOn17/**/TEST-*.xml,**/test-results/test/**/TEST-*.xml"
           reporter: java-junit
           fail-on-empty: 'true'
           list-tests: 'failed'
@@ -27,8 +25,7 @@ jobs:
         with:
           artifact: junit-test-results
           name: Test Results - Java 21
-          path: |
-            **/test-results/testOn21/TEST-*.xml
+          path: "**/test-results/testOn21/**/TEST-*.xml"
           reporter: java-junit
           fail-on-empty: 'true'
           list-tests: 'failed'
