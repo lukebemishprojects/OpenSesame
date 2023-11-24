@@ -40,3 +40,33 @@ subprojects.each {
 }
 
 include 'testtargets'
+
+buildCache {
+    if (providers.gradleProperty('buildCacheUrl').orNull) {
+        remote(HttpBuildCache) {
+            url = providers.gradleProperty('buildCacheUrl').orNull
+            credentials {
+                username = providers.gradleProperty('buildCacheUser').orNull
+                password = providers.gradleProperty('buildCachePassword').orNull
+            }
+            if (providers.gradleProperty('buildCachePush').orNull) {
+                push = true
+            } else {
+                push = false
+            }
+        }
+    } else if (System.getenv('BUILD_CACHE_URL')) {
+        remote(HttpBuildCache) {
+            url = System.getenv('BUILD_CACHE_URL')
+            credentials {
+                username = System.getenv('BUILD_CACHE_USER')
+                password = System.getenv('BUILD_CACHE_PASSWORD')
+            }
+            if (System.getenv('BUILD_CACHE_PUSH') || System.getenv('CI')) {
+                push = true
+            } else {
+                push = false
+            }
+        }
+    }
+}
