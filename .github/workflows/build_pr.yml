@@ -15,7 +15,7 @@ jobs:
       - uses: gradle/gradle-build-action@v2
         name: Setup Gradle
         with:
-          cache-read-only: ${{ !startsWith(github.ref, 'refs/heads/1.') }}
+          cache-read-only: true
       - name: Build
         id: assemble
         run: |
