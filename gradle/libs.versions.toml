@@ -1,6 +1,6 @@
 [versions]
 
-junit = "5.8.1"
+junit = "5.10.1"
 jetbrains_annotations = "24.0.1"
 autoservice = "1.0.1"
 
