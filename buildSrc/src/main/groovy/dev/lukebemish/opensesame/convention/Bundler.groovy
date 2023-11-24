@@ -4,13 +4,18 @@ import groovy.json.JsonBuilder
 import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ModuleIdentifier
+import org.gradle.api.artifacts.ModuleVersionIdentifier
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectories
 import org.gradle.api.tasks.TaskAction
 
+import javax.inject.Inject
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.jar.JarFile
@@ -18,12 +23,13 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
 import java.util.zip.ZipEntry
-
 // Stole my own code from groovybundler... it works though
 @CompileStatic
 abstract class Bundler extends DefaultTask {
+    @Input
+    abstract ListProperty<ModuleVersionIdentifier> getBundleArtifactIds()
     @InputFiles
-    abstract Property<Configuration> getBundleConfiguration()
+    abstract ListProperty<File> getBundleArtifactFiles()
 
     @OutputDirectories
     abstract DirectoryProperty getOutputDirectory()
@@ -34,17 +40,41 @@ abstract class Bundler extends DefaultTask {
     @Input
     abstract Property<String> getModulePrefix()
 
+    void bundleConfiguration(Configuration configuration) {
+        var artifacts = providers.provider { configuration.resolvedConfiguration.resolvedArtifacts.collect() }
+        bundleArtifactIds.set(artifacts.map { it.collect { it.moduleVersion.id} })
+        bundleArtifactFiles.set(artifacts.map { it.collect { it.file} })
+        dependsOn(configuration)
+    }
+
+    private final ProviderFactory providers
+
+    @Inject
+    Bundler(ProviderFactory providers) {
+        this.providers = providers
+    }
+
     @TaskAction
     void copyAndProcessJars() {
         var jarjarPath = getOutputDirectory().get().dir("META-INF").dir("jarjar")
         jarjarPath.asFile.deleteDir()
         Files.createDirectories(jarjarPath.asFile.toPath())
         List jarJarJars = []
-        for (final artifact : getBundleConfiguration().get().resolvedConfiguration.resolvedArtifacts) {
-            var resolvedVersion = artifact.moduleVersion
-            String group = resolvedVersion.id.group
-            String name = resolvedVersion.id.name
-            String version = resolvedVersion.id.version
+
+        List<File> artifactFiles = getBundleArtifactFiles().get()
+        List<ModuleVersionIdentifier> artifactIds = getBundleArtifactIds().get()
+
+        if (artifactFiles.size() != artifactIds.size()) {
+            throw new RuntimeException("Artifact files and artifact ids are not the same size")
+        }
+
+        for (int i = 0; i < artifactFiles.size(); i++) {
+            File artifactFile = artifactFiles.get(i)
+            ModuleVersionIdentifier artifactId = artifactIds.get(i)
+            ModuleIdentifier resolvedVersion = artifactId.module
+            String group = resolvedVersion.group
+            String name = resolvedVersion.name
+            String version = artifactId.version
             String modid = group.replaceAll(/\./, "_")+ "_" + name
             Object fmj = [
                     'schemaVersion': 1,
@@ -60,7 +90,7 @@ abstract class Bundler extends DefaultTask {
             var outLicenseDir = getOutputDirectory().get().dir("META-INF").dir("licenses").dir(name)
             outLicenseDir.asFile.deleteDir()
 
-            try (final input = new JarInputStream(artifact.file.newInputStream())
+            try (final input = new JarInputStream(artifactFile.newInputStream())
                  final output = new JarOutputStream(outArchive.asFile.newOutputStream())) {
                 final manifest = new Manifest(input.getManifest())
                 manifest.mainAttributes.putValue('FMLModType', modType.get())
@@ -108,7 +138,7 @@ abstract class Bundler extends DefaultTask {
             }
 
             jarJarJars << [
-                    'identifier': ['group':group, 'artifact':name],
+                    'identifier': ['group':group, 'artifactId':name],
                     'version': ['range':"[${version},)", 'artifactVersion':version],
                     'path': "META-INF/jarjar/${name}-${version}.jar",
                     'isObfuscated': false

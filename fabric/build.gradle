@@ -27,8 +27,7 @@ import dev.lukebemish.opensesame.convention.FabricModJson
 import dev.lukebemish.opensesame.convention.Bundler
 
 tasks.register('bundle', Bundler) {
-    dependsOn configurations.bundle
-    bundleConfiguration = configurations.bundle
+    bundleConfiguration configurations.bundle
     outputDirectory = layout.buildDirectory.dir("bundler")
     modType = 'LIBRARY'
     modulePrefix = 'org.groovymc.groovybundler.jij'

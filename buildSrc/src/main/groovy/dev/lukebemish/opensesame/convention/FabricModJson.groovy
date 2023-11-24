@@ -3,8 +3,8 @@ package dev.lukebemish.opensesame.convention
 import groovy.json.JsonBuilder
 import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
-import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileCollection
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -23,7 +23,7 @@ abstract class FabricModJson extends DefaultTask {
     @Input
     abstract Property<String> getProjectVersion()
     @InputFiles
-    abstract Property<Configuration> getBundledDependencies()
+    abstract Property<FileCollection> getBundledDependencies()
 
     @TaskAction
     void generateFabricModJson() {
