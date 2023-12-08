@@ -62,6 +62,10 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
     }
 
     private static void processFile(Path file, Path out) throws IOException {
+        if (!file.getFileName().toString().endsWith(".class")) {
+            Files.copy(file, out);
+            return;
+        }
         try (var inputStream = Files.newInputStream(file)) {
             ClassReader reader = new ClassReader(inputStream);
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
