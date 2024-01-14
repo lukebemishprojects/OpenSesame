@@ -23,8 +23,9 @@ dependencies {
     annotationProcessor(libs.autoservice)
     compileOnly(libs.autoservice)
 
-    compileOnly libs.fabric.loom
-    compileOnly libs.asm.commons
+    implementation libs.fabric.loom
+    implementation libs.fabric.tinyremapper
+    implementation libs.asm.commons
     implementation libs.asm.core
 
     implementation project(':opensesame-plugin-core')

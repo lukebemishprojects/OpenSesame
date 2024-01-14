@@ -278,7 +278,8 @@ public class ConDynUtils<T, CD, H> {
             targetClassName = targetName;
         }
 
-        targetClassName = classNameRemapper.apply(targetClassName);
+        var originalTargetClassName = targetClassName;
+        targetClassName = classNameRemapper.apply(targetClassName.replace('.', '/')).replace('/', '.');
 
         var classLookupFromNameAndClassloader = invoke(
                 MethodHandle.class.descriptorString(),
@@ -373,6 +374,6 @@ public class ConDynUtils<T, CD, H> {
             );
         }
 
-        return new TypedDynamic<>(classValue, types.type("L"+targetClassName.replace('.', '/')+";"));
+        return new TypedDynamic<>(classValue, types.type("L"+originalTargetClassName.replace('.', '/')+";"));
     }
 }

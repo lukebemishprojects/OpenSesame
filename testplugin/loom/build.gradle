@@ -30,19 +30,25 @@ dependencies {
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
         }
     }
-    testImplementation 'dev.lukebemish.opensesame:testtargets'
+    implementation 'dev.lukebemish.opensesame:testtargets'
     testModuleClasspath 'dev.lukebemish.opensesame:testtargets'
-    testImplementation 'dev.lukebemish.opensesame:opensesame-core'
-    testImplementation libs.asm.core
-    testImplementation libs.junit.api
+    implementation 'dev.lukebemish.opensesame:opensesame-core'
+    implementation libs.asm.core
+    implementation libs.junit.api
     testRuntimeOnly libs.junit.engine
 }
 
 opensesame.loom.apply()
 
-tasks.named('compileTestJava', JavaCompile).configure {
+tasks.named('compileJava', JavaCompile).configure {
     dependsOn(configurations.testSource)
     source(configurations.testSource)
+}
+
+tasks.register('unpackRemappedJar', Copy).configure {
+    dependsOn tasks.remapJar
+    from zipTree(tasks.remapJar.archiveFile)
+    into 'build/unpacked'
 }
 
 test {
@@ -54,10 +60,21 @@ test {
         events = ['passed', 'failed', 'skipped']
     }
 
-    testClassesDirs += files(
-            sourceSets.test.output,
+    testClassesDirs = files(
+            tasks.unpackRemappedJar.outputs,
             configurations.testModuleClasspath
     )
+
+    classpath = files(
+            configurations.testRuntimeClasspath,
+            tasks.unpackRemappedJar.outputs,
+            configurations.testModuleClasspath
+    )
+
+    doFirst {
+        println classpath.files
+        println testClassesDirs.files
+    }
 
     outputs.upToDateWhen {false}
 }

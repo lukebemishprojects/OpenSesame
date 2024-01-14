@@ -94,13 +94,6 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
         Method method = new Method(super.visitMethod(access, name, descriptor, signature, exceptions), parameterTypes, returnType, type, name, isStatic);
 
         return new MethodVisitor(Opcodes.ASM9, method) {
-            boolean inCode;
-
-            @Override
-            public MethodVisitor getDelegate() {
-                if (inCode) return null;
-                return super.getDelegate();
-            }
 
             @Override
             public void visitCode() {
@@ -108,8 +101,6 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
                     super.visitCode();
                     return;
                 }
-
-                inCode = true;
 
                 super.visitCode();
 
@@ -126,15 +117,44 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
                 var methodType = opening.type().ordinal();
 
-                var remappedName = remapMethodName(
-                        opening.targetType(),
-                        opening.name(),
-                        opening.returnType(),
-                        opening.parameterTypes()
-                );
+                String remappedName;
+                if (opening.targetType() == null || opening.returnType() == null || opening.parameterTypes().stream().anyMatch(Objects::isNull)) {
+                    remappedName = opening.name();
+                } else {
+                    remappedName = switch (opening.type()) {
+                        case STATIC -> remapMethodName(
+                                opening.targetType(),
+                                opening.name(),
+                                opening.returnType(),
+                                opening.parameterTypes()
+                        );
+                        case VIRTUAL, SPECIAL -> {
+                            List<Type> parameterTypes = new ArrayList<>(opening.parameterTypes());
+                            parameterTypes.remove(0);
+                            yield remapMethodName(
+                                    opening.targetType(),
+                                    opening.name(),
+                                    opening.returnType(),
+                                    parameterTypes
+                            );
+                        }
+                        case GET_STATIC, GET_INSTANCE -> remapFieldName(
+                                opening.targetType(),
+                                opening.name(),
+                                opening.returnType()
+                        );
+                        case SET_STATIC, SET_INSTANCE -> remapFieldName(
+                                opening.targetType(),
+                                opening.name(),
+                                opening.parameterTypes().get(opening.parameterTypes().size()-1)
+                        );
+                        case CONSTRUCT -> CTOR_DUMMY;
+                        case ARRAY -> opening.name();
+                    };
+                }
 
                 super.visitInvokeDynamicInsn(
-                        opening.type() == Open.Type.CONSTRUCT ? CTOR_DUMMY : remappedName,
+                        remappedName,
                         opening.factoryType().getDescriptor(),
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
@@ -156,6 +176,8 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
                 super.visitMaxs(method.parameterTypes.size() + (isStatic ? 0 : 1), method.parameterTypes.size() + (isStatic ? 0 : 1));
                 super.visitEnd();
+
+                this.mv = null;
             }
         };
     }
@@ -176,6 +198,10 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
     protected String remapMethodName(Type className, String methodName, Type returnType, List<Type> parameters) {
         return methodName;
+    }
+
+    protected String remapFieldName(Type className, String fieldName, Type fieldType) {
+        return fieldName;
     }
 
     @Override

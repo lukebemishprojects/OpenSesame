@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'fabric-loom' version libs.versions.fabric.loom apply false
     id 'dev.lukebemish.opensesame'
+    id 'dev.lukebemish.opensesame.loom' apply false
 }
 
 group='dev.lukebemish.opensesame'

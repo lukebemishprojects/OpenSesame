@@ -19,3 +19,7 @@ build
 
 # other
 eclipse
+
+# loom
+run
+logs
