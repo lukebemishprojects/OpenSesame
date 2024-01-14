@@ -20,7 +20,7 @@ configurations {
 
 dependencies {
     testImplementation project(':opensesame-core')
-    testImplementation libs.asm
+    testImplementation libs.asm.core
     testImplementation libs.junit.api
 }
 

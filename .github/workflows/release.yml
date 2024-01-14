@@ -62,7 +62,8 @@ jobs:
             :opensesame-groovy
             :opensesame-javac
             :opensesame-fabric
-            :opensesame-plugin
+            :opensesame-plugin-core
+            :opensesame-plugin-loom
           gradle-build-configuration: |-
             compileClasspath
           sub-module-mode: COMBINED

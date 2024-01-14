@@ -1,8 +1,18 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
+        maven {
+            name = 'FabricMC'
+            url = 'https://maven.fabricmc.net/'
+        }
     }
     includeBuild('../')
+}
+
+buildscript {
+    dependencies {
+        classpath("com.google.code.gson:gson:2.10.1")
+    }
 }
 
 plugins {
@@ -31,3 +41,5 @@ dependencyResolutionManagement {
         }
     }
 }
+
+include 'loom'

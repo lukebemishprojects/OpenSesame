@@ -126,8 +126,15 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
                 var methodType = opening.type().ordinal();
 
+                var remappedName = remapMethodName(
+                        opening.targetType(),
+                        opening.name(),
+                        opening.returnType(),
+                        opening.parameterTypes()
+                );
+
                 super.visitInvokeDynamicInsn(
-                        opening.type() == Open.Type.CONSTRUCT ? CTOR_DUMMY : opening.name(),
+                        opening.type() == Open.Type.CONSTRUCT ? CTOR_DUMMY : remappedName,
                         opening.factoryType().getDescriptor(),
                         new Handle(
                                 Opcodes.H_INVOKESTATIC,
@@ -163,18 +170,26 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
         return ASMTypeProvider.CON_DYN_UTILS;
     }
 
+    protected String remapClassName(String name) {
+        return name;
+    }
+
+    protected String remapMethodName(Type className, String methodName, Type returnType, List<Type> parameters) {
+        return methodName;
+    }
+
     @Override
-    public Object typeProviderFromAnnotation(Annotation annotation, Method method, Class<?> annotationType) {
-        Object targetClassHandle = null;
+    public ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(Annotation annotation, Method method, Class<?> annotationType) {
+        ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null;
 
         String targetName = (String) annotation.literals.get("targetName");
         Type targetClass = (Type) annotation.literals.get("targetClass");
-        Type targetFunction = (Type) annotation.literals.get("targetProvider");
+        Type targetProvider = (Type) annotation.literals.get("targetProvider");
 
-        if (targetName == null && targetClass == null && targetFunction == null) {
+        if (targetName == null && targetClass == null && targetProvider == null) {
             throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
-        } else if (targetName != null && targetFunction == null) {
-            targetClassHandle = conDynUtils().conDynFromName(targetName);
+        } else if (targetName != null && targetProvider == null) {
+            targetClassHandle = conDynUtils().conDynFromName(targetName, this::remapClassName);
         }
         if (targetClass != null) {
             if (targetClassHandle != null) {
@@ -183,12 +198,12 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
             targetClassHandle = conDynUtils().conDynFromClass(targetClass);
         }
-        if (targetFunction != null) {
+        if (targetProvider != null) {
             if (targetClassHandle != null) {
                 throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
             }
 
-            targetClassHandle = conDynUtils().conDynFromFunction(targetFunction, targetName);
+            targetClassHandle = conDynUtils().conDynFromFunction(targetProvider, targetName);
         }
 
         return targetClassHandle;

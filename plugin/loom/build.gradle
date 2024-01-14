@@ -1,0 +1,85 @@
+plugins {
+    id 'java-gradle-plugin'
+    alias libs.plugins.gradlepublish
+}
+
+java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
+
+group = rootProject.group
+version = rootProject.version
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+java.withSourcesJar()
+
+dependencies {
+    compileOnly libs.jetbrains.annotations
+    annotationProcessor(libs.autoservice)
+    compileOnly(libs.autoservice)
+
+    compileOnly libs.fabric.loom
+    compileOnly libs.asm.commons
+    implementation libs.asm.core
+
+    implementation project(':opensesame-plugin-core')
+
+    implementation project(':opensesame-compile')
+    implementation(project(':opensesame-compile')) {
+        capabilities {
+            requireCapability 'dev.lukebemish.opensesame:opensesame-compile-asm'
+        }
+    }
+}
+
+gradlePlugin {
+    website = 'https://github.com/lukebemishprojects/OpenSesame'
+    vcsUrl = 'https://github.com/lukebemishprojects/OpenSesame.git'
+
+    plugins {
+        openSesameLoom {
+            id = 'dev.lukebemish.opensesame.loom'
+            implementationClass = 'dev.lukebemish.opensesame.plugin.loom.OpenSesamePluginLoom'
+            displayName = 'OpenSesame Loom - Gradle Plugin'
+            description = 'Gradle plugin adding fabric-loom support to OpenSesame, a tool for typesafe access to normally inacessible members'
+            tags.addAll(['java', 'mapping'])
+        }
+    }
+}
+
+processResources {
+    from rootProject.file('LICENSE')
+}
+
+if (System.getenv('PR_NUMBER')) {
+    publishing {
+        repositories {
+            maven {
+                name = 'LocalMaven'
+                url = rootProject.layout.buildDirectory.dir('repo')
+            }
+        }
+    }
+} else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
+    publishing {
+        repositories {
+            maven {
+                name = 'PersonalMaven'
+                url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
+                credentials {
+                    username = System.getenv('MAVEN_USER')
+                    password = System.getenv('MAVEN_PASSWORD')
+                }
+            }
+        }
+    }
+}
+
+tasks.register('release') {
+    dependsOn('publishPlugins')
+}

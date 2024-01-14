@@ -3,9 +3,11 @@ package dev.lukebemish.opensesame.compile;
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.runtime.ClassProvider;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.invoke.*;
 import java.util.List;
+import java.util.function.Function;
 
 public class ConDynUtils<T, CD, H> {
     private final TypeProvider<T, CD, H> types;
@@ -13,6 +15,8 @@ public class ConDynUtils<T, CD, H> {
     public ConDynUtils(TypeProvider<T, CD, H> types) {
         this.types = types;
     }
+
+    public record TypedDynamic<CD, T>(CD constantDynamic, @Nullable T type) {}
 
     public CD invoke(String descriptor, Object handle, Object... args) {
         Object[] fullArgs = new Object[args.length+1];
@@ -110,7 +114,7 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public CD conDynFromFunction(T targetFunction, String targetName) {
+    public TypedDynamic<CD, T> conDynFromFunction(T targetFunction, String targetName) {
         var lookup = invoke(
                 MethodHandles.Lookup.class.descriptorString(),
                 types.handle(
@@ -183,7 +187,7 @@ public class ConDynUtils<T, CD, H> {
                 functionCtor
         );
 
-        return invoke(
+        return new TypedDynamic<>(invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
                         Opcodes.H_INVOKESTATIC,
@@ -195,7 +199,7 @@ public class ConDynUtils<T, CD, H> {
                 fetchClass,
                 1,
                 targetName == null ? makeNull(types.type(String.class)) : targetName
-        );
+        ), null);
     }
 
     public CD makeNull(T type) {
@@ -212,7 +216,7 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public CD conDynFromClass(T targetTypeType) {
+    public TypedDynamic<CD, T> conDynFromClass(T targetTypeType) {
         Object targetType = targetTypeType;
 
         if (types.isPrimitiveOrVoid(targetTypeType)) {
@@ -229,7 +233,7 @@ public class ConDynUtils<T, CD, H> {
             );
         }
 
-        return invoke(
+        return new TypedDynamic<>(invoke(
                 MethodHandle.class.descriptorString(),
                 types.handle(
                         Opcodes.H_INVOKESTATIC,
@@ -252,10 +256,10 @@ public class ConDynUtils<T, CD, H> {
                 ),
                 0,
                 types.type(ClassLoader.class)
-        );
+        ), targetTypeType);
     }
 
-    public CD conDynFromName(String targetName) {
+    public TypedDynamic<CD, T> conDynFromName(String targetName, Function<String, String> classNameRemapper) {
         String targetClassName;
 
         int arrayLevels = 0;
@@ -273,6 +277,8 @@ public class ConDynUtils<T, CD, H> {
         } else {
             targetClassName = targetName;
         }
+
+        targetClassName = classNameRemapper.apply(targetClassName);
 
         var classLookupFromNameAndClassloader = invoke(
                 MethodHandle.class.descriptorString(),
@@ -367,6 +373,6 @@ public class ConDynUtils<T, CD, H> {
             );
         }
 
-        return classValue;
+        return new TypedDynamic<>(classValue, types.type("L"+targetClassName.replace('.', '/')+";"));
     }
 }

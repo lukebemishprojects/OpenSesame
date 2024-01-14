@@ -29,14 +29,17 @@ def subprojects = [
         'compile',
         'groovy',
         'javac',
-        'plugin',
+        'plugin-core',
+        'plugin-loom',
         'fabric'
 ]
 
 include subprojects
 
 subprojects.each {
-    project(":$it").name = "opensesame-$it"
+    def p = project(":$it")
+    p.projectDir = file(it.replace('-', '/'))
+    p.name = "opensesame-$it"
 }
 
 include 'testtargets'

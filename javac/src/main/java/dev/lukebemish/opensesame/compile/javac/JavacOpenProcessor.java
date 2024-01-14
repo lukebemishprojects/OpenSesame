@@ -14,6 +14,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.util.List;
+import java.util.function.Function;
 
 class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTree> {
     private final Elements elements;
@@ -40,8 +41,8 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
     }
 
     @Override
-    public Object typeProviderFromAnnotation(AnnotationTree annotation, MethodTree method, Class<?> annotationType) {
-        Object targetClassHandle = null;
+    public ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationTree annotation, MethodTree method, Class<?> annotationType) {
+        ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null;
 
         String targetName = null;
         Type targetClass = null;
@@ -77,7 +78,7 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
         if (targetName == null && targetClass == null && targetFunction == null) {
             throw new RuntimeException(annotationType.getSimpleName()+" annotation must have exactly one of targetName, targetClass, or targetProvider");
         } else if (targetName != null && targetFunction == null) {
-            targetClassHandle = conDynUtils().conDynFromName(targetName);
+            targetClassHandle = conDynUtils().conDynFromName(targetName, Function.identity());
         }
         if (targetClass != null) {
             if (targetClassHandle != null) {

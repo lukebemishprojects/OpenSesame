@@ -23,11 +23,11 @@ configurations {
 
 dependencies {
     api project(':opensesame-core')
-    asmImplementation libs.asm
+    asmImplementation libs.asm.core
     asmImplementation project
     asmCompileOnly libs.jetbrains.annotations
 
-    testImplementation libs.asm
+    testImplementation libs.asm.core
 
     testSource project(path: ':testtargets', configuration: 'testSource')
 }

@@ -21,4 +21,8 @@ public interface TypeProvider<T, CD, H> {
 
     T returnType(T methodType);
     T[] parameterTypes(T methodType);
+
+    default T makeArray(T type) {
+        return type("["+descriptor(type));
+    }
 }

@@ -30,6 +30,7 @@ import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
+import java.util.function.Function
 
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
@@ -103,8 +104,8 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         return GroovyASMTypeProvider.CON_DYN_UTILS
     }
 
-    Object typeProviderFromAnnotation(AnnotationNode annotationNode, MethodNode methodNode, Class<?> annotationType) {
-        Object targetClassHandle = null
+    ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationNode annotationNode, MethodNode methodNode, Class<?> annotationType) {
+        ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null
 
         var targetName = getMemberStringValue(annotationNode, 'targetName')
         var targetClass = getMemberClassValue(annotationNode, 'targetClass')
@@ -171,7 +172,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         if (targetName === null && targetClass === null && targetFunction === null && targetClosureHandle === null) {
             throw new RuntimeException("${annotationType.simpleName} annotation must have exactly one of targetName, targetClass, or targetProvider")
         } else if (targetName !== null && targetFunction === null) {
-            targetClassHandle = conDynUtils().conDynFromName(targetName)
+            targetClassHandle = conDynUtils().conDynFromName(targetName, Function.identity())
         }
         if (targetClass !== null) {
             if (targetClassHandle !== null) {
@@ -187,7 +188,7 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
 
             targetClassHandle = conDynUtils().conDynFromFunction(types().type(BytecodeHelper.getTypeDescription(targetFunction)), targetName)
         } else if (targetClosureHandle !== null) {
-            targetClassHandle = targetClosureHandle
+            targetClassHandle = new ConDynUtils.TypedDynamic<>(targetClosureHandle, null)
         }
 
         return targetClassHandle

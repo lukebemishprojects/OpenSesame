@@ -1,7 +1,7 @@
 plugins {
     id 'java'
-    id 'fabric-loom' version libs.versions.fabric.loom apply false
-    id 'dev.lukebemish.opensesame'
+    id 'fabric-loom'
+    id 'dev.lukebemish.opensesame.loom'
 }
 
 group='dev.lukebemish.opensesame'
@@ -22,6 +22,9 @@ repositories {
 }
 
 dependencies {
+    minecraft 'com.mojang:minecraft:1.20.4'
+    mappings loom.officialMojangMappings()
+
     testSource('dev.lukebemish.opensesame:testtargets:testsources') {
         attributes {
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
@@ -35,7 +38,7 @@ dependencies {
     testRuntimeOnly libs.junit.engine
 }
 
-opensesame.apply(sourceSets.test)
+opensesame.loom.apply()
 
 tasks.named('compileTestJava', JavaCompile).configure {
     dependsOn(configurations.testSource)

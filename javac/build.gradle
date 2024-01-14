@@ -19,7 +19,7 @@ dependencies {
         }
     }
     api project(':opensesame-core')
-    implementation libs.asm
+    implementation libs.asm.core
 
     testSource project(path: ':testtargets', configuration: 'testSource')
 }

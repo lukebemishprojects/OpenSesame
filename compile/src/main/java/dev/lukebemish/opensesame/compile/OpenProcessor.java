@@ -14,9 +14,9 @@ public interface OpenProcessor<T, A, M> {
     TypeProvider<T, ?, ?> types();
     ConDynUtils<T, ?, ?> conDynUtils();
 
-    Object typeProviderFromAnnotation(A annotation, M method, Class<?> annotationType);
+    ConDynUtils.TypedDynamic<?, T> typeProviderFromAnnotation(A annotation, M method, Class<?> annotationType);
 
-    record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, Open.Type type, String name, boolean unsafe) {}
+    record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, @Nullable T targetType, @Nullable T returnType, List<@Nullable T> parameterTypes, Open.Type type, String name, boolean unsafe) {}
 
     record MethodParameter<T,A>(T type, @Nullable A annotation) {}
 
@@ -35,7 +35,7 @@ public interface OpenProcessor<T, A, M> {
     default Opening<T> opening(M method) {
         A annotation = annotation(method, Open.class);
 
-        Object targetClassHandle = typeProviderFromAnnotation(annotation, method, Open.class);
+        ConDynUtils.TypedDynamic<?, T> targetClassHandle = typeProviderFromAnnotation(annotation, method, Open.class);
 
         String name = name(annotation);
         if (name == null || name.isEmpty()) {
@@ -50,8 +50,8 @@ public interface OpenProcessor<T, A, M> {
         }
 
         T asmDescType = types().methodType(types().descriptor(returnType(method)), parameterDescs);
-        Object returnType = conDynUtils().conDynFromClass(types().returnType(asmDescType));
-        List<Object> parameterTypes = new ArrayList<>(parameters.size());
+        ConDynUtils.TypedDynamic<?, T> returnType = conDynUtils().conDynFromClass(types().returnType(asmDescType));
+        List<ConDynUtils.TypedDynamic<?, T>> parameterTypes = new ArrayList<>(parameters.size());
         for (var parameter : parameters) {
             parameterTypes.add(
                     conDynUtils().conDynFromClass(parameter.type())
@@ -97,7 +97,7 @@ public interface OpenProcessor<T, A, M> {
         }
 
         if (type == Open.Type.ARRAY) {
-            returnType = conDynUtils().invoke(
+            returnType = new ConDynUtils.TypedDynamic<>(conDynUtils().invoke(
                     MethodHandle.class.descriptorString(),
                     types().handle(
                             Opcodes.H_INVOKESTATIC,
@@ -106,7 +106,7 @@ public interface OpenProcessor<T, A, M> {
                             MethodType.methodType(MethodHandle.class, MethodHandle.class, MethodHandle.class).descriptorString(),
                             false
                     ),
-                    targetClassHandle,
+                    targetClassHandle.constantDynamic(),
                     types().handle(
                             Opcodes.H_INVOKEVIRTUAL,
                             types().internalName(Class.class),
@@ -114,7 +114,7 @@ public interface OpenProcessor<T, A, M> {
                             MethodType.methodType(Class.class).descriptorString(),
                             false
                     )
-            );
+            ), types().makeArray(targetClassHandle.type()));
             if (parameterTypes.size() != 1) {
                 throw new RuntimeException("Array constructor must have exactly one parameter");
             }
@@ -123,8 +123,11 @@ public interface OpenProcessor<T, A, M> {
 
         return new Opening<>(
                 asmDescType,
-                targetClassHandle,
-                conDynUtils().conDynMethodType(returnType, parameterTypes),
+                targetClassHandle.constantDynamic(),
+                conDynUtils().conDynMethodType(returnType.constantDynamic(), parameterTypes.stream().map(t -> (Object) t.constantDynamic()).toList()),
+                targetClassHandle.type(),
+                returnType.type(),
+                parameterTypes.stream().map(ConDynUtils.TypedDynamic::type).toList(),
                 type,
                 name,
                 unsafe(annotation)
