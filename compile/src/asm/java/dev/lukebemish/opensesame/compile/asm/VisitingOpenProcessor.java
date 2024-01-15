@@ -174,7 +174,7 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
                     super.visitInsn(Opcodes.RETURN);
                 }
 
-                super.visitMaxs(method.parameterTypes.size() + (isStatic ? 0 : 1), method.parameterTypes.size() + (isStatic ? 0 : 1));
+                super.visitMaxs(Math.max(1, method.parameterTypes.size() + (isStatic ? 0 : 1)), method.parameterTypes.size() + (isStatic ? 0 : 1));
                 super.visitEnd();
 
                 this.mv = null;
