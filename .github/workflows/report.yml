@@ -11,10 +11,13 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
+      - name: Download Test Report
+        uses: actions/download-artifact@v4
+        with:
+          name: junit-test-results
       - name: JUnit Test Report - Java 17
         uses: dorny/test-reporter@v1
         with:
-          artifact: junit-test-results
           name: Test Results - Java 17
           path: "**/test-results/testOn17/**/TEST-*.xml,**/test-results/test/**/TEST-*.xml"
           reporter: java-junit
@@ -23,7 +26,6 @@ jobs:
       - name: JUnit Test Report - Java 21
         uses: dorny/test-reporter@v1
         with:
-          artifact: junit-test-results
           name: Test Results - Java 21
           path: "**/test-results/testOn21/**/TEST-*.xml"
           reporter: java-junit
@@ -32,7 +34,6 @@ jobs:
       - name: JUnit Test Report - Misc
         uses: dorny/test-reporter@v1
         with:
-          artifact: junit-test-results
           name: Test Results - Misc
           path: "**/test-results/test/**/TEST-*.xml"
           reporter: java-junit
