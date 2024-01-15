@@ -1,0 +1,57 @@
+plugins {
+    id 'java'
+    id 'fabric-loom'
+}
+
+group='dev.lukebemish.opensesame'
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+configurations {
+    testModuleClasspath {
+        canBeResolved = true
+    }
+    testClasses {
+        canBeResolved = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.20.4'
+    mappings loom.layered {}
+
+    implementation 'dev.lukebemish.opensesame:testtargets'
+    testModuleClasspath 'dev.lukebemish.opensesame:testtargets'
+    testClasses project(path: ':loom', configuration: 'testClasses')
+    implementation 'dev.lukebemish.opensesame:opensesame-core'
+    implementation libs.asm.core
+    implementation libs.junit.api
+    testRuntimeOnly libs.junit.engine
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events = ['passed', 'failed', 'skipped']
+    }
+
+    testClassesDirs = files(
+            configurations.testClasses,
+            configurations.testModuleClasspath
+    )
+
+    classpath = files(
+            configurations.testRuntimeClasspath,
+            configurations.testClasses,
+            configurations.testModuleClasspath
+    )
+
+    outputs.upToDateWhen {false}
+}

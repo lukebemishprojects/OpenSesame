@@ -19,6 +19,10 @@ managedVersioning.apply()
 
 repositories {
     mavenCentral()
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
 }
 
 dependencies {

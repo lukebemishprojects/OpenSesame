@@ -187,7 +187,6 @@ class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
                 outNodes.add(methodNode)
             }
         }
-        println "handleAmbiguousMethods: $outNodes"
         return outNodes
     }
 }

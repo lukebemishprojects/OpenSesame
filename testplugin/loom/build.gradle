@@ -12,8 +12,9 @@ configurations {
     testSource {
         canBeResolved = true
     }
-    testModuleClasspath {
-        canBeResolved = true
+    testClasses {
+        canBeResolved = false
+        canBeConsumed = true
     }
 }
 
@@ -31,11 +32,9 @@ dependencies {
         }
     }
     implementation 'dev.lukebemish.opensesame:testtargets'
-    testModuleClasspath 'dev.lukebemish.opensesame:testtargets'
     implementation 'dev.lukebemish.opensesame:opensesame-core'
     implementation libs.asm.core
     implementation libs.junit.api
-    testRuntimeOnly libs.junit.engine
 }
 
 opensesame.loom.apply()
@@ -45,36 +44,16 @@ tasks.named('compileJava', JavaCompile).configure {
     source(configurations.testSource)
 }
 
+def unpackedDir = layout.buildDirectory.dir('unpacked')
+
 tasks.register('unpackRemappedJar', Copy).configure {
     dependsOn tasks.remapJar
     from zipTree(tasks.remapJar.archiveFile)
-    into 'build/unpacked'
+    into unpackedDir
 }
 
-test {
-    useJUnitPlatform()
-
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events = ['passed', 'failed', 'skipped']
+artifacts {
+    add('testClasses', unpackedDir) {
+        builtBy tasks.unpackRemappedJar
     }
-
-    testClassesDirs = files(
-            tasks.unpackRemappedJar.outputs,
-            configurations.testModuleClasspath
-    )
-
-    classpath = files(
-            configurations.testRuntimeClasspath,
-            tasks.unpackRemappedJar.outputs,
-            configurations.testModuleClasspath
-    )
-
-    doFirst {
-        println classpath.files
-        println testClassesDirs.files
-    }
-
-    outputs.upToDateWhen {false}
 }

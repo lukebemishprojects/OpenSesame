@@ -43,3 +43,4 @@ dependencyResolutionManagement {
 }
 
 include 'loom'
+include 'loom:exec'
