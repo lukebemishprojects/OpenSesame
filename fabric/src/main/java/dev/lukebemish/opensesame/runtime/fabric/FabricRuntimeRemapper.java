@@ -5,20 +5,17 @@ import dev.lukebemish.opensesame.runtime.RuntimeRemapper;
 import net.fabricmc.loader.api.FabricLoader;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodType;
+
 @AutoService(RuntimeRemapper.class)
 public class FabricRuntimeRemapper implements RuntimeRemapper {
-    private static final String TARGET_NAMESPACE = "intermediary";
+    private static final String SOURCE_NAMESPACE = "intermediary";
     @Override
     public @Nullable String remapMethodName(Class<?> parent, String name, Class<?>[] args, Class<?> returnType) {
         try {
-            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(TARGET_NAMESPACE, parent.getName());
-            StringBuilder methodDesc = new StringBuilder("(");
-            for (var arg : args) {
-                methodDesc.append(classToDesc(arg));
-            }
-            methodDesc.append(")");
-            methodDesc.append(classToDesc(returnType));
-            var newName = FabricLoader.getInstance().getMappingResolver().mapMethodName(TARGET_NAMESPACE, originalClassName, name, methodDesc.toString());
+            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent.getName());
+            var methodDesc = MethodType.methodType(returnType, args).descriptorString();
+            var newName = FabricLoader.getInstance().getMappingResolver().mapMethodName(SOURCE_NAMESPACE, originalClassName, name, methodDesc);
             if (!newName.equals(name))
                 return newName;
         } catch (Exception ignored) {}
@@ -28,9 +25,9 @@ public class FabricRuntimeRemapper implements RuntimeRemapper {
     @Override
     public @Nullable String remapFieldName(Class<?> parent, String name, Class<?> type) {
         try {
-            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(TARGET_NAMESPACE, parent.getName());
+            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent.getName());
             var fieldDesc = classToDesc(type);
-            var newName = FabricLoader.getInstance().getMappingResolver().mapFieldName(TARGET_NAMESPACE, originalClassName, name, fieldDesc);
+            var newName = FabricLoader.getInstance().getMappingResolver().mapFieldName(SOURCE_NAMESPACE, originalClassName, name, fieldDesc);
             if (!newName.equals(name))
                 return newName;
         } catch (Exception ignored) {}
@@ -40,7 +37,7 @@ public class FabricRuntimeRemapper implements RuntimeRemapper {
     @Override
     public @Nullable String remapClassName(String className) {
         try {
-            var newName = FabricLoader.getInstance().getMappingResolver().mapClassName(TARGET_NAMESPACE, className);
+            var newName = FabricLoader.getInstance().getMappingResolver().mapClassName(SOURCE_NAMESPACE, className);
             if (!newName.equals(className))
                 return newName;
             return null;
@@ -50,17 +47,6 @@ public class FabricRuntimeRemapper implements RuntimeRemapper {
     }
 
     private String classToDesc(Class<?> type) {
-        if (type.isArray()) {
-            return "[" + classToDesc(type.getComponentType());
-        } else if (type.isPrimitive()) {
-            return type.getName();
-        } else {
-            try {
-                var name = FabricLoader.getInstance().getMappingResolver().unmapClassName(TARGET_NAMESPACE, type.getName());
-                return "L"+name.replace('.', '/')+";";
-            } catch (Exception e) {
-                return "L"+type.getName().replace('.', '/')+";";
-            }
-        }
+        return type.descriptorString();
     }
 }

@@ -2,11 +2,17 @@ package dev.lukebemish.opensesame.test.java.loom;
 
 import dev.lukebemish.opensesame.annotations.Open;
 import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class TestOpenLoom {
+    @BeforeAll
+    static void init() {
+        FakeKnot.init();
+    }
+
     @Open(
             name = "decompose",
             targetClass = ResourceLocation.class,

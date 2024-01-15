@@ -28,7 +28,7 @@ public class VisitingOpenProcessor extends ClassVisitor implements OpenProcessor
 
     public static void main(String[] args) {
         if ((~args.length & 1) != 1) {
-            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.Processor <input> <output> <input> <output> ...");
+            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor <input> <output> <input> <output> ...");
             System.exit(1);
         }
         for (int i = 0; i < args.length; i += 2) {
