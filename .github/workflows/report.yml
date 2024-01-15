@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_commit }}
+          ref: ${{ github.event.workflow_run.head_commit.id }}
           repository: ${{ github.event.workflow_run.head_repository.full_name }}
       - name: JUnit Test Report - Java 17
         uses: dorny/test-reporter@v1
