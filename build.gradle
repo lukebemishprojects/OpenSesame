@@ -8,11 +8,8 @@ plugins {
 
 managedVersioning {
     versionFile.set rootProject.file('version.properties')
-    if (System.getenv('PR_NUMBER')) {
-        suffixParts.add "pr${System.getenv('PR_NUMBER')}"
-    } else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-        suffixParts.add 'SNAPSHOT'
-    }
+    versionPRs()
+    versionSnapshots()
 }
 
 managedVersioning.apply()
