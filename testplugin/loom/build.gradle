@@ -37,8 +37,6 @@ dependencies {
     implementation libs.junit.api
 }
 
-opensesame.loom.apply()
-
 tasks.named('compileJava', JavaCompile).configure {
     dependsOn(configurations.testSource)
     source(configurations.testSource)
