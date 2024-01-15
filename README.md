@@ -74,7 +74,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'dev.lukebemish.opensesame:opensesame-fabric:<version>'
+    modImplementation 'dev.lukebemish.opensesame:opensesame-fabric:<version>'
     include 'dev.lukebemish.opensesame:opensesame-fabric:<version>'
 }
 ```
