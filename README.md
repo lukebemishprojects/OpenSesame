@@ -42,7 +42,7 @@ dependencies {
 
 OpenSesame can be used with Java in several different ways, depending on your use case.
 
-#### Gradle Plugin (WIP)
+#### Gradle Plugin
 
 Using the gradle plugin, OpenSesame can insert a processing step into the compilation of a source set with ease. This
 should have greater compatibility than the javac plugin. To use, simply apply the plugin, and then apply it to the source
@@ -57,6 +57,25 @@ opensesame.apply(sourceSets.main)
 
 dependencies {
     implementation 'dev.lukebemish.opensesame:opensesame-core:<version>'
+}
+```
+
+#### Gradle Plugin - Loom Integration
+
+if you are using the [`fabric-loom`](https://github.com/FabricMC/fabric-loom/) plugin, OpenSesame can integrate itself
+into the plugin's remapping step, simultaneously processing annotations and remapping provided method, field, or class
+names to intermediary, which can be remapped to named mappings at runtime. To use, apply the plugin and depend on the
+`opensesame-fabric` module:
+
+```gradle
+plugins {
+    id 'fabric-loom' version '<loom-version>'
+    id 'dev.lukebemish.opensesame' version '<version>'
+}
+
+dependencies {
+    implementation 'dev.lukebemish.opensesame:opensesame-fabric:<version>'
+    include 'dev.lukebemish.opensesame:opensesame-fabric:<version>'
 }
 ```
 
