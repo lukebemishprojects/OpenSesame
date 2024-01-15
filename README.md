@@ -64,13 +64,13 @@ dependencies {
 
 if you are using the [`fabric-loom`](https://github.com/FabricMC/fabric-loom/) plugin, OpenSesame can integrate itself
 into the plugin's remapping step, simultaneously processing annotations and remapping provided method, field, or class
-names to intermediary, which can be remapped to named mappings at runtime. To use, apply the plugin and depend on the
-`opensesame-fabric` module:
+names to intermediary, which can be remapped to named mappings at runtime. To use, apply the loom integration plugin and
+depend on the `opensesame-fabric` module:
 
 ```gradle
 plugins {
     id 'fabric-loom' version '<loom-version>'
-    id 'dev.lukebemish.opensesame' version '<version>'
+    id 'dev.lukebemish.opensesame.loom' version '<version>'
 }
 
 dependencies {
