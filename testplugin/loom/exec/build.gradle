@@ -55,9 +55,7 @@ tasks.register('unpackRemappedJar', Copy).configure {
 }
 
 test {
-    useJUnitPlatform {
-        excludeTags 'modules'
-    }
+    useJUnitPlatform()
 
     testLogging {
         showStandardStreams = true
