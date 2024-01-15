@@ -29,3 +29,12 @@ jobs:
           reporter: java-junit
           fail-on-empty: 'true'
           list-tests: 'failed'
+      - name: JUnit Test Report - Misc
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: junit-test-results
+          name: Test Results - Misc
+          path: "**/test-results/test/**/TEST-*.xml"
+          reporter: java-junit
+          fail-on-empty: 'true'
+          list-tests: 'failed'
