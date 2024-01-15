@@ -42,14 +42,14 @@ jobs:
         env:
           SNAPSHOT_MAVEN_URL: https://maven.lukebemish.dev/snapshots/
       - name: Upload Test Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: (success() || failure()) && steps.assemble.conclusion == 'success'
         with:
           name: junit-test-results
           path: "**/build/test-results/*/TEST-*.xml"
           retention-days: 1
       - name: Upload Coverage Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: (success() || failure()) && steps.assemble.conclusion == 'success'
         with:
           name: jacoco-coverage
