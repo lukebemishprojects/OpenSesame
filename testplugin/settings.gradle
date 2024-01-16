@@ -43,4 +43,5 @@ dependencyResolutionManagement {
 }
 
 include 'loom'
-include 'loom:exec'
+include 'loom:exec-named'
+include 'loom:exec-intermediary'

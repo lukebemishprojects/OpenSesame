@@ -6,20 +6,40 @@ import net.fabricmc.loom.api.remapping.RemapperExtension;
 import net.fabricmc.loom.api.remapping.RemapperParameters;
 import net.fabricmc.loom.api.remapping.TinyRemapperExtension;
 import net.fabricmc.tinyremapper.TinyRemapper;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.specs.Spec;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Type;
 
+import javax.inject.Inject;
 import java.util.List;
 
 @SuppressWarnings("UnstableApiUsage")
-public abstract class OpeningRemapperExtension implements RemapperExtension<RemapperParameters.None>, TinyRemapperExtension {
+public abstract class OpeningRemapperExtension implements RemapperExtension<OpeningRemapperExtension.OpeningRemapperParameters>, TinyRemapperExtension {
+    private final OpeningRemapperParameters parameters;
+
+    @Inject
+    public OpeningRemapperExtension(OpeningRemapperParameters parameters) {
+        this.parameters = parameters;
+    }
+
+    public static abstract class OpeningRemapperParameters implements RemapperParameters {
+        public abstract ListProperty<Spec<Context>> getContextFilters();
+
+        public void contextFilter(Spec<TinyRemapperExtension.Context> spec) {
+            getContextFilters().add(spec);
+        }
+    }
+
     @Nullable
     @Override
-    public TinyRemapper.ApplyVisitorProvider getPreApplyVisitor() {
+    public TinyRemapper.@Nullable ApplyVisitorProvider getPreApplyVisitor(Context context) {
         return (cls, classVisitor) -> {
-            if ("named".equals("")) {
-                return classVisitor;
+            for (var spec : parameters.getContextFilters().get()) {
+                if (!spec.isSatisfiedBy(context)) {
+                    return classVisitor;
+                }
             }
 
             var remapper = cls.getEnvironment().getRemapper();

@@ -1,0 +1,74 @@
+import net.fabricmc.loom.task.RemapJarTask
+
+plugins {
+    id 'java'
+    id 'fabric-loom'
+}
+
+loom {
+    knownIndyBsms.add 'dev/lukebemish/opensesame/runtime/OpeningMetafactory'
+    runs.removeAll()
+}
+
+group='dev.lukebemish.opensesame'
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+configurations {
+    testClasses {
+        canBeResolved = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.20.4'
+    mappings loom.layered {}
+
+    testClasses project(path: ':loom', configuration: 'testClasses')
+
+    implementation 'dev.lukebemish.opensesame:testtargets'
+    implementation 'dev.lukebemish.opensesame:opensesame-core'
+    implementation libs.asm.core
+    implementation libs.junit.api
+
+    testRuntimeOnly libs.junit.engine
+    modImplementation libs.fabric.loader
+}
+
+tasks.register('remapTestClasses', RemapJarTask).configure {
+    dependsOn configurations.testClasses
+    input.set configurations.testClasses.singleFile
+    targetNamespace.set 'named'
+    sourceNamespace.set 'intermediary'
+    archiveClassifier.set 'remapped'
+}
+
+tasks.register('unpackRemappedJar', Copy).configure {
+    dependsOn tasks.remapTestClasses
+    from zipTree(tasks.remapTestClasses.archiveFile)
+    into layout.buildDirectory.dir('unpacked')
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events = ['passed', 'failed', 'skipped']
+    }
+
+    testClassesDirs += files(
+            tasks.unpackRemappedJar.outputs
+    )
+
+    classpath += files(
+            tasks.unpackRemappedJar.outputs
+    )
+
+    outputs.upToDateWhen {false}
+}
