@@ -1,12 +1,15 @@
 package dev.lukebemish.opensesame.runtime;
 
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
 import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.lang.reflect.Method;
+import java.util.*;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -270,5 +273,182 @@ public final class OpeningMetafactory {
             }
         }
         return className;
+    }
+
+    public static CallSite makeOpenClass(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> targetClass, MethodHandle infoGetter, boolean unsafe, MethodHandle classFieldPutter, MethodHandle classFieldGetter) {
+        // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
+        List<List<Object>> fields;
+        // Override list format: String name, MethodType interface, String overrideName, MethodType toOverride
+        List<List<Object>> overrides;
+        // Ctor list format: MethodType type, MethodType superType, List<String> fields
+        List<List<Object>> ctors;
+        try {
+            //noinspection unchecked
+            List<List<List<Object>>> all = (List<List<List<Object>>>) infoGetter.invokeExact(caller.lookupClass().getClassLoader());
+            fields = all.get(0);
+            overrides = all.get(1);
+            ctors = all.get(2);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+        Class<?> holdingClass = caller.lookupClass();
+        if (!factoryType.returnType().equals(holdingClass)) {
+            throw new OpeningException("Factory type return type must be the same as the holding class");
+        }
+        MethodHandles.Lookup lookup;
+        try {
+            if (unsafe) {
+                lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, holdingClass);
+            } else {
+                lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, holdingClass);
+            }
+        } catch (IllegalAccessException e) {
+            throw new OpeningException("Issue creating lookup", e);
+        }
+
+        Class<?> generatedClass;
+        try {
+            generatedClass = (Class<?>) classFieldGetter.invokeExact();
+            if (generatedClass == null) {
+                generatedClass = generateClass(lookup, targetClass, targetMethodName, holdingClass, fields, overrides, ctors);
+                classFieldPutter.invokeExact(generatedClass);
+            }
+            MethodHandle ctor = lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class));
+            return new ConstantCallSite(ctor);
+        } catch (Throwable e) {
+            throw new OpeningException("Could not get existing generated subclass", e);
+        }
+    }
+
+    private static Class<?> generateClass(MethodHandles.Lookup lookup, Class<?> targetClass, String targetMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
+        var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        String generatedClassName = Type.getInternalName(targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + targetMethodName;
+        classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(targetClass), new String[] {Type.getInternalName(holdingClass)});
+
+        Map<String, Class<?>> fieldTypes = new HashMap<>();
+
+        for (var field : fields) {
+            String fieldName = (String) field.get(0);
+            var fieldType = (Class<?>) field.get(1);
+            boolean isFinal = (boolean) field.get(2);
+            fieldTypes.put(fieldName, fieldType);
+            classWriter.visitField(Opcodes.ACC_PRIVATE | (isFinal ? Opcodes.ACC_FINAL : 0), fieldName, Type.getDescriptor(fieldType), null, null).visitEnd();
+            //noinspection unchecked
+            List<String> setters = (List<String>) field.get(3);
+            //noinspection unchecked
+            List<String> getters = (List<String>) field.get(4);
+            for (var setter : setters) {
+                Arrays.stream(holdingClass.getMethods())
+                        .filter(m -> m.getName().equals(setter) && m.getParameterCount() == 1 && m.getReturnType().equals(void.class) && m.getParameterTypes()[0].equals(fieldType))
+                        .findFirst()
+                        .orElseThrow(() -> new OpeningException("Could not find interface method to overload with name "+setter+", type "+fieldType));
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, setter, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(fieldType)), null, null);
+                methodVisitor.visitCode();
+                methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ALOAD), 1);
+                methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
+                methodVisitor.visitInsn(Opcodes.RETURN);
+                methodVisitor.visitMaxs(2, 2);
+                methodVisitor.visitEnd();
+            }
+            for (var getter : getters) {
+                Arrays.stream(holdingClass.getDeclaredMethods())
+                        .filter(m -> m.getName().equals(getter) && m.getParameterCount() == 0 && m.getReturnType().equals(fieldType))
+                        .findFirst()
+                        .orElseThrow(() -> new OpeningException("Could not find interface method to overload with name "+getter+", type "+fieldType));
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, getter, Type.getMethodDescriptor(Type.getType(fieldType)), null, null);
+                methodVisitor.visitCode();
+                methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                methodVisitor.visitFieldInsn(Opcodes.GETFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
+                methodVisitor.visitInsn(Type.getType(fieldType).getOpcode(Opcodes.ARETURN));
+                methodVisitor.visitMaxs(1, 1);
+                methodVisitor.visitEnd();
+            }
+        }
+
+        for (var override : overrides) {
+            var name = (String) override.get(0);
+            var interfaceType = (MethodType) override.get(1);
+            var overrideName = (String) override.get(2);
+            var overrideType = (MethodType) override.get(3);
+            Arrays.stream(holdingClass.getDeclaredMethods())
+                    .filter(m -> m.getName().equals(name) && m.getParameterCount() == interfaceType.parameterCount() && m.getReturnType().equals(interfaceType.returnType()) && Arrays.equals(m.getParameterTypes(), interfaceType.parameterArray()))
+                    .filter(Method::isDefault)
+                    .findFirst()
+                    .orElseThrow(() -> new OpeningException("Could not find interface method to bounce override to with name "+name+", type "+interfaceType));
+            var parameterTypes = Arrays.stream(overrideType.parameterArray()).map(Type::getType).toArray(Type[]::new);
+            var overrideDesc = Type.getMethodDescriptor(Type.getType(overrideType.returnType()), parameterTypes);
+            var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, overrideName, overrideDesc, null, null);
+            methodVisitor.visitCode();
+            methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+            for (int i = 0; i < overrideType.parameterCount(); i++) {
+                methodVisitor.visitVarInsn(Type.getType(overrideType.parameterType(i)).getOpcode(Opcodes.ALOAD), i+1);
+            }
+            var fullParameterTypes = new Type[overrideType.parameterCount() + 1];
+            fullParameterTypes[0] = Type.getType(holdingClass);
+            System.arraycopy(parameterTypes, 0, fullParameterTypes, 1, parameterTypes.length);
+            var fullInterfaceParameterTypes = new Type[interfaceType.parameterCount() + 1];
+            fullInterfaceParameterTypes[0] = Type.getType(holdingClass);
+            System.arraycopy(Arrays.stream(interfaceType.parameterArray()).map(Type::getType).toArray(Type[]::new), 0, fullInterfaceParameterTypes, 1, interfaceType.parameterCount());
+            methodVisitor.visitInvokeDynamicInsn(
+                    name,
+                    Type.getMethodDescriptor(Type.getType(overrideType.returnType()), fullParameterTypes),
+                    new Handle(
+                            Opcodes.H_INVOKESTATIC,
+                            Type.getInternalName(OpeningMetafactory.class),
+                            "invoke",
+                            MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, int.class).toMethodDescriptorString(),
+                            false
+                    ),
+                    MinimalConDynUtils.conDynFromClass(Type.getType(holdingClass)),
+                    MinimalConDynUtils.conDynMethodType(MinimalConDynUtils.conDynFromClass(Type.getType(interfaceType.returnType())), Arrays.stream(fullInterfaceParameterTypes).map(MinimalConDynUtils::conDynFromClass).toList()),
+                    VIRTUAL_TYPE
+            );
+            if (overrideType.returnType().equals(void.class)) {
+                methodVisitor.visitInsn(Opcodes.RETURN);
+            } else {
+                methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.ARETURN));
+            }
+            methodVisitor.visitMaxs(1, 1);
+            methodVisitor.visitEnd();
+        }
+
+        for (var ctor : ctors) {
+            var ctorType = (MethodType) ctor.get(0);
+            var superType = (MethodType) ctor.get(1);
+            //noinspection unchecked
+            var fieldsToSet = (List<String>) ctor.get(2);
+
+            var ctorDesc = ctorType.descriptorString();
+            var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "<init>", ctorDesc, null, null);
+            methodVisitor.visitCode();
+            var superCtorCount = superType.parameterCount();
+            var remainingCount = ctorType.parameterCount() - fieldsToSet.size();
+            if (superCtorCount != remainingCount) {
+                throw new OpeningException("Super constructor parameter count does not match remaining parameter count");
+            }
+            methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+            for (int i = 0; i < superCtorCount; i++) {
+                methodVisitor.visitVarInsn(Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1)).getOpcode(Opcodes.ALOAD), i+1);
+            }
+            methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", superType.descriptorString(), false);
+            for (int i = 0; i < fieldsToSet.size(); i++) {
+                var fieldName = fieldsToSet.get(i);
+                var fieldType = fieldTypes.get(fieldName);
+                methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ALOAD), i+1);
+                methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
+            }
+            methodVisitor.visitInsn(Opcodes.RETURN);
+            methodVisitor.visitMaxs(1, 1);
+            methodVisitor.visitEnd();
+        }
+        classWriter.visitEnd();
+
+        try {
+            return lookup.defineHiddenClass(classWriter.toByteArray(), false).lookupClass();
+        } catch (IllegalAccessException e) {
+            throw new OpeningException("Issue creating hidden class", e);
+        }
     }
 }
