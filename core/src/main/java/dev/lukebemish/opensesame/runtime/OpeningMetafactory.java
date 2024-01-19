@@ -275,7 +275,8 @@ public final class OpeningMetafactory {
         return className;
     }
 
-    public static CallSite makeOpenClass(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, Class<?> targetClass, MethodHandle infoGetter, boolean unsafe, MethodHandle classFieldPutter, MethodHandle classFieldGetter) {
+    public static CallSite makeOpenClass(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle targetClassGetter, boolean unsafe, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
+        Class<?> targetClass;
         // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
         List<List<Object>> fields;
         // Override list format: String name, MethodType interface, String overrideName, MethodType toOverride
@@ -283,13 +284,14 @@ public final class OpeningMetafactory {
         // Ctor list format: MethodType type, MethodType superType, List<String> fields
         List<List<Object>> ctors;
         try {
+            targetClass = (Class<?>) targetClassGetter.invokeExact(caller.lookupClass().getClassLoader());
             //noinspection unchecked
             List<List<List<Object>>> all = (List<List<List<Object>>>) infoGetter.invokeExact(caller.lookupClass().getClassLoader());
             fields = all.get(0);
             overrides = all.get(1);
             ctors = all.get(2);
         } catch (Throwable e) {
-            throw new RuntimeException(e);
+            throw new OpeningException(e);
         }
         Class<?> holdingClass = caller.lookupClass();
         if (!factoryType.returnType().equals(holdingClass)) {
@@ -320,9 +322,9 @@ public final class OpeningMetafactory {
         }
     }
 
-    private static Class<?> generateClass(MethodHandles.Lookup lookup, Class<?> targetClass, String targetMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
+    private static Class<?> generateClass(MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        String generatedClassName = Type.getInternalName(targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + targetMethodName;
+        String generatedClassName = Type.getInternalName(targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
         classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(targetClass), new String[] {Type.getInternalName(holdingClass)});
 
         Map<String, Class<?>> fieldTypes = new HashMap<>();
