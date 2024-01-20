@@ -3,7 +3,7 @@ package dev.lukebemish.opensesame.compile.javac;
 import com.sun.source.tree.*;
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.compile.ConDynUtils;
-import dev.lukebemish.opensesame.compile.OpenProcessor;
+import dev.lukebemish.opensesame.compile.Processor;
 import dev.lukebemish.opensesame.compile.TypeProvider;
 import dev.lukebemish.opensesame.compile.asm.ASMTypeProvider;
 import org.jetbrains.annotations.Nullable;
@@ -16,11 +16,11 @@ import javax.lang.model.util.Elements;
 import java.util.List;
 import java.util.function.Function;
 
-class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTree> {
+class JavacProcessor implements Processor<Type, AnnotationTree, MethodTree> {
     private final Elements elements;
     public final Type declaringClassType;
 
-    JavacOpenProcessor(ClassTree enclosingClass, Elements elements) {
+    JavacProcessor(ClassTree enclosingClass, Elements elements) {
         this.elements = elements;
         try {
             String name = elements.getBinaryName((TypeElement) Utils.JC_CLASS_GET_SYMBOL.invoke(enclosingClass)).toString().replace('.','/');
@@ -41,7 +41,7 @@ class JavacOpenProcessor implements OpenProcessor<Type, AnnotationTree, MethodTr
     }
 
     @Override
-    public ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationTree annotation, MethodTree method, Class<?> annotationType) {
+    public ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationTree annotation, Object context, Class<?> annotationType) {
         ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null;
 
         String targetName = null;

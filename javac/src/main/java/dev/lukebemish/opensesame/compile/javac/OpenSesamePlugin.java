@@ -4,7 +4,7 @@ import com.google.auto.service.AutoService;
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
 import dev.lukebemish.opensesame.annotations.Open;
-import dev.lukebemish.opensesame.compile.OpenProcessor;
+import dev.lukebemish.opensesame.compile.Processor;
 import dev.lukebemish.opensesame.compile.OpenSesameGenerated;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.objectweb.asm.ClassWriter;
@@ -70,7 +70,7 @@ public class OpenSesamePlugin implements Plugin {
                     public Void visitClass(ClassTree node, Context unused) {
                         Context inner = new Context();
                         inner.enclosingClass = node;
-                        inner.processor = new JavacOpenProcessor(node, elements);
+                        inner.processor = new JavacProcessor(node, elements);
                         String binName = inner.processor.declaringClassType.getInternalName();
                         if (!binName.equals(targetBinName)) {
                             return super.visitClass(node, new Context());
@@ -96,7 +96,7 @@ public class OpenSesamePlugin implements Plugin {
                     }
 
                     void fillMethod(MethodTree method, Context inner) {
-                        OpenProcessor.Opening<Type> opening = inner.processor.opening(method);
+                        Processor.Opening<Type> opening = inner.processor.opening(method);
 
                         var name = method.getName().toString() +
                                 opening.factoryType().getDescriptor().replace('/','$').replace(";","$$").replace("[","$_Array$").replace("(", "$_Args$").replace(")", "$$");
@@ -221,7 +221,7 @@ public class OpenSesamePlugin implements Plugin {
     }
 
     private static final class Context {
-        JavacOpenProcessor processor = null;
+        JavacProcessor processor = null;
         ClassWriter writer = null;
         ClassTree enclosingClass = null;
     }

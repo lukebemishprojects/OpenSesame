@@ -275,7 +275,7 @@ public final class OpeningMetafactory {
         return className;
     }
 
-    public static CallSite makeOpenClass(MethodHandles.Lookup caller, String targetMethodName, MethodType factoryType, MethodHandle targetClassGetter, boolean unsafe, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
+    public static CallSite makeOpenClass(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, boolean unsafe, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
         Class<?> targetClass;
         // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
         List<List<Object>> fields;
@@ -312,7 +312,7 @@ public final class OpeningMetafactory {
         try {
             generatedClass = (Class<?>) classFieldGetter.invokeExact();
             if (generatedClass == null) {
-                generatedClass = generateClass(lookup, targetClass, targetMethodName, holdingClass, fields, overrides, ctors);
+                generatedClass = generateClass(lookup, targetClass, constructionMethodName, holdingClass, fields, overrides, ctors);
                 classFieldPutter.invokeExact(generatedClass);
             }
             MethodHandle ctor = lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class));

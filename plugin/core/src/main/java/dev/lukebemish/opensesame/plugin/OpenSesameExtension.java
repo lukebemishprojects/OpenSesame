@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.plugin;
 
-import dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor;
+import dev.lukebemish.opensesame.compile.asm.VisitingProcessor;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.tasks.SourceSet;
@@ -25,7 +25,7 @@ public abstract class OpenSesameExtension implements ExtensionAware {
                 compileTask.doLast("processOpenSesame", task -> {
                     try {
                         Path classesPath = compileTask.getDestinationDirectory().get().getAsFile().toPath();
-                        VisitingOpenProcessor.process(classesPath, classesPath);
+                        VisitingProcessor.process(classesPath, classesPath);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }

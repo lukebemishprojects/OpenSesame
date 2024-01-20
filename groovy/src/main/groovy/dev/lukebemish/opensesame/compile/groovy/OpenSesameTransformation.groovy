@@ -3,7 +3,7 @@ package dev.lukebemish.opensesame.compile.groovy
 import dev.lukebemish.opensesame.annotations.Coerce
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.compile.ConDynUtils
-import dev.lukebemish.opensesame.compile.OpenProcessor
+import dev.lukebemish.opensesame.compile.Processor
 import dev.lukebemish.opensesame.compile.TypeProvider
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
@@ -35,7 +35,7 @@ import java.util.function.Function
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
 @PackageScope(PackageScopeTarget.CLASS)
-class OpenTransformation extends AbstractASTTransformation implements OpenProcessor<Type, AnnotationNode, MethodNode> {
+class OpenSesameTransformation extends AbstractASTTransformation implements Processor<Type, AnnotationNode, MethodNode> {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
@@ -104,7 +104,20 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
         return GroovyASMTypeProvider.CON_DYN_UTILS
     }
 
-    ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationNode annotationNode, MethodNode methodNode, Class<?> annotationType) {
+    ConDynUtils.TypedDynamic<?, Type> typeProviderFromAnnotation(AnnotationNode annotationNode, Object nodeContext, Class<?> annotationType) {
+        var methodOrTypeNode = (AnnotatedNode) nodeContext
+        String nodeName
+        ClassNode declaringClass
+        if (methodOrTypeNode instanceof MethodNode) {
+            nodeName = methodOrTypeNode.name
+            declaringClass = methodOrTypeNode.declaringClass
+        } else if (methodOrTypeNode instanceof ClassNode) {
+            nodeName = methodOrTypeNode.name
+            declaringClass = methodOrTypeNode
+        } else {
+            throw new RuntimeException("Expected either a MethodNode or a ClassNode, but got ${methodOrTypeNode.getClass().simpleName}")
+        }
+
         ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null
 
         var targetName = getMemberStringValue(annotationNode, 'targetName')
@@ -121,14 +134,14 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                     throw new RuntimeException("First parameter of closure passed to ${annotationType.simpleName}, if it exists, must be either an Object or a String")
                 }
 
-                int count = (int) (methodNode.getNodeMetaData(METHOD_CLOSURE_COUNT_META) ?: 0)
+                int count = (int) (methodOrTypeNode.getNodeMetaData(METHOD_CLOSURE_COUNT_META) ?: 0)
 
-                String generatedMethodName = "\$dev_lukebemish_opensesame\$typeFinding\$${count++}\$_${methodNode.name}"
+                String generatedMethodName = "\$dev_lukebemish_opensesame\$typeFinding\$${count++}\$_${nodeName}"
 
                 var pName1 = member.parameters === null || member.parameters.length <= 0 ? 'it' : member.parameters[0].name
                 var pName2 = member.parameters === null || member.parameters.length <= 1 ? 'not$$$'+pName1 : member.parameters[1].name
 
-                var generatedMethod = methodNode.declaringClass.addMethod(
+                var generatedMethod = declaringClass.addMethod(
                         generatedMethodName,
                         Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
                         GENERIC_CLASS,
@@ -140,16 +153,16 @@ class OpenTransformation extends AbstractASTTransformation implements OpenProces
                         member.code
                 )
 
-                methodNode.setNodeMetaData(METHOD_CLOSURE_COUNT_META, count)
+                methodOrTypeNode.setNodeMetaData(METHOD_CLOSURE_COUNT_META, count)
 
                 generatedMethod.synthetic = true
 
                 targetClosureHandle = new Handle(
                         Opcodes.H_INVOKESTATIC,
-                        BytecodeHelper.getClassInternalName(methodNode.declaringClass),
+                        BytecodeHelper.getClassInternalName(declaringClass),
                         generatedMethodName,
                         MethodType.methodType(Class, ClassLoader, String).descriptorString(),
-                        methodNode.declaringClass.interface
+                        declaringClass.interface
                 )
 
                 targetClosureHandle = conDynUtils().invoke(

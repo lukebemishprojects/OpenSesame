@@ -10,13 +10,20 @@ import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface OpenProcessor<T, A, M> {
+public interface Processor<T, A, M> {
     TypeProvider<T, ?, ?> types();
     ConDynUtils<T, ?, ?> conDynUtils();
 
-    ConDynUtils.TypedDynamic<?, T> typeProviderFromAnnotation(A annotation, M method, Class<?> annotationType);
+    ConDynUtils.TypedDynamic<?, T> typeProviderFromAnnotation(A annotation, Object context, Class<?> annotationType);
 
     record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, @Nullable T targetType, @Nullable T returnType, List<@Nullable T> parameterTypes, Open.Type type, String name, boolean unsafe) {}
+    record ExtendFieldInfo<T>(String name, T type, boolean isFinal, List<String> setters, List<String> getters) {
+        public ExtendFieldInfo(String name, T type, boolean isFinal) {
+            this(name, type, isFinal, new ArrayList<>(), new ArrayList<>());
+        }
+    }
+    record ExtendOverrideInfo(String name, Object interfaceTypeHandle, String originalName, Object originalTypeHandle) {}
+    record ExtendCtorInfo(Object ctorType, Object superCtorType, List<String> fields) {}
 
     record MethodParameter<T,A>(T type, @Nullable A annotation) {}
 

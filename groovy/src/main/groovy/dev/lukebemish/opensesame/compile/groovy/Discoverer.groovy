@@ -18,7 +18,7 @@ import org.codehaus.groovy.transform.GroovyASTTransformation
 class Discoverer implements ASTTransformation {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
 
-    private final OpenTransformation openTransformation = new OpenTransformation()
+    private final OpenSesameTransformation openTransformation = new OpenSesameTransformation()
 
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
