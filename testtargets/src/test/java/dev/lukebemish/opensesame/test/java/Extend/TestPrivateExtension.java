@@ -23,7 +23,7 @@ public class TestPrivateExtension {
         }
     }
 
-    @Extend(targetName = "dev.lukebemish.opensesame.test.java.samemoduletarget.Public$Private")
+    @Extend(targetName = "dev.lukebemish.opensesame.test.java.samemoduletarget.Public$Private", unsafe = false)
     public interface ExtensionSafe {
         @Constructor
         static ExtensionSafe constructor() {

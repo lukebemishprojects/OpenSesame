@@ -16,5 +16,5 @@ public @interface Extend {
 
     Class<?> targetProvider() default ErrorProvider.class;
 
-    boolean unsafe() default false;
+    boolean unsafe();
 }
