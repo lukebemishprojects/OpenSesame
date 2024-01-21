@@ -260,7 +260,6 @@ final class Utils {
     }
 
     @Open(
-            name = "loadableConstantArray",
             targetName = "com.sun.tools.javac.jvm.PoolConstant$LoadableConstant",
             type = Open.Type.ARRAY,
             unsafe = true
