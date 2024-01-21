@@ -34,6 +34,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             Type.getType(Constructor.class)
     );
     private static final String CTOR_DUMMY = "$$dev$lukebemish$opensesame$$new";
+    private static final String EXTEND_INFO_GENERATED = "$$dev$lukebemish$opensesame$$extendInfo";
+    private static final String EXTEND_GENERATED_CLASS = "$$dev$lukebemish$opensesame$$extendGENERATED";
 
     private final Set<String> annotationDescriptors;
     private Type type;
@@ -88,11 +90,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     boolean isExtension = false;
     private boolean isInterface = false;
-    ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null;
+    ConDynUtils.TypedDynamic<?, Type> extendTargetClassHandle = null;
     Map<String, Annotation> annotations = new HashMap<>();
     Map<String, ExtendFieldInfo<Type>> fields = new HashMap<>();
     List<ExtendOverrideInfo> overrides = new ArrayList<>();
     List<ExtendCtorInfo> ctors = new ArrayList<>();
+    boolean hasClassInit = false;
 
     public VisitingProcessor(ClassVisitor delegate, Set<Type> annotations) {
         super(Opcodes.ASM9, delegate);
@@ -106,11 +109,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             var annotation = new Annotation(super.visitAnnotation(descriptor, visible), descriptor);
             if (descriptor.equals(Extend.class.descriptorString())) {
                 if (!isInterface) {
-                    throw new RuntimeException("Extend annotation must be only used on an interface");
+                    throw new RuntimeException("@Extend annotation must be only used on an interface");
                 }
                 isExtension = true;
                 annotation.onEnd(() -> {
-                    targetClassHandle = typeProviderFromAnnotation(annotation, null, Extend.class);
+                    extendTargetClassHandle = typeProviderFromAnnotation(annotation, null, Extend.class);
                 });
             }
             if (annotations.put(descriptor, annotation) != null) {
@@ -309,6 +312,135 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     public record EnumConstant(Type type, String value) {}
 
+    @Override
+    public void visitEnd() {
+        if (isExtension) {
+            for (var field : fields.values()) {
+                if (field.isFinal() && !field.getters().isEmpty()) {
+                    throw new RuntimeException("@Field "+field.name()+" is final, but has getters");
+                }
+            }
+            var classHolderField = visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_FINAL, EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()), null, null);
+            classHolderField.visitEnd();
+            var setter = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, Type.getMethodDescriptor(Type.getType(void.class), Type.getType(Class.class)), null, null);
+            setter.visitCode();
+            setter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+            setter.visitInsn(Opcodes.DUP);
+            setter.visitInsn(Opcodes.MONITORENTER);
+            setter.visitInsn(Opcodes.ICONST_0);
+            setter.visitVarInsn(Opcodes.ALOAD, 0);
+            setter.visitInsn(Opcodes.AASTORE);
+            setter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+            setter.visitInsn(Opcodes.MONITOREXIT);
+            setter.visitInsn(Opcodes.RETURN);
+            setter.visitMaxs(1, 1);
+            setter.visitEnd();
+            var getter = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, Type.getMethodDescriptor(Type.getType(Class.class)), null, null);
+            getter.visitCode();
+            getter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+            getter.visitInsn(Opcodes.DUP);
+            getter.visitInsn(Opcodes.MONITORENTER);
+            getter.visitInsn(Opcodes.ICONST_0);
+            getter.visitInsn(Opcodes.AALOAD);
+            getter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+            getter.visitInsn(Opcodes.MONITOREXIT);
+            getter.visitInsn(Opcodes.ARETURN);
+            getter.visitMaxs(1, 0);
+            getter.visitEnd();
+            var info = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_INFO_GENERATED, Type.getMethodDescriptor(Type.getType(List.class), Type.getType(ClassLoader.class)), null, null);
+            info.visitCode();
+
+            int maxStack = 7;
+
+            newArrayList(info);
+
+            // fields:
+            info.visitInsn(Opcodes.DUP);
+            newArrayList(info);
+            // add all the fields
+            for (var field : fields.values()) {
+                info.visitInsn(Opcodes.DUP);
+                // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
+                info.visitLdcInsn(field.name());
+                info.visitLdcInsn(field.type());
+                info.visitLdcInsn(field.isFinal());
+                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(Boolean.class), "valueOf", MethodType.methodType(Boolean.class, boolean.class).descriptorString(), false);
+
+                // add getters through ArrayList
+                newArrayList(info);
+                maxStack = Math.max(maxStack, 6 + field.getters().size());
+                for (var gName : field.getters()) {
+                    info.visitInsn(Opcodes.DUP);
+                    info.visitLdcInsn(gName);
+                    addToList(info);
+                }
+
+                // add setters through ArrayList
+                newArrayList(info);
+                maxStack = Math.max(maxStack, 6 + field.setters().size());
+                for (var sName : field.setters()) {
+                    info.visitInsn(Opcodes.DUP);
+                    info.visitLdcInsn(sName);
+                    addToList(info);
+                }
+
+                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class, Object.class, Object.class).descriptorString(), true);
+                addToList(info);
+            }
+            addToList(info);
+
+            // overrides:
+            info.visitInsn(Opcodes.DUP);
+            newArrayList(info);
+            // TODO: overrides
+            addToList(info);
+
+            // ctors:
+            info.visitInsn(Opcodes.DUP);
+            newArrayList(info);
+            for (var ctor : ctors) {
+                info.visitInsn(Opcodes.DUP);
+                info.visitLdcInsn(ctor.ctorType());
+                info.visitLdcInsn(ctor.superCtorType());
+
+                newArrayList(info);
+                maxStack = Math.max(maxStack, 6 + ctor.fields().size());
+                for (var field : ctor.fields()) {
+                    info.visitInsn(Opcodes.DUP);
+                    info.visitLdcInsn(field);
+                    addToList(info);
+                }
+
+                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class).descriptorString(), true);
+                addToList(info);
+            }
+            addToList(info);
+
+            info.visitInsn(Opcodes.ARETURN);
+            info.visitMaxs(maxStack, 0);
+            info.visitEnd();
+            if (!hasClassInit) {
+                var clinit = visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+                clinit.visitCode();
+                clinit.visitInsn(Opcodes.RETURN);
+                clinit.visitMaxs(0, 0);
+                clinit.visitEnd();
+            }
+        }
+        super.visitEnd();
+    }
+
+    private static void newArrayList(MethodVisitor info) {
+        info.visitTypeInsn(Opcodes.NEW, Type.getInternalName(ArrayList.class));
+        info.visitInsn(Opcodes.DUP);
+        info.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(ArrayList.class), "<init>", "()V", false);
+    }
+
+    private static void addToList(MethodVisitor info) {
+        info.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(List.class), "add", MethodType.methodType(boolean.class, Object.class).descriptorString(), true);
+        info.visitInsn(Opcodes.POP);
+    }
+
     public final class Method extends MethodVisitor {
         private final List<Type> parameterTypes;
         private final Type returnType;
@@ -379,6 +511,14 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         @Override
         public void visitCode() {
             super.visitCode();
+
+            if (isExtension && "<clinit>".equals(this.name)) {
+                hasClassInit = true;
+                visitInsn(Opcodes.ICONST_1);
+                visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Class.class));
+                visitFieldInsn(Opcodes.PUTSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+            }
+
             if (this.annotations.containsKey(Open.class.descriptorString())) {
                 handleOpen();
             } else if (this.annotations.containsKey(Constructor.class.descriptorString())) {
@@ -391,14 +531,14 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         private void handleField() {
             if (isExtension) {
                 if (this.parameterTypes.size() > 1 || this.isStatic) {
-                    throw new RuntimeException("Field getter/setter must have at most one parameter and must not be static");
+                    throw new RuntimeException("@Field getter/setter must have at most one parameter and must not be static");
                 }
                 var setter = this.parameterTypes.size() == 1;
                 var fieldName = this.annotations.get(Field.class.descriptorString()).literals.get("name").toString();
                 var setAsFinal = this.annotations.containsKey(Field.Final.class.descriptorString());
                 if (setter) {
                     if (this.returnType.getSort() != Type.VOID) {
-                        throw new RuntimeException("Field setter must have void return type");
+                        throw new RuntimeException("@Field setter must have void return type");
                     }
                     Type fieldType = this.parameterTypes.get(0);
                     ExtendFieldInfo<Type> fieldInfo = fields.computeIfAbsent(fieldName, k -> new ExtendFieldInfo<>(fieldName, fieldType, setAsFinal));
@@ -409,7 +549,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     fieldInfo.setters().add(this.name);
                 } else {
                     if (this.returnType.getSort() == Type.VOID) {
-                        throw new RuntimeException("Field getter must not have void return type");
+                        throw new RuntimeException("@Field getter must not have void return type");
                     }
                     Type fieldType = this.returnType;
                     ExtendFieldInfo<Type> fieldInfo = fields.computeIfAbsent(fieldName, k -> new ExtendFieldInfo<>(fieldName, fieldType, setAsFinal));
@@ -420,7 +560,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     fieldInfo.getters().add(this.name);
                 }
             } else {
-                throw new RuntimeException("Field annotation must be used on an interface marked with Extend");
+                throw new RuntimeException("@Field annotation must be used on an interface marked with Extend");
             }
         }
 
@@ -428,7 +568,108 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
 
         private void handleConstructor() {
+            if (!this.isStatic) {
+                throw new RuntimeException("@Constructor must be static");
+            }
+            CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
+            if (!type.equals(descriptor.returnType().type())) {
+                throw new RuntimeException("@Constructor must have return type of "+type.getClassName());
+            }
+            var fields = parameterAnnotations.get(Field.class.descriptorString());
+            var fieldsFinal = parameterAnnotations.get(Field.Final.class.descriptorString());
+            int drop = 0;
+            List<String> fieldNames = new ArrayList<>();
+            if (fields != null) {
+                boolean finished = false;
+                for (int i = 0; i < fields.length; i++) {
+                    var field = fields[i];
+                    if (field == null) {
+                        finished = true;
+                        continue;
+                    }
+                    if (finished) {
+                        throw new RuntimeException("@Constructor must have all field parameters before non-field parameters");
+                    }
+                    if (fieldNames.contains(field.literals.get("name").toString())) {
+                        throw new RuntimeException("@Constructor must not have duplicate field parameters");
+                    }
+                    drop++;
+                    Type fieldType = this.parameterTypes.get(0);
+                    var name = field.literals.get("name").toString();
+                    var setAsFinal = fieldsFinal != null && fieldsFinal[i] != null;
+                    ExtendFieldInfo<Type> fieldInfo = VisitingProcessor.this.fields.computeIfAbsent(name, k -> new ExtendFieldInfo<>(name, fieldType, setAsFinal));
+                    if (!fieldInfo.isFinal() && setAsFinal) {
+                        fieldInfo = new ExtendFieldInfo<>(name, fieldType, true, fieldInfo.getters(), fieldInfo.setters());
+                        VisitingProcessor.this.fields.put(name, fieldInfo);
+                    }
+                    if (fieldInfo.type() != fieldType) {
+                        throw new RuntimeException("@Constructor field parameter type must match field type");
+                    }
+                    fieldNames.add(name);
+                }
+            }
+            List<ConDynUtils.TypedDynamic<?, Type>> superCtorTypes = new ArrayList<>(descriptor.parameterTypes());
+            for (int i = 0; i < drop; i++) {
+                parameterTypes.remove(0);
+            }
+            List<ConDynUtils.TypedDynamic<?, Type>> parameterTypes = new ArrayList<>(this.parameterTypes.size() - drop);
+            for (int i = drop; i < this.parameterTypes.size(); i++) {
+                parameterTypes.add(
+                        conDynUtils().conDynFromClass(this.parameterTypes.get(i))
+                );
+            }
+            var voidType = conDynUtils().conDynFromClass(Type.getType(void.class));
 
+            Object superCtorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+            Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), parameterTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+
+            ctors.add(new ExtendCtorInfo(ctorType, superCtorType, fieldNames));
+
+            for (int i = 0; i < this.parameterTypes.size(); i++) {
+                Type parameterType = this.parameterTypes.get(i);
+                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), i);
+            }
+
+            super.visitInvokeDynamicInsn(
+                    name,
+                    Type.getMethodDescriptor(returnType, this.parameterTypes.toArray(Type[]::new)),
+                    new Handle(
+                            Opcodes.H_INVOKESTATIC,
+                            Type.getInternalName(OpeningMetafactory.class),
+                            "makeOpenClass",
+                            MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, MethodHandle.class, MethodHandle.class).toMethodDescriptorString(),
+                            false
+                    ),
+                    extendTargetClassHandle.constantDynamic(),
+                    new Handle(
+                            Opcodes.H_INVOKESTATIC,
+                            type.getInternalName(),
+                            EXTEND_GENERATED_CLASS,
+                            MethodType.methodType(void.class, Class.class).toMethodDescriptorString(),
+                            true
+                    ),
+                    new Handle(
+                            Opcodes.H_INVOKESTATIC,
+                            type.getInternalName(),
+                            EXTEND_GENERATED_CLASS,
+                            MethodType.methodType(Class.class).toMethodDescriptorString(),
+                            true
+                    ),
+                    new Handle(
+                            Opcodes.H_INVOKESTATIC,
+                            type.getInternalName(),
+                            EXTEND_INFO_GENERATED,
+                            MethodType.methodType(List.class, ClassLoader.class).toMethodDescriptorString(),
+                            true
+                    )
+            );
+
+            super.visitInsn(Opcodes.ARETURN);
+
+            super.visitMaxs(Math.max(1, this.parameterTypes.size()), this.parameterTypes.size());
+            super.visitEnd();
+
+            this.mv = null;
         }
 
         private void handleOpen() {

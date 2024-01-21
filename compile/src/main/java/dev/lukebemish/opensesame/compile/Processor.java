@@ -16,6 +16,7 @@ public interface Processor<T, A, M> {
 
     ConDynUtils.TypedDynamic<?, T> typeProviderFromAnnotation(A annotation, Object context, Class<?> annotationType);
 
+    record CoercedDescriptor<T>(List<ConDynUtils.TypedDynamic<?, T>> parameterTypes, ConDynUtils.TypedDynamic<?, T> returnType) {}
     record Opening<T>(T factoryType, Object targetProvider, Object methodTypeProvider, @Nullable T targetType, @Nullable T returnType, List<@Nullable T> parameterTypes, Open.Type type, String name, boolean unsafe) {}
     record ExtendFieldInfo<T>(String name, T type, boolean isFinal, List<String> setters, List<String> getters) {
         public ExtendFieldInfo(String name, T type, boolean isFinal) {
@@ -39,17 +40,7 @@ public interface Processor<T, A, M> {
     String methodName(M method);
     T declaringClass(M method);
 
-    default Opening<T> opening(M method) {
-        A annotation = annotation(method, Open.class);
-
-        ConDynUtils.TypedDynamic<?, T> targetClassHandle = typeProviderFromAnnotation(annotation, method, Open.class);
-
-        String name = name(annotation);
-        if (name == null || name.isEmpty()) {
-            name = "$dev$lukebemish$opensesame$$unspecified";
-        }
-        final Open.Type type = type(annotation);
-
+    default CoercedDescriptor<T> coercedDescriptor(M method) {
         var parameters = parameters(method, Coerce.class);
         String[] parameterDescs = new String[parameters.size()];
         for (int i = 0; i < parameters.size(); i++) {
@@ -73,6 +64,43 @@ public interface Processor<T, A, M> {
             }
         }
 
+        var coercion = annotation(method, Coerce.class);
+        if (coercion != null) {
+            returnType = typeProviderFromAnnotation(coercion, method, Coerce.class);
+        }
+
+        return new CoercedDescriptor<>(parameterTypes, returnType);
+    }
+
+    default T methodType(M method) {
+        var parameters = parameters(method, null);
+        String[] parameterDescs = new String[parameters.size()];
+        for (int i = 0; i < parameters.size(); i++) {
+            parameterDescs[i] = types().descriptor(parameters.get(i).type());
+        }
+
+        return types().methodType(types().descriptor(returnType(method)), parameterDescs);
+    }
+
+    default Opening<T> opening(M method) {
+        A annotation = annotation(method, Open.class);
+
+        ConDynUtils.TypedDynamic<?, T> targetClassHandle = typeProviderFromAnnotation(annotation, method, Open.class);
+
+        String name = name(annotation);
+        if (name == null || name.isEmpty()) {
+            name = "$dev$lukebemish$opensesame$$unspecified";
+        }
+        final Open.Type type = type(annotation);
+
+        CoercedDescriptor<T> descriptor = coercedDescriptor(method);
+        List<ConDynUtils.TypedDynamic<?, T>> parameterTypes = descriptor.parameterTypes();
+        ConDynUtils.TypedDynamic<?, T> returnType = descriptor.returnType();
+
+        var parameters = parameters(method, Coerce.class);
+
+        T asmDescType = methodType(method);
+
         if (!isStatic(method)) {
             var takesInstance = (type == Open.Type.GET_INSTANCE || type == Open.Type.SET_INSTANCE || type == Open.Type.VIRTUAL || type == Open.Type.SPECIAL);
 
@@ -92,11 +120,6 @@ public interface Processor<T, A, M> {
             );
 
             parameterTypes.add(0, targetClassHandle);
-        }
-
-        var coercion = annotation(method, Coerce.class);
-        if (coercion != null) {
-            returnType = typeProviderFromAnnotation(coercion, method, Coerce.class);
         }
 
         if (type == Open.Type.CONSTRUCT) {
