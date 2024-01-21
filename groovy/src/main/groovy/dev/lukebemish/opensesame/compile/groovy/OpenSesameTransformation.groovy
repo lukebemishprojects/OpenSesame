@@ -65,9 +65,11 @@ class OpenSesameTransformation extends AbstractASTTransformation implements Proc
                     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
                 }
 
+                int j = 0
                 for (int i = 0; i < methodNode.parameters.size(); i++) {
                     Type parameterType = Type.getType(BytecodeHelper.getTypeDescription(methodNode.parameters[i].type))
-                    methodVisitor.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), methodNode.static ? i : i + 1)
+                    methodVisitor.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), methodNode.static ? j : j + 1)
+                    j += parameterType.getSize()
                 }
 
                 var methodType = opening.type().ordinal()

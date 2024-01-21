@@ -4,463 +4,337 @@ import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.util.JavacTask;
+import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;
-import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 
-class Utils {
-    public static final MethodHandle JC_ANNOTATION_GET_ATTRIBUTE;
-    public static final MethodHandle JC_VARIABLE_GET_SYMBOL;
-    public static final MethodHandle JC_CLASS_GET_SYMBOL;
-    public static final MethodHandle PROCESSING_ENV_FROM_TASK;
-    public static final MethodHandle SYMTAB_FROM_TASK;
-    public static final MethodHandle TREEMAKER_FROM_TASK;
-    public static final MethodHandle NAMES_FROM_TASK;
+final class Utils {
+    private Utils() {}
 
-    public static final MethodHandle TM_APPLY;
-    public static final MethodHandle TM_IDENT;
-    public static final MethodHandle TM_IDENT_VAR;
-    public static final MethodHandle TM_SELECT;
-    public static final MethodHandle TM_EXEC;
-    public static final MethodHandle DYN_METHOD_SYM;
-    public static final MethodHandle METHOD_SYM;
-    public static final MethodHandle AS_HANDLE;
-    public static final MethodHandle FROM_STRING_NAMES;
-    public static final MethodHandle CLASS_SYMBOL;
-    public static final MethodHandle METHOD_TYPE;
-    public static final MethodHandle LIST_FROM;
-    public static final MethodHandle LIST_NIL;
-    public static final MethodHandle SYMTAB_NO_SYMBOL;
-    public static final MethodHandle LOADABLE_CONSTANT_ARRAY;
-    public static final MethodHandle QUAL_SET_SYM;
-    public static final MethodHandle QUAL_SET_TYPE;
-    public static final MethodHandle MTIN_SET_TYPE;
-    public static final MethodHandle JC_BLOCK_SET_STATS;
-    public static final MethodHandle EXPR_SET_TYPE;
-    public static final MethodHandle SYMBOL_AS_TYPE;
-    public static final MethodHandle JC_IDENT_SET_SYM;
-    public static final MethodHandle TM_RETURN;
+    private static final String TM = "com.sun.tools.javac.tree.TreeMaker";
 
-    static {
-        try {
-            JC_ANNOTATION_GET_ATTRIBUTE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "attribute",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.code.Attribute$Compound"),
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCAnnotation")
-                    ),
-                    Class.forName("com.sun.tools.javac.tree.JCTree$JCAnnotation"),
-                    Open.Type.GET_INSTANCE.ordinal()
-            ).getTarget().asType(MethodType.methodType(Object.class, AnnotationTree.class));
+    @Open(
+            name = "attribute",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCAnnotation",
+            type = Open.Type.GET_INSTANCE,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Attribute$Compound") AnnotationMirror jcAnnotationGetAttribute(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCAnnotation") AnnotationTree tree) {
+        throw new UnsupportedOperationException();
+    }
 
-            JC_VARIABLE_GET_SYMBOL = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "sym",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.code.Symbol"),
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCIdent")
-                    ),
-                    Class.forName("com.sun.tools.javac.tree.JCTree$JCIdent"),
-                    Open.Type.GET_INSTANCE.ordinal()
-            ).getTarget().asType(MethodType.methodType(Object.class, IdentifierTree.class));
+    @Open(
+            name = "sym",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCIdent",
+            type = Open.Type.GET_INSTANCE,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol") TypeElement jcIdentGetSymbol(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") IdentifierTree tree) {
+        throw new UnsupportedOperationException();
+    }
 
-            JC_CLASS_GET_SYMBOL = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "sym",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.code.Symbol$ClassSymbol"),
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCClassDecl")
-                    ),
-                    Class.forName("com.sun.tools.javac.tree.JCTree$JCClassDecl"),
-                    Open.Type.GET_INSTANCE.ordinal()
-            ).getTarget().asType(MethodType.methodType(TypeElement.class, ClassTree.class));
+    @Open(
+            name = "sym",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCClassDecl",
+            type = Open.Type.GET_INSTANCE,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$ClassSymbol") TypeElement jcClassGetSymbol(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCClassDecl") ClassTree tree) {
+        throw new UnsupportedOperationException();
+    }
 
-            var getContext = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "getContext",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.util.Context"),
-                            Class.forName("com.sun.tools.javac.api.BasicJavacTask")
-                    ),
-                    Class.forName("com.sun.tools.javac.api.BasicJavacTask"),
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "getContext",
+            targetName = "com.sun.tools.javac.api.BasicJavacTask",
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    private static @Coerce(targetName = "com.sun.tools.javac.util.Context") Object getContext(@Coerce(targetName = "com.sun.tools.javac.api.BasicJavacTask") JavacTask task) {
+        throw new UnsupportedOperationException();
+    }
 
-            var getProcessingEnv = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "instance",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.processing.JavacProcessingEnvironment"),
-                            Class.forName("com.sun.tools.javac.util.Context")
-                    ),
-                    Class.forName("com.sun.tools.javac.processing.JavacProcessingEnvironment"),
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    @Open(
+            name = "instance",
+            targetName = "com.sun.tools.javac.processing.JavacProcessingEnvironment",
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    private static @Coerce(targetName = "com.sun.tools.javac.processing.JavacProcessingEnvironment") ProcessingEnvironment getProcessingEnv(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+        throw new UnsupportedOperationException();
+    }
 
-            var getSymTab = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "instance",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.code.Symtab"),
-                            Class.forName("com.sun.tools.javac.util.Context")
-                    ),
-                    Class.forName("com.sun.tools.javac.code.Symtab"),
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    static ProcessingEnvironment processingEnvFromTask(JavacTask task) {
+        return getProcessingEnv(getContext(task));
+    }
 
-            var treeMakerClass = Class.forName("com.sun.tools.javac.tree.TreeMaker");
+    @Open(
+            name = "instance",
+            targetName = "com.sun.tools.javac.code.Symtab",
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    private static @Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object getSymTab(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+        throw new UnsupportedOperationException();
+    }
 
-            var getTreeMaker = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "instance",
-                    MethodType.methodType(
-                            treeMakerClass,
-                            Class.forName("com.sun.tools.javac.util.Context")
-                    ),
-                    treeMakerClass,
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    static Object symTabFromTask(JavacTask task) {
+        return getSymTab(getContext(task));
+    }
 
-            var getNames = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "instance",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.util.Names"),
-                            Class.forName("com.sun.tools.javac.util.Context")
-                    ),
-                    Class.forName("com.sun.tools.javac.util.Names"),
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    @Open(
+            name = "instance",
+            targetName = TM,
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    private static @Coerce(targetName = TM) Object getTreeMaker(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+        throw new UnsupportedOperationException();
+    }
 
-            PROCESSING_ENV_FROM_TASK = MethodHandles.filterReturnValue(
-                    getContext,
-                    getProcessingEnv
-            ).asType(MethodType.methodType(ProcessingEnvironment.class, JavacTask.class));
-            SYMTAB_FROM_TASK = MethodHandles.filterReturnValue(
-                    getContext,
-                    getSymTab
-            );
-            TREEMAKER_FROM_TASK = MethodHandles.filterReturnValue(
-                    getContext,
-                    getTreeMaker
-            );
-            NAMES_FROM_TASK = MethodHandles.filterReturnValue(
-                    getContext,
-                    getNames
-            );
+    static Object treeMakerFromTask(JavacTask task) {
+        return getTreeMaker(getContext(task));
+    }
 
-            var listClass = Class.forName("com.sun.tools.javac.util.List");
-            var exprClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCExpression");
+    @Open(
+            name = "instance",
+            targetName = "com.sun.tools.javac.util.Names",
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.util.Names") Object getNames(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+        throw new UnsupportedOperationException();
+    }
 
-            TM_APPLY = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Apply",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCMethodInvocation"),
-                            treeMakerClass,
-                            listClass,
-                            exprClass,
-                            listClass
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    static Object namesFromTask(JavacTask task) {
+        return getNames(getContext(task));
+    }
 
-            TM_EXEC = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Exec",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCExpressionStatement"),
-                            treeMakerClass,
-                            exprClass
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "Apply",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object tmApply(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.util.List") Object typeArgs, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object meth, @Coerce(targetName = "com.sun.tools.javac.util.List") Object args) {
+        throw new UnsupportedOperationException();
+    }
 
-            var nameClass = Class.forName("com.sun.tools.javac.util.Name");
+    @Open(
+            name = "Ident",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") Object tmIdent(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name) {
+        throw new UnsupportedOperationException();
+    }
 
-            TM_IDENT = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Ident",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCIdent"),
-                            treeMakerClass,
-                            nameClass
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "Ident",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object tmIdentVar(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCVariableDecl") Object var) {
+        throw new UnsupportedOperationException();
+    }
 
-            TM_IDENT_VAR = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Ident",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCExpression"),
-                            treeMakerClass,
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCVariableDecl")
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "Select",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object tmSelect(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object selected, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name) {
+        throw new UnsupportedOperationException();
+    }
 
-            TM_SELECT = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Select",
-                    MethodType.methodType(
-                            Class.forName("com.sun.tools.javac.tree.JCTree$JCFieldAccess"),
-                            treeMakerClass,
-                            exprClass,
-                            nameClass
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "Exec",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpressionStatement") Object tmExec(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr) {
+        throw new UnsupportedOperationException();
+    }
 
-            var returnClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCReturn");
+    @Open(
+            targetName = "com.sun.tools.javac.code.Symbol$DynamicMethodSymbol",
+            type = Open.Type.CONSTRUCT,
+            unsafe = true
+    )
+    static Object dynMethodSymbol(@Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") Object methodHandle, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type, @Coerce(targetName = "[Lcom/sun/tools/javac/jvm/PoolConstant$LoadableConstant;") Object loadableConstants) {
+        throw new UnsupportedOperationException();
+    }
 
-            TM_RETURN = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "Return",
-                    MethodType.methodType(
-                            returnClass,
-                            treeMakerClass,
-                            exprClass
-                    ),
-                    treeMakerClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            targetName = "com.sun.tools.javac.code.Symbol$MethodSymbol",
+            type = Open.Type.CONSTRUCT,
+            unsafe = true
+    )
+    static Object methodSymbol(long flags, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner) {
+        throw new UnsupportedOperationException();
+    }
 
-            var symClass = Class.forName("com.sun.tools.javac.code.Symbol");
-            var methodSymClass = Class.forName("com.sun.tools.javac.code.Symbol$MethodSymbol");
-            var dynMethodSymClass = Class.forName("com.sun.tools.javac.code.Symbol$DynamicMethodSymbol");
-            var classSymClass = Class.forName("com.sun.tools.javac.code.Symbol$ClassSymbol");
-            var methodHandleSymClass = Class.forName("com.sun.tools.javac.code.Symbol$MethodHandleSymbol");
-            var typeSymbolClass = Class.forName("com.sun.tools.javac.code.Symbol$TypeSymbol");
-            var typeClass = Class.forName("com.sun.tools.javac.code.Type");
-            var methodTypeClass = Class.forName("com.sun.tools.javac.code.Type$MethodType");
-            var loadableConstantClass = Class.forName("com.sun.tools.javac.jvm.PoolConstant$LoadableConstant");
+    @Open(
+            name = "asHandle",
+            targetName = "com.sun.tools.javac.code.Symbol$MethodSymbol",
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") Object asHandle(@Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodSymbol") Object methodSymbol) {
+        throw new UnsupportedOperationException();
+    }
 
-            DYN_METHOD_SYM = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "<init>",
-                    MethodType.methodType(
-                           dynMethodSymClass,
-                            nameClass,
-                            symClass,
-                            methodHandleSymClass,
-                            typeClass,
-                            loadableConstantClass.arrayType()
-                    ),
-                    dynMethodSymClass,
-                    Open.Type.CONSTRUCT.ordinal()
-            ).getTarget();
+    @Open(
+            name = "fromString",
+            targetName = "com.sun.tools.javac.util.Names",
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.util.Name") Object fromStringNames(@Coerce(targetName = "com.sun.tools.javac.util.Names") Object names, String name) {
+        throw new UnsupportedOperationException();
+    }
 
-            METHOD_SYM = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "<init>",
-                    MethodType.methodType(
-                            methodSymClass,
-                            long.class,
-                            nameClass,
-                            typeClass,
-                            symClass
-                    ),
-                    methodSymClass,
-                    Open.Type.CONSTRUCT.ordinal()
-            ).getTarget();
+    @Open(
+            targetName = "com.sun.tools.javac.code.Symbol$ClassSymbol",
+            type = Open.Type.CONSTRUCT,
+            unsafe = true
+    )
+    static Object classSymbol(long flags, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner) {
+        throw new UnsupportedOperationException();
+    }
 
-            AS_HANDLE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "asHandle",
-                    MethodType.methodType(
-                            methodHandleSymClass,
-                            methodSymClass
-                    ),
-                    methodSymClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            targetName = "com.sun.tools.javac.code.Type$MethodType",
+            type = Open.Type.CONSTRUCT,
+            unsafe = true
+    )
+    static Object methodType(@Coerce(targetName = "com.sun.tools.javac.util.List") Object argtypes, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object restype, @Coerce(targetName = "com.sun.tools.javac.util.List") Object thrown, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object tsym) {
+        throw new UnsupportedOperationException();
+    }
 
-            FROM_STRING_NAMES = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "fromString",
-                    MethodType.methodType(
-                            nameClass,
-                            Class.forName("com.sun.tools.javac.util.Names"),
-                            Class.forName("java.lang.String")
-                    ),
-                    Class.forName("com.sun.tools.javac.util.Names"),
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
+    @Open(
+            name = "from",
+            targetName = "com.sun.tools.javac.util.List",
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.util.List") Object listFrom(@Coerce(targetName = "java.lang.Iterable") Object iterable) {
+        throw new UnsupportedOperationException();
+    }
 
-            CLASS_SYMBOL = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "ClassSymbol",
-                    MethodType.methodType(
-                            classSymClass,
-                            long.class,
-                            nameClass,
-                            symClass
-                    ),
-                    classSymClass,
-                    Open.Type.CONSTRUCT.ordinal()
-            ).getTarget();
+    @Open(
+            name = "nil",
+            targetName = "com.sun.tools.javac.util.List",
+            type = Open.Type.STATIC,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.util.List") Object listNil() {
+        throw new UnsupportedOperationException();
+    }
 
-            METHOD_TYPE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "MethodType",
-                    MethodType.methodType(
-                            methodTypeClass,
-                            listClass,
-                            typeClass,
-                            listClass,
-                            typeSymbolClass
-                    ),
-                    methodTypeClass,
-                    Open.Type.CONSTRUCT.ordinal()
-            ).getTarget();
+    @Open(
+            name = "noSymbol",
+            targetName = "com.sun.tools.javac.code.Symtab",
+            type = Open.Type.GET_INSTANCE,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object symTabNoSymbol(@Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object symtab) {
+        throw new UnsupportedOperationException();
+    }
 
-            LIST_FROM = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "from",
-                    MethodType.methodType(
-                            listClass,
-                            Iterable.class
-                    ),
-                    listClass,
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    @Open(
+            name = "loadableConstantArray",
+            targetName = "com.sun.tools.javac.jvm.PoolConstant$LoadableConstant",
+            type = Open.Type.ARRAY,
+            unsafe = true
+    )
+    static Object[] loadableConstantArray(int size) {
+        throw new UnsupportedOperationException();
+    }
 
-            LIST_NIL = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "nil",
-                    MethodType.methodType(
-                            listClass
-                    ),
-                    listClass,
-                    Open.Type.STATIC.ordinal()
-            ).getTarget();
+    @Open(
+            name = "sym",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess",
+            type = Open.Type.SET_INSTANCE,
+            unsafe = true
+    )
+    static void qualSetSym(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object fieldAccess, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+        throw new UnsupportedOperationException();
+    }
 
-            SYMTAB_NO_SYMBOL = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "noSymbol",
-                    MethodType.methodType(
-                            typeSymbolClass,
-                            Class.forName("com.sun.tools.javac.code.Symtab")
-                    ),
-                    Class.forName("com.sun.tools.javac.code.Symtab"),
-                    Open.Type.GET_INSTANCE.ordinal()
-            ).getTarget();
+    @Open(
+            name = "type",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess",
+            type = Open.Type.SET_INSTANCE,
+            unsafe = true
+    )
+    static void qualSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object fieldAccess, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+        throw new UnsupportedOperationException();
+    }
 
-            LOADABLE_CONSTANT_ARRAY = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "loadableConstantArray",
-                    MethodType.methodType(
-                            loadableConstantClass.arrayType(),
-                            int.class
-                    ),
-                    loadableConstantClass,
-                    Open.Type.ARRAY.ordinal()
-            ).getTarget();
+    @Open(
+            name = "type",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation",
+            type = Open.Type.SET_INSTANCE,
+            unsafe = true
+    )
+    static void mtinSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object methodInvocation, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+        throw new UnsupportedOperationException();
+    }
 
-            var fieldAccessClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCFieldAccess");
+    @Open(
+            name = "stats",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCBlock",
+            type = Open.Type.SET_INSTANCE,
+            unsafe = true
+    )
+    static void jcBlockSetStats(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCBlock") Object block, @Coerce(targetName = "com.sun.tools.javac.util.List") Object stats) {
+        throw new UnsupportedOperationException();
+    }
 
-            QUAL_SET_SYM = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "sym",
-                    MethodType.methodType(
-                            void.class,
-                            fieldAccessClass,
-                            symClass
-                    ),
-                    fieldAccessClass,
-                    Open.Type.SET_INSTANCE.ordinal()
-            ).getTarget();
+    @Open(
+            name = "setType",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCExpression",
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object exprSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+        throw new UnsupportedOperationException();
+    }
 
-            QUAL_SET_TYPE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "type",
-                    MethodType.methodType(
-                            void.class,
-                            fieldAccessClass,
-                            typeClass
-                    ),
-                    fieldAccessClass,
-                    Open.Type.SET_INSTANCE.ordinal()
-            ).getTarget();
+    @Open(
+            name = "asType",
+            targetName = "com.sun.tools.javac.code.Symbol",
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.code.Type") Object symbolAsType(@Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+        throw new UnsupportedOperationException();
+    }
 
-            var methodInvocationClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCMethodInvocation");
+    @Open(
+            name = "sym",
+            targetName = "com.sun.tools.javac.tree.JCTree$JCIdent",
+            type = Open.Type.SET_INSTANCE,
+            unsafe = true
+    )
+    static void jcIdentSetSym(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") Object ident, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+        throw new UnsupportedOperationException();
+    }
 
-            MTIN_SET_TYPE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "type",
-                    MethodType.methodType(
-                            void.class,
-                            methodInvocationClass,
-                            typeClass
-                    ),
-                    methodInvocationClass,
-                    Open.Type.SET_INSTANCE.ordinal()
-            ).getTarget();
-
-            var blockClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCBlock");
-
-            JC_BLOCK_SET_STATS = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "stats",
-                    MethodType.methodType(
-                            void.class,
-                            blockClass,
-                            listClass
-                    ),
-                    blockClass,
-                    Open.Type.SET_INSTANCE.ordinal()
-            ).getTarget();
-
-            EXPR_SET_TYPE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "setType",
-                    MethodType.methodType(
-                            exprClass,
-                            exprClass,
-                            typeClass
-                    ),
-                    exprClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
-
-            SYMBOL_AS_TYPE = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "asType",
-                    MethodType.methodType(
-                            typeClass,
-                            symClass
-                    ),
-                    symClass,
-                    Open.Type.VIRTUAL.ordinal()
-            ).getTarget();
-
-            var identClass = Class.forName("com.sun.tools.javac.tree.JCTree$JCIdent");
-
-            JC_IDENT_SET_SYM = OpeningMetafactory.invokeKnownUnsafe(
-                    MethodHandles.lookup(),
-                    "sym",
-                    MethodType.methodType(
-                            void.class,
-                            identClass,
-                            symClass
-                    ),
-                    identClass,
-                    Open.Type.SET_INSTANCE.ordinal()
-            ).getTarget();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+    @Open(
+            name = "Return",
+            targetName = TM,
+            type = Open.Type.VIRTUAL,
+            unsafe = true
+    )
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCReturn") Object tmReturn(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr) {
+        throw new UnsupportedOperationException();
     }
 }

@@ -51,10 +51,10 @@ public class OpenSesamePlugin implements Plugin {
                 Object treemaker;
                 Object names;
                 try {
-                    processingEnv = (ProcessingEnvironment) Utils.PROCESSING_ENV_FROM_TASK.invoke(task);
-                    symtab = Utils.SYMTAB_FROM_TASK.invoke(task);
-                    treemaker = Utils.TREEMAKER_FROM_TASK.invoke(task);
-                    names = Utils.NAMES_FROM_TASK.invoke(task);
+                    processingEnv = Utils.processingEnvFromTask(task);
+                    symtab = Utils.symTabFromTask(task);
+                    treemaker = Utils.treeMakerFromTask(task);
+                    names = Utils.namesFromTask(task);
                 } catch (Throwable ex) {
                     throw new RuntimeException(ex);
                 }
@@ -200,14 +200,10 @@ public class OpenSesamePlugin implements Plugin {
                         }
                         boolean[] hasOpen = new boolean[1];
                         node.getModifiers().getAnnotations().forEach(a -> {
-                            try {
-                                AnnotationMirror annotation = (AnnotationMirror) Utils.JC_ANNOTATION_GET_ATTRIBUTE.invoke(a);
-                                var binaryName = elements.getBinaryName((TypeElement) annotation.getAnnotationType().asElement());
-                                if (binaryName.contentEquals(Open.class.getName())) {
-                                    hasOpen[0] = true;
-                                }
-                            } catch (Throwable ex) {
-                                throw new RuntimeException(ex);
+                            AnnotationMirror annotation = Utils.jcAnnotationGetAttribute(a);
+                            var binaryName = elements.getBinaryName((TypeElement) annotation.getAnnotationType().asElement());
+                            if (binaryName.contentEquals(Open.class.getName())) {
+                                hasOpen[0] = true;
                             }
                         });
                         if (hasOpen[0]) {
@@ -237,114 +233,106 @@ public class OpenSesamePlugin implements Plugin {
                 methodTypeType
         );
 
-        try {
-            TypeElement enclosingClassTypeSymbol = (TypeElement) Utils.JC_CLASS_GET_SYMBOL.invoke(enclosingClass);
+        TypeElement enclosingClassTypeSymbol = Utils.jcClassGetSymbol(enclosingClass);
 
-            var returnType = typeFromTree(method.getReturnType(), types);
-            var parameterTypes = new ArrayList<TypeMirror>();
-            var parameters = new ArrayList<>();
-            if (!method.getModifiers().getFlags().contains(Modifier.STATIC)) {
-                parameterTypes.add(typeFromTree(enclosingClass, types));
-                parameters.add(Utils.TM_IDENT_VAR.invoke(tm, method.getReceiverParameter()));
-            }
-            for (var param : method.getParameters()) {
-                parameterTypes.add(typeFromTree(param.getType(), types));
-                parameters.add(Utils.TM_IDENT_VAR.invoke(tm, param));
-            }
-            var methodType = Utils.METHOD_TYPE.invoke(
-                    Utils.LIST_FROM.invoke(parameterTypes),
-                    returnType,
-                    Utils.LIST_NIL.invoke(),
-                    enclosingClassTypeSymbol
-            );
-            Element enclosing = enclosingClassTypeSymbol;
-            while (!(enclosing instanceof PackageElement)) {
-                enclosing = enclosing.getEnclosingElement();
-            }
-            var outClassName = Utils.FROM_STRING_NAMES.invoke(names, outClass);
-            var outClassNameOnlyLast = Utils.FROM_STRING_NAMES.invoke(names, outClass.substring(outClass.lastIndexOf('.')+ 1));
-            var outClassTypeSymbol = Utils.CLASS_SYMBOL.invoke(
-                    (long) Opcodes.ACC_STATIC,
-                    outClassNameOnlyLast,
-                    enclosing
-            );
-            var targetType = Utils.METHOD_TYPE.invoke(
-                    Utils.LIST_FROM.invoke(bsmStaticArgsTypes),
-                    callSiteType,
-                    Utils.LIST_NIL.invoke(),
-                    outClassTypeSymbol
-            );
-            var targetBsmName = Utils.FROM_STRING_NAMES.invoke(names, methodName);
-            var methodSymbol = Utils.METHOD_SYM.invoke(
-                    (long) Opcodes.ACC_STATIC,
-                    targetBsmName,
-                    targetType,
-                    outClassTypeSymbol
-            );
-            var dynSym = Utils.DYN_METHOD_SYM.invoke(
-                    Utils.FROM_STRING_NAMES.invoke(names, "bridge"),
-                    Utils.SYMTAB_NO_SYMBOL.invoke(symtab),
-                    Utils.AS_HANDLE.invoke(methodSymbol),
-                    methodType,
-                    Utils.LOADABLE_CONSTANT_ARRAY.invoke(0)
-            );
-
-            var outClassExpression = Utils.TM_IDENT.invoke(tm, outClassName);
-            Utils.EXPR_SET_TYPE.invoke(outClassExpression, Utils.SYMBOL_AS_TYPE.invoke(outClassTypeSymbol));
-            Utils.JC_IDENT_SET_SYM.invoke(outClassExpression, outClassTypeSymbol);
-
-            var qualifier = Utils.TM_SELECT.invoke(
-                    tm,
-                    outClassExpression,
-                    targetBsmName
-            );
-            Utils.QUAL_SET_SYM.invoke(qualifier, dynSym);
-            Utils.QUAL_SET_TYPE.invoke(qualifier, methodType);
-
-            var proxyCall = Utils.TM_APPLY.invoke(
-                    tm,
-                    Utils.LIST_NIL.invoke(),
-                    qualifier,
-                    Utils.LIST_FROM.invoke(parameters)
-            );
-            Utils.MTIN_SET_TYPE.invoke(proxyCall, returnType);
-
-            Object execCall;
-            if (returnType.getKind() != TypeKind.VOID) {
-                execCall = Utils.TM_RETURN.invoke(tm, proxyCall);
-            } else {
-                execCall = Utils.TM_EXEC.invoke(tm, proxyCall);
-            }
-
-            Utils.JC_BLOCK_SET_STATS.invoke(method.getBody(), Utils.LIST_FROM.invoke(List.of(
-                    execCall
-            )));
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        var returnType = typeFromTree(method.getReturnType(), types);
+        var parameterTypes = new ArrayList<TypeMirror>();
+        var parameters = new ArrayList<>();
+        if (!method.getModifiers().getFlags().contains(Modifier.STATIC)) {
+            parameterTypes.add(typeFromTree(enclosingClass, types));
+            parameters.add(Utils.tmIdentVar(tm, method.getReceiverParameter()));
         }
+        for (var param : method.getParameters()) {
+            parameterTypes.add(typeFromTree(param.getType(), types));
+            parameters.add(Utils.tmIdentVar(tm, param));
+        }
+        var methodType = Utils.methodType(
+                Utils.listFrom(parameterTypes),
+                returnType,
+                Utils.listNil(),
+                enclosingClassTypeSymbol
+        );
+        Element enclosing = enclosingClassTypeSymbol;
+        while (!(enclosing instanceof PackageElement)) {
+            enclosing = enclosing.getEnclosingElement();
+        }
+        var outClassName = Utils.fromStringNames(names, outClass);
+        var outClassNameOnlyLast = Utils.fromStringNames(names, outClass.substring(outClass.lastIndexOf('.')+ 1));
+        var outClassTypeSymbol = Utils.classSymbol(
+                Opcodes.ACC_STATIC,
+                outClassNameOnlyLast,
+                enclosing
+        );
+        var targetType = Utils.methodType(
+                Utils.listFrom(bsmStaticArgsTypes),
+                callSiteType,
+                Utils.listNil(),
+                outClassTypeSymbol
+        );
+        var targetBsmName = Utils.fromStringNames(names, methodName);
+        var methodSymbol = Utils.methodSymbol(
+                Opcodes.ACC_STATIC,
+                targetBsmName,
+                targetType,
+                outClassTypeSymbol
+        );
+        var dynSym = Utils.dynMethodSymbol(
+                Utils.fromStringNames(names, "bridge"),
+                Utils.symTabNoSymbol(symtab),
+                Utils.asHandle(methodSymbol),
+                methodType,
+                Utils.loadableConstantArray(0)
+        );
+
+        var outClassExpression = Utils.tmIdent(tm, outClassName);
+        Utils.exprSetType(outClassExpression, Utils.symbolAsType(outClassTypeSymbol));
+        Utils.jcIdentSetSym(outClassExpression, outClassTypeSymbol);
+
+        var qualifier = Utils.tmSelect(
+                tm,
+                outClassExpression,
+                targetBsmName
+        );
+        Utils.qualSetSym(qualifier, dynSym);
+        Utils.qualSetType(qualifier, methodType);
+
+        var proxyCall = Utils.tmApply(
+                tm,
+                Utils.listNil(),
+                qualifier,
+                Utils.listFrom(parameters)
+        );
+        Utils.mtinSetType(proxyCall, returnType);
+
+        Object execCall;
+        if (returnType.getKind() != TypeKind.VOID) {
+            execCall = Utils.tmReturn(tm, proxyCall);
+        } else {
+            execCall = Utils.tmExec(tm, proxyCall);
+        }
+
+        Utils.jcBlockSetStats(method.getBody(), Utils.listFrom(List.of(
+                execCall
+        )));
     }
 
     private static TypeMirror typeFromTree(Tree outType, Types types) {
-        try {
-            if (outType instanceof IdentifierTree identifierTree) {
-                TypeElement paramType = (TypeElement) Utils.JC_VARIABLE_GET_SYMBOL.invoke(identifierTree);
-                return paramType.asType();
-            } else if (outType instanceof ArrayTypeTree arrayTypeTree) {
-                try {
-                    return types.getArrayType(typeFromTree(arrayTypeTree.getType(), types));
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                PrimitiveTypeTree primitiveTypeTree = (PrimitiveTypeTree) outType;
-                if (primitiveTypeTree.getPrimitiveTypeKind().isPrimitive()) {
-                    return types.getPrimitiveType(primitiveTypeTree.getPrimitiveTypeKind());
-                } else {
-                    return types.getNoType(primitiveTypeTree.getPrimitiveTypeKind());
-                }
+        if (outType instanceof IdentifierTree identifierTree) {
+            TypeElement paramType = Utils.jcIdentGetSymbol(identifierTree);
+            return paramType.asType();
+        } else if (outType instanceof ArrayTypeTree arrayTypeTree) {
+            try {
+                return types.getArrayType(typeFromTree(arrayTypeTree.getType(), types));
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
             }
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        } else {
+            PrimitiveTypeTree primitiveTypeTree = (PrimitiveTypeTree) outType;
+            if (primitiveTypeTree.getPrimitiveTypeKind().isPrimitive()) {
+                return types.getPrimitiveType(primitiveTypeTree.getPrimitiveTypeKind());
+            } else {
+                return types.getNoType(primitiveTypeTree.getPrimitiveTypeKind());
+            }
         }
     }
 }

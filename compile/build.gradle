@@ -48,7 +48,7 @@ var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
     outputs.dir(sourceSets.test.output.classesDirs)
     classpath = sourceSets.asm.runtimeClasspath
     mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
-    args = compileTestJava.outputs.files.files.collectMany { [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath] }
+    args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath]
 
     jacoco.applyTo(it)
     extensions.configure(JacocoTaskExtension) {

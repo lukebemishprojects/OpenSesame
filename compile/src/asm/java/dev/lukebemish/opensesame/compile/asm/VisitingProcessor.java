@@ -651,9 +651,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
             ctors.add(new ExtendCtorInfo(ctorType, superCtorType, fieldNames));
 
-            for (int i = 0; i < this.parameterTypes.size(); i++) {
-                Type parameterType = this.parameterTypes.get(i);
-                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), i);
+            int j = 0;
+            for (Type parameterType : this.parameterTypes) {
+                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), j);
+                j += parameterType.getSize();
             }
 
             super.visitInvokeDynamicInsn(
@@ -705,9 +706,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 super.visitVarInsn(Opcodes.ALOAD, 0);
             }
 
-            for (int i = 0; i < this.parameterTypes.size(); i++) {
-                Type parameterType = this.parameterTypes.get(i);
-                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), isStatic ? i : i + 1);
+            int j = 0;
+            for (Type parameterType : this.parameterTypes) {
+                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), isStatic ? j : j + 1);
+                j += parameterType.getSize();
             }
 
             var methodType = opening.type().ordinal();

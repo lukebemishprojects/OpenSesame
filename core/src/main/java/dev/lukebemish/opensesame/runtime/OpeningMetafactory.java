@@ -402,8 +402,11 @@ public final class OpeningMetafactory {
             var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, overrideName, overrideDesc, null, null);
             methodVisitor.visitCode();
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+            int j = 1;
             for (int i = 0; i < overrideType.parameterCount(); i++) {
-                methodVisitor.visitVarInsn(Type.getType(overrideType.parameterType(i)).getOpcode(Opcodes.ILOAD), i+1);
+                var t = Type.getType(overrideType.parameterType(i));
+                methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                j += t.getSize();
             }
             var fullParameterTypes = new Type[overrideType.parameterCount() + 1];
             fullParameterTypes[0] = Type.getType(holdingClass);
@@ -455,15 +458,19 @@ public final class OpeningMetafactory {
                 throw new OpeningException("Super constructor parameter count does not match remaining parameter count");
             }
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+            int j = 1;
             for (int i = 0; i < superCtorCount; i++) {
-                methodVisitor.visitVarInsn(Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1)).getOpcode(Opcodes.ILOAD), i+1);
+                var t = Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1));
+                methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                j += t.getSize();
             }
             methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", superType.descriptorString(), false);
-            for (int i = 0; i < fieldsToSet.size(); i++) {
-                var fieldName = fieldsToSet.get(i);
+            j = 1;
+            for (String fieldName : fieldsToSet) {
                 var fieldType = fieldTypes.get(fieldName);
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ILOAD), i+1);
+                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ILOAD), j);
+                j += Type.getType(fieldType).getSize();
                 methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
             }
             methodVisitor.visitInsn(Opcodes.RETURN);

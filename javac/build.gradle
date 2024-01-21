@@ -9,6 +9,9 @@ configurations {
     testSource {
         canBeResolved = true
     }
+    asmRuntimeClasspath {
+        canBeResolved = true
+    }
 }
 
 dependencies {
@@ -22,6 +25,31 @@ dependencies {
     implementation libs.asm.core
 
     testSource project(path: ':testtargets', configuration: 'testSource')
+    asmRuntimeClasspath project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')
+}
+
+// bootstrapping! The javac plugin can use OpenSesame itself via this
+def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
+var asmCompileTest = tasks.register('processMainClasses', JavaExec) {
+    dependsOn compileJava
+    dependsOn configurations.asmRuntimeClasspath
+    inputs.dir(tempClassesDir)
+    inputs.files(configurations.asmRuntimeClasspath)
+    outputs.dir(sourceSets.main.output.classesDirs)
+    doFirst {
+        sourceSets.main.output.classesDirs.singleFile.deleteDir()
+    }
+    classpath = configurations.asmRuntimeClasspath
+    mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
+    args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.main.output.classesDirs.singleFile.canonicalPath]
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    destinationDirectory.set(tempClassesDir)
+}
+
+tasks.named('classes').configure {
+    dependsOn asmCompileTest
 }
 
 tasks.named('compileTestJava', JavaCompile).configure {
@@ -43,7 +71,7 @@ def testCompileOn(int v) {
         dependsOn sourceSets.test.java.sourceDirectories
         dependsOn configurations.testSource
 
-        var dirProvider = layout.buildDirectory.dir('testClasses')
+        var dirProvider = layout.buildDirectory.dir('testClasses/'+v)
 
         outputs.dir(dirProvider)
         inputs.files(sourceSets.test.java.sourceDirectories)
@@ -87,6 +115,10 @@ def testCompileOn(int v) {
         add('coverageDataElementsForTest', report.get().executionData.singleFile) {
             builtBy report.get()
         }
+    }
+
+    tasks.named('check').configure {
+        dependsOn singleTest
     }
 }
 
