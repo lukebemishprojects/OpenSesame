@@ -276,6 +276,14 @@ public final class OpeningMetafactory {
     }
 
     public static CallSite makeOpenClass(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
+        return makeOpenClass(caller, constructionMethodName, factoryType, targetClassGetter, classFieldPutter, classFieldGetter, infoGetter, false);
+    }
+
+    public static CallSite makeOpenClassUnsafe(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
+        return makeOpenClass(caller, constructionMethodName, factoryType, targetClassGetter, classFieldPutter, classFieldGetter, infoGetter, true);
+    }
+
+    private static CallSite makeOpenClass(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter, boolean unsafe) {
         Class<?> targetClass;
         // Total format: fields, overrides, ctors
         // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
@@ -300,7 +308,14 @@ public final class OpeningMetafactory {
         }
         MethodHandles.Lookup lookup;
         try {
-            lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, targetClass);
+            if (unsafe) {
+                lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, targetClass);
+            } else {
+                if (targetClass.getModule() != holdingClass.getModule()) {
+                    throw new OpeningException("Holding interface and class to extend must be in the same module if `unsafe` is false");
+                }
+                lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, targetClass);
+            }
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating lookup", e);
         }
@@ -344,7 +359,7 @@ public final class OpeningMetafactory {
                 var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, setter, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(fieldType)), null, null);
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ALOAD), 1);
+                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ILOAD), 1);
                 methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
                 methodVisitor.visitInsn(Opcodes.RETURN);
                 methodVisitor.visitMaxs(2, 2);
@@ -359,7 +374,7 @@ public final class OpeningMetafactory {
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
                 methodVisitor.visitFieldInsn(Opcodes.GETFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
-                methodVisitor.visitInsn(Type.getType(fieldType).getOpcode(Opcodes.ARETURN));
+                methodVisitor.visitInsn(Type.getType(fieldType).getOpcode(Opcodes.IRETURN));
                 methodVisitor.visitMaxs(1, 1);
                 methodVisitor.visitEnd();
             }
@@ -367,14 +382,16 @@ public final class OpeningMetafactory {
 
         for (var override : overrides) {
             var name = (String) override.get(0);
+            var overrideName = (String) override.get(2);
             MethodType interfaceType;
+            MethodType overrideType;
             try {
                 interfaceType = (MethodType) ((MethodHandle) override.get(1)).invoke(holdingClass.getClassLoader());
+                overrideType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
             } catch (Throwable e) {
                 throw new OpeningException(e);
             }
-            var overrideName = (String) override.get(2);
-            var overrideType = (MethodType) override.get(3);
+            overrideName = remapMethod(overrideName, overrideType, targetClass, holdingClass.getClassLoader());
             Arrays.stream(holdingClass.getDeclaredMethods())
                     .filter(m -> m.getName().equals(name) && m.getParameterCount() == interfaceType.parameterCount() && m.getReturnType().equals(interfaceType.returnType()) && Arrays.equals(m.getParameterTypes(), interfaceType.parameterArray()))
                     .filter(Method::isDefault)
@@ -386,7 +403,7 @@ public final class OpeningMetafactory {
             methodVisitor.visitCode();
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
             for (int i = 0; i < overrideType.parameterCount(); i++) {
-                methodVisitor.visitVarInsn(Type.getType(overrideType.parameterType(i)).getOpcode(Opcodes.ALOAD), i+1);
+                methodVisitor.visitVarInsn(Type.getType(overrideType.parameterType(i)).getOpcode(Opcodes.ILOAD), i+1);
             }
             var fullParameterTypes = new Type[overrideType.parameterCount() + 1];
             fullParameterTypes[0] = Type.getType(holdingClass);
@@ -411,7 +428,7 @@ public final class OpeningMetafactory {
             if (overrideType.returnType().equals(void.class)) {
                 methodVisitor.visitInsn(Opcodes.RETURN);
             } else {
-                methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.ARETURN));
+                methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.IRETURN));
             }
             methodVisitor.visitMaxs(1, 1);
             methodVisitor.visitEnd();
@@ -439,14 +456,14 @@ public final class OpeningMetafactory {
             }
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
             for (int i = 0; i < superCtorCount; i++) {
-                methodVisitor.visitVarInsn(Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1)).getOpcode(Opcodes.ALOAD), i+1);
+                methodVisitor.visitVarInsn(Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1)).getOpcode(Opcodes.ILOAD), i+1);
             }
             methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", superType.descriptorString(), false);
             for (int i = 0; i < fieldsToSet.size(); i++) {
                 var fieldName = fieldsToSet.get(i);
                 var fieldType = fieldTypes.get(fieldName);
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ALOAD), i+1);
+                methodVisitor.visitVarInsn(Type.getType(fieldType).getOpcode(Opcodes.ILOAD), i+1);
                 methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, generatedClassName, fieldName, Type.getDescriptor(fieldType));
             }
             methodVisitor.visitInsn(Opcodes.RETURN);
@@ -454,6 +471,8 @@ public final class OpeningMetafactory {
             methodVisitor.visitEnd();
         }
         classWriter.visitEnd();
+
+        byte[] bytes = classWriter.toByteArray();
 
         try {
             var targetModule = targetClass.getModule();
@@ -466,7 +485,16 @@ public final class OpeningMetafactory {
                     throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+hostModule, e);
                 }
             }
-            return lookup.in(targetClass).defineHiddenClass(classWriter.toByteArray(), false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
+            var openingModule = OpeningMetafactory.class.getModule();
+            if (targetModule != openingModule && targetModule != null && openingModule != null && !targetModule.canRead(openingModule)) {
+                try {
+                    MethodHandle handle = lookup.in(targetClass).findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
+                    handle.invokeWithArguments(targetModule, openingModule);
+                } catch (Throwable e) {
+                    throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+openingModule, e);
+                }
+            }
+            return lookup.in(targetClass).defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating hidden class", e);
         }

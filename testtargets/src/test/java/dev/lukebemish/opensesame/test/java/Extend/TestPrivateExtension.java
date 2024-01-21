@@ -5,8 +5,10 @@ import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public class TestPrivateExtension {
-    @Extend(targetName = "dev.lukebemish.opensesame.test.target.Public$Private")
+    @Extend(targetName = "dev.lukebemish.opensesame.test.target.Public$Private", unsafe = true)
     public interface Extension {
         @Constructor
         static Extension constructor() {
@@ -19,8 +21,28 @@ public class TestPrivateExtension {
         }
     }
 
+    @Extend(targetName = "dev.lukebemish.opensesame.test.java.target.Public$Private")
+    public interface ExtensionSafe {
+        @Constructor
+        static ExtensionSafe constructor() {
+            throw new AssertionError("Constructor not transformed");
+        }
+
+        @Overrides(name = "toString")
+        default String toStringImplementation() {
+            return "Extension";
+        }
+    }
+
     @Test
     void testPrivateExtension() {
-        //assertEquals("Extension", Extension.constructor().toString());
+        Extension.constructor();
+        assertEquals("Extension", Extension.constructor().toString());
+    }
+
+    @Test
+    void testPrivateExtensionSafe() {
+        ExtensionSafe.constructor();
+        assertEquals("Extension", ExtensionSafe.constructor().toString());
     }
 }

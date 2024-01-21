@@ -42,7 +42,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     public static void main(String[] args) {
         if ((~args.length & 1) != 1) {
-            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor <input> <output> <input> <output> ...");
+            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.VisitingProcessor <input> <output> <input> <output> ...");
             System.exit(1);
         }
         for (int i = 0; i < args.length; i += 2) {
@@ -93,9 +93,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     ConDynUtils.TypedDynamic<?, Type> extendTargetClassHandle = null;
     Map<String, Annotation> annotations = new HashMap<>();
     Map<String, ExtendFieldInfo<Type>> fields = new HashMap<>();
-    List<ExtendOverrideInfo> overrides = new ArrayList<>();
+    List<ExtendOverrideInfo<Type>> overrides = new ArrayList<>();
     List<ExtendCtorInfo> ctors = new ArrayList<>();
     boolean hasClassInit = false;
+    boolean unsafeExtension = false;
 
     public VisitingProcessor(ClassVisitor delegate, Set<Type> annotations) {
         super(Opcodes.ASM9, delegate);
@@ -114,6 +115,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 isExtension = true;
                 annotation.onEnd(() -> {
                     extendTargetClassHandle = typeProviderFromAnnotation(annotation, null, Extend.class);
+                    unsafeExtension = unsafe(annotation);
                 });
             }
             if (annotations.put(descriptor, annotation) != null) {
@@ -333,7 +335,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             setter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
             setter.visitInsn(Opcodes.MONITOREXIT);
             setter.visitInsn(Opcodes.RETURN);
-            setter.visitMaxs(1, 1);
+            setter.visitMaxs(3, 1);
             setter.visitEnd();
             var getter = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, Type.getMethodDescriptor(Type.getType(Class.class)), null, null);
             getter.visitCode();
@@ -345,12 +347,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             getter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
             getter.visitInsn(Opcodes.MONITOREXIT);
             getter.visitInsn(Opcodes.ARETURN);
-            getter.visitMaxs(1, 0);
+            getter.visitMaxs(3, 0);
             getter.visitEnd();
             var info = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_INFO_GENERATED, Type.getMethodDescriptor(Type.getType(List.class), Type.getType(ClassLoader.class)), null, null);
             info.visitCode();
 
-            int maxStack = 7;
+            // 3 - ctor
+            // 4 - override
+            // 5 - field
+            // +1 - root arraylist
+            // +1 - building arraylist
+            // +2 - dup root, dup building
+            // total: 5 + 1 + 1 + 2
+            int maxStack = 9;
 
             newArrayList(info);
 
@@ -368,7 +377,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
                 // add getters through ArrayList
                 newArrayList(info);
-                maxStack = Math.max(maxStack, 6 + field.getters().size());
                 for (var gName : field.getters()) {
                     info.visitInsn(Opcodes.DUP);
                     info.visitLdcInsn(gName);
@@ -377,7 +385,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
                 // add setters through ArrayList
                 newArrayList(info);
-                maxStack = Math.max(maxStack, 6 + field.setters().size());
                 for (var sName : field.setters()) {
                     info.visitInsn(Opcodes.DUP);
                     info.visitLdcInsn(sName);
@@ -392,7 +399,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             // overrides:
             info.visitInsn(Opcodes.DUP);
             newArrayList(info);
-            // TODO: overrides
+            for (var override : overrides) {
+                info.visitInsn(Opcodes.DUP);
+                var interfaceName = remapMethodName(type, override.interfaceName(), override.interfaceReturn().type(), override.interfaceParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
+                info.visitLdcInsn(interfaceName);
+                var interfaceType = conDynUtils().conDynMethodType(override.interfaceReturn().constantDynamic(), override.interfaceParams().stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+                info.visitLdcInsn(interfaceType);
+                var originalName = remapMethodName(extendTargetClassHandle.type(), override.originalName(), override.originalReturn().type(), override.originalParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
+                info.visitLdcInsn(originalName);
+                var originalType = conDynUtils().conDynMethodType(override.originalReturn().constantDynamic(), override.originalParams().stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+                info.visitLdcInsn(originalType);
+                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class, Object.class).descriptorString(), true);
+                addToList(info);
+            }
             addToList(info);
 
             // ctors:
@@ -404,7 +423,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 info.visitLdcInsn(ctor.superCtorType());
 
                 newArrayList(info);
-                maxStack = Math.max(maxStack, 6 + ctor.fields().size());
                 for (var field : ctor.fields()) {
                     info.visitInsn(Opcodes.DUP);
                     info.visitLdcInsn(field);
@@ -417,13 +435,13 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             addToList(info);
 
             info.visitInsn(Opcodes.ARETURN);
-            info.visitMaxs(maxStack, 0);
+            info.visitMaxs(maxStack, 1);
             info.visitEnd();
             if (!hasClassInit) {
                 var clinit = visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
                 clinit.visitCode();
                 clinit.visitInsn(Opcodes.RETURN);
-                clinit.visitMaxs(0, 0);
+                clinit.visitMaxs(1, 0);
                 clinit.visitEnd();
             }
         }
@@ -506,6 +524,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             } else if (this.annotations.containsKey(Field.class.descriptorString())) {
                 handleField();
             }
+            super.visitEnd();
         }
 
         @Override
@@ -565,6 +584,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
 
         private void handleOverrides() {
+            if (this.isStatic) {
+                throw new RuntimeException("@Overrides must not be static");
+            }
+            CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
+            String originalName = this.annotations.get(Overrides.class.descriptorString()).literals.get("name").toString();
+            overrides.add(new ExtendOverrideInfo<>(
+                    name,
+                    conDynUtils().conDynFromClass(returnType),
+                    parameterTypes.stream().<ConDynUtils.TypedDynamic<?, Type>>map(conDynUtils()::conDynFromClass).toList(),
+                    originalName,
+                    descriptor.returnType(),
+                    descriptor.parameterTypes()
+            ));
         }
 
         private void handleConstructor() {
@@ -609,8 +641,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 }
             }
             List<ConDynUtils.TypedDynamic<?, Type>> superCtorTypes = new ArrayList<>(descriptor.parameterTypes());
-            for (int i = 0; i < drop; i++) {
-                parameterTypes.remove(0);
+            if (drop > 0) {
+                parameterTypes.subList(0, drop).clear();
             }
             List<ConDynUtils.TypedDynamic<?, Type>> parameterTypes = new ArrayList<>(this.parameterTypes.size() - drop);
             for (int i = drop; i < this.parameterTypes.size(); i++) {
@@ -636,7 +668,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     new Handle(
                             Opcodes.H_INVOKESTATIC,
                             Type.getInternalName(OpeningMetafactory.class),
-                            "makeOpenClass",
+                            unsafeExtension ? "makeOpenClassUnsafe" : "makeOpenClass",
                             MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, MethodHandle.class, MethodHandle.class).toMethodDescriptorString(),
                             false
                     ),

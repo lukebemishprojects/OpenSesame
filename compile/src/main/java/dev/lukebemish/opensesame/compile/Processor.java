@@ -23,7 +23,7 @@ public interface Processor<T, A, M> {
             this(name, type, isFinal, new ArrayList<>(), new ArrayList<>());
         }
     }
-    record ExtendOverrideInfo(String name, Object interfaceTypeHandle, String originalName, Object originalTypeHandle) {}
+    record ExtendOverrideInfo<T>(String interfaceName, ConDynUtils.TypedDynamic<?, T> interfaceReturn, List<ConDynUtils.TypedDynamic<?, T>> interfaceParams, String originalName, ConDynUtils.TypedDynamic<?, T> originalReturn, List<ConDynUtils.TypedDynamic<?, T>> originalParams) { }
     record ExtendCtorInfo(Object ctorType, Object superCtorType, List<String> fields) {}
 
     record MethodParameter<T,A>(T type, @Nullable A annotation) {}
