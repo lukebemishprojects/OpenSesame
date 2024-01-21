@@ -318,8 +318,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     public void visitEnd() {
         if (isExtension) {
             for (var field : fields.values()) {
-                if (field.isFinal() && !field.getters().isEmpty()) {
-                    throw new RuntimeException("@Field "+field.name()+" is final, but has getters");
+                if (field.isFinal() && !field.setters().isEmpty()) {
+                    throw new RuntimeException("@Field "+field.name()+" is final, but has setters");
                 }
             }
             var classHolderField = visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_FINAL, EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()), null, null);
@@ -355,11 +355,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             // 3 - ctor
             // 4 - override
             // 5 - field
+            //   +2 - building arraylist, dup arraylist
             // +1 - root arraylist
             // +1 - building arraylist
             // +2 - dup root, dup building
-            // total: 5 + 1 + 1 + 2
-            int maxStack = 9;
+            int maxStack = 11;
 
             newArrayList(info);
 
@@ -375,19 +375,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 info.visitLdcInsn(field.isFinal());
                 info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(Boolean.class), "valueOf", MethodType.methodType(Boolean.class, boolean.class).descriptorString(), false);
 
-                // add getters through ArrayList
-                newArrayList(info);
-                for (var gName : field.getters()) {
-                    info.visitInsn(Opcodes.DUP);
-                    info.visitLdcInsn(gName);
-                    addToList(info);
-                }
-
                 // add setters through ArrayList
                 newArrayList(info);
                 for (var sName : field.setters()) {
                     info.visitInsn(Opcodes.DUP);
                     info.visitLdcInsn(sName);
+                    addToList(info);
+                }
+
+                // add getters through ArrayList
+                newArrayList(info);
+                for (var gName : field.getters()) {
+                    info.visitInsn(Opcodes.DUP);
+                    info.visitLdcInsn(gName);
                     addToList(info);
                 }
 
@@ -642,18 +642,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             }
             List<ConDynUtils.TypedDynamic<?, Type>> superCtorTypes = new ArrayList<>(descriptor.parameterTypes());
             if (drop > 0) {
-                parameterTypes.subList(0, drop).clear();
-            }
-            List<ConDynUtils.TypedDynamic<?, Type>> parameterTypes = new ArrayList<>(this.parameterTypes.size() - drop);
-            for (int i = drop; i < this.parameterTypes.size(); i++) {
-                parameterTypes.add(
-                        conDynUtils().conDynFromClass(this.parameterTypes.get(i))
-                );
+                superCtorTypes.subList(0, drop).clear();
             }
             var voidType = conDynUtils().conDynFromClass(Type.getType(void.class));
 
             Object superCtorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
-            Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), parameterTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+            Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), this.parameterTypes.stream().<Object>map(t -> conDynUtils().conDynFromClass(t).constantDynamic()).toList());
 
             ctors.add(new ExtendCtorInfo(ctorType, superCtorType, fieldNames));
 

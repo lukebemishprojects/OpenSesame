@@ -352,10 +352,10 @@ public final class OpeningMetafactory {
             //noinspection unchecked
             List<String> getters = (List<String>) field.get(4);
             for (var setter : setters) {
-                Arrays.stream(holdingClass.getMethods())
+                Arrays.stream(holdingClass.getDeclaredMethods())
                         .filter(m -> m.getName().equals(setter) && m.getParameterCount() == 1 && m.getReturnType().equals(void.class) && m.getParameterTypes()[0].equals(fieldType))
                         .findFirst()
-                        .orElseThrow(() -> new OpeningException("Could not find interface method to overload with name "+setter+", type "+fieldType));
+                        .orElseThrow(() -> new OpeningException("Could not find interface setter method to overload with name "+setter+", type "+fieldType));
                 var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, setter, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(fieldType)), null, null);
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
@@ -369,7 +369,7 @@ public final class OpeningMetafactory {
                 Arrays.stream(holdingClass.getDeclaredMethods())
                         .filter(m -> m.getName().equals(getter) && m.getParameterCount() == 0 && m.getReturnType().equals(fieldType))
                         .findFirst()
-                        .orElseThrow(() -> new OpeningException("Could not find interface method to overload with name "+getter+", type "+fieldType));
+                        .orElseThrow(() -> new OpeningException("Could not find interface getter method to overload with name "+getter+", type "+fieldType));
                 var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, getter, Type.getMethodDescriptor(Type.getType(fieldType)), null, null);
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
