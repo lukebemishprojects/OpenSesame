@@ -1,20 +1,31 @@
 package dev.lukebemish.opensesame.compile.javac;
 
-import com.sun.source.tree.AnnotationTree;
-import com.sun.source.tree.ClassTree;
-import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.*;
 import com.sun.source.util.JavacTask;
 import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import java.util.List;
 
 final class Utils {
-    private Utils() {}
-
+    private static final String SYMBOL = "com.sun.tools.javac.code.Symbol";
     private static final String TM = "com.sun.tools.javac.tree.TreeMaker";
+    private static final String BASIC_JAVA_TASK = "com.sun.tools.javac.api.BasicJavacTask";
+    private static final String CONTEXT = "com.sun.tools.javac.util.Context";
+    private static final String PROCESSING_ENV = "com.sun.tools.javac.processing.JavacProcessingEnvironment";
+    private static final String NAME = "com.sun.tools.javac.util.Name";
+    private static final String JCIDENT = "com.sun.tools.javac.tree.JCTree$JCIdent";
+    private static final String TYPE = "com.sun.tools.javac.code.Type";
+    private static final String JCEXPRESSION = "com.sun.tools.javac.tree.JCTree$JCExpression";
+    private static final String LIST = "com.sun.tools.javac.util.List";
+
+    private Utils() {}
 
     @Open(
             name = "attribute",
@@ -22,17 +33,17 @@ final class Utils {
             type = Open.Type.GET_INSTANCE,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Attribute$Compound") AnnotationMirror jcAnnotationGetAttribute(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCAnnotation") AnnotationTree tree) {
+    static @Coerce(targetName = "com.sun.tools.javac.code.Attribute$Compound") AnnotationMirror jcAnnotationGetAttribute(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCAnnotation") AnnotationTree ignoredTree) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "sym",
-            targetName = "com.sun.tools.javac.tree.JCTree$JCIdent",
+            targetName = JCIDENT,
             type = Open.Type.GET_INSTANCE,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol") TypeElement jcIdentGetSymbol(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") IdentifierTree tree) {
+    static @Coerce(targetName = SYMBOL) TypeElement jcIdentGetSymbol(@Coerce(targetName = JCIDENT) IdentifierTree ignoredTree) {
         throw new UnsupportedOperationException();
     }
 
@@ -42,27 +53,27 @@ final class Utils {
             type = Open.Type.GET_INSTANCE,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$ClassSymbol") TypeElement jcClassGetSymbol(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCClassDecl") ClassTree tree) {
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$ClassSymbol") TypeElement jcClassGetSymbol(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCClassDecl") ClassTree ignoredTree) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "getContext",
-            targetName = "com.sun.tools.javac.api.BasicJavacTask",
+            targetName = BASIC_JAVA_TASK,
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    private static @Coerce(targetName = "com.sun.tools.javac.util.Context") Object getContext(@Coerce(targetName = "com.sun.tools.javac.api.BasicJavacTask") JavacTask task) {
+    private static @Coerce(targetName = CONTEXT) Object getContext(@Coerce(targetName = BASIC_JAVA_TASK) JavacTask ignoredTask) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "instance",
-            targetName = "com.sun.tools.javac.processing.JavacProcessingEnvironment",
+            targetName = PROCESSING_ENV,
             type = Open.Type.STATIC,
             unsafe = true
     )
-    private static @Coerce(targetName = "com.sun.tools.javac.processing.JavacProcessingEnvironment") ProcessingEnvironment getProcessingEnv(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+    private static @Coerce(targetName = PROCESSING_ENV) ProcessingEnvironment getProcessingEnv(@Coerce(targetName = CONTEXT) Object ignoredContext) {
         throw new UnsupportedOperationException();
     }
 
@@ -76,7 +87,7 @@ final class Utils {
             type = Open.Type.STATIC,
             unsafe = true
     )
-    private static @Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object getSymTab(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+    private static @Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object getSymTab(@Coerce(targetName = CONTEXT) Object ignoredContext) {
         throw new UnsupportedOperationException();
     }
 
@@ -90,7 +101,7 @@ final class Utils {
             type = Open.Type.STATIC,
             unsafe = true
     )
-    private static @Coerce(targetName = TM) Object getTreeMaker(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+    private static @Coerce(targetName = TM) Object getTreeMaker(@Coerce(targetName = CONTEXT) Object ignoredContext) {
         throw new UnsupportedOperationException();
     }
 
@@ -104,7 +115,7 @@ final class Utils {
             type = Open.Type.STATIC,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.util.Names") Object getNames(@Coerce(targetName = "com.sun.tools.javac.util.Context") Object context) {
+    static @Coerce(targetName = "com.sun.tools.javac.util.Names") Object getNames(@Coerce(targetName = CONTEXT) Object ignoredContext) {
         throw new UnsupportedOperationException();
     }
 
@@ -118,7 +129,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object tmApply(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.util.List") Object typeArgs, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object meth, @Coerce(targetName = "com.sun.tools.javac.util.List") Object args) {
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object tmApply(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = LIST) List<? extends ExpressionTree> ignoredTypeArgs, @Coerce(targetName = JCEXPRESSION) Object ignoredMeth, @Coerce(targetName = LIST) List<? extends ExpressionTree> ignoredArgs) {
         throw new UnsupportedOperationException();
     }
 
@@ -128,7 +139,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") Object tmIdent(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name) {
+    static @Coerce(targetName = JCIDENT) IdentifierTree tmIdent(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = NAME) Name ignoredName) {
         throw new UnsupportedOperationException();
     }
 
@@ -138,7 +149,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object tmIdentVar(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCVariableDecl") Object var) {
+    static @Coerce(targetName = JCEXPRESSION) ExpressionTree tmIdentVar(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCVariableDecl") Object ignoredVar) {
         throw new UnsupportedOperationException();
     }
 
@@ -148,7 +159,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object tmSelect(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object selected, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name) {
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") MemberSelectTree tmSelect(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = JCEXPRESSION) Object ignoredSelected, @Coerce(targetName = NAME) Name ignoredName) {
         throw new UnsupportedOperationException();
     }
 
@@ -158,7 +169,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpressionStatement") Object tmExec(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr) {
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpressionStatement") ExpressionStatementTree tmExec(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = JCEXPRESSION) Object ignoredExpr) {
         throw new UnsupportedOperationException();
     }
 
@@ -167,7 +178,7 @@ final class Utils {
             type = Open.Type.CONSTRUCT,
             unsafe = true
     )
-    static Object dynMethodSymbol(@Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") Object methodHandle, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type, @Coerce(targetName = "[Lcom/sun/tools/javac/jvm/PoolConstant$LoadableConstant;") Object loadableConstants) {
+    static ExecutableElement dynMethodSymbol(@Coerce(targetName = NAME) Name ignoredName, @Coerce(targetName = SYMBOL) Object ignoredOwner, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") Object ignoredMethodHandle, @Coerce(targetName = TYPE) Object ignoredType, @Coerce(targetName = "[Lcom/sun/tools/javac/jvm/PoolConstant$LoadableConstant;") Object ignoredLoadableConstants) {
         throw new UnsupportedOperationException();
     }
 
@@ -176,7 +187,7 @@ final class Utils {
             type = Open.Type.CONSTRUCT,
             unsafe = true
     )
-    static Object methodSymbol(long flags, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner) {
+    static ExecutableElement methodSymbol(@SuppressWarnings("SameParameterValue") long ignoredFlags, @Coerce(targetName = NAME) Name ignoredName, @Coerce(targetName = TYPE) Object ignoredType, @Coerce(targetName = SYMBOL) Object ignoredOwner) {
         throw new UnsupportedOperationException();
     }
 
@@ -186,7 +197,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") Object asHandle(@Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodSymbol") Object methodSymbol) {
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodHandleSymbol") ExecutableElement asHandle(@Coerce(targetName = "com.sun.tools.javac.code.Symbol$MethodSymbol") Object ignoredMethodSymbol) {
         throw new UnsupportedOperationException();
     }
 
@@ -196,7 +207,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.util.Name") Object fromStringNames(@Coerce(targetName = "com.sun.tools.javac.util.Names") Object names, String name) {
+    static @Coerce(targetName = NAME) Name fromStringNames(@Coerce(targetName = "com.sun.tools.javac.util.Names") Object ignoredNames, String ignoredName) {
         throw new UnsupportedOperationException();
     }
 
@@ -205,7 +216,7 @@ final class Utils {
             type = Open.Type.CONSTRUCT,
             unsafe = true
     )
-    static Object classSymbol(long flags, @Coerce(targetName = "com.sun.tools.javac.util.Name") Object name, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object owner) {
+    static Object classSymbol(@SuppressWarnings("SameParameterValue") long ignoredFlags, @Coerce(targetName = NAME) Name ignoredName, @Coerce(targetName = SYMBOL) Object ignoredOwner) {
         throw new UnsupportedOperationException();
     }
 
@@ -214,27 +225,27 @@ final class Utils {
             type = Open.Type.CONSTRUCT,
             unsafe = true
     )
-    static Object methodType(@Coerce(targetName = "com.sun.tools.javac.util.List") Object argtypes, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object restype, @Coerce(targetName = "com.sun.tools.javac.util.List") Object thrown, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object tsym) {
+    static Object methodType(@Coerce(targetName = LIST) List<? extends TypeMirror> ignoredArgtypes, @Coerce(targetName = TYPE) Object ignoredRestype, @Coerce(targetName = LIST) List<? extends TypeMirror> ignoredThrown, @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object ignoredTsym) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "from",
-            targetName = "com.sun.tools.javac.util.List",
+            targetName = LIST,
             type = Open.Type.STATIC,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.util.List") Object listFrom(@Coerce(targetName = "java.lang.Iterable") Object iterable) {
+    static <T> @Coerce(targetName = LIST) List<T> listFrom(Iterable<T> ignoredIterable) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "nil",
-            targetName = "com.sun.tools.javac.util.List",
+            targetName = LIST,
             type = Open.Type.STATIC,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.util.List") Object listNil() {
+    static <T> @Coerce(targetName = LIST) List<T> listNil() {
         throw new UnsupportedOperationException();
     }
 
@@ -244,7 +255,7 @@ final class Utils {
             type = Open.Type.GET_INSTANCE,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object symTabNoSymbol(@Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object symtab) {
+    static @Coerce(targetName = "com.sun.tools.javac.code.Symbol$TypeSymbol") Object symTabNoSymbol(@Coerce(targetName = "com.sun.tools.javac.code.Symtab") Object ignoredSymtab) {
         throw new UnsupportedOperationException();
     }
 
@@ -254,7 +265,7 @@ final class Utils {
             type = Open.Type.ARRAY,
             unsafe = true
     )
-    static Object[] loadableConstantArray(int size) {
+    static Object[] loadableConstantArray(@SuppressWarnings("SameParameterValue") int ignoredSize) {
         throw new UnsupportedOperationException();
     }
 
@@ -264,7 +275,7 @@ final class Utils {
             type = Open.Type.SET_INSTANCE,
             unsafe = true
     )
-    static void qualSetSym(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object fieldAccess, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+    static void qualSetSym(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object ignoredFieldAccess, @Coerce(targetName = SYMBOL) Object ignoredSym) {
         throw new UnsupportedOperationException();
     }
 
@@ -274,7 +285,7 @@ final class Utils {
             type = Open.Type.SET_INSTANCE,
             unsafe = true
     )
-    static void qualSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object fieldAccess, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+    static void qualSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCFieldAccess") Object ignoredFieldAccess, @Coerce(targetName = TYPE) Object ignoredType) {
         throw new UnsupportedOperationException();
     }
 
@@ -284,7 +295,7 @@ final class Utils {
             type = Open.Type.SET_INSTANCE,
             unsafe = true
     )
-    static void mtinSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object methodInvocation, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+    static void mtinSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCMethodInvocation") Object ignoredMethodInvocation, @Coerce(targetName = TYPE) Object ignoredType) {
         throw new UnsupportedOperationException();
     }
 
@@ -294,37 +305,37 @@ final class Utils {
             type = Open.Type.SET_INSTANCE,
             unsafe = true
     )
-    static void jcBlockSetStats(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCBlock") Object block, @Coerce(targetName = "com.sun.tools.javac.util.List") Object stats) {
+    static void jcBlockSetStats(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCBlock") Object ignoredBlock, @Coerce(targetName = LIST) List<? extends StatementTree> ignoredStats) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "setType",
-            targetName = "com.sun.tools.javac.tree.JCTree$JCExpression",
+            targetName = JCEXPRESSION,
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object exprSetType(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr, @Coerce(targetName = "com.sun.tools.javac.code.Type") Object type) {
+    static @Coerce(targetName = JCEXPRESSION) void exprSetType(@Coerce(targetName = JCEXPRESSION) Object ignoredExpr, @Coerce(targetName = TYPE) Object ignoredType) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "asType",
-            targetName = "com.sun.tools.javac.code.Symbol",
+            targetName = SYMBOL,
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.code.Type") Object symbolAsType(@Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+    static @Coerce(targetName = TYPE) Object symbolAsType(@Coerce(targetName = SYMBOL) Object ignoredSym) {
         throw new UnsupportedOperationException();
     }
 
     @Open(
             name = "sym",
-            targetName = "com.sun.tools.javac.tree.JCTree$JCIdent",
+            targetName = JCIDENT,
             type = Open.Type.SET_INSTANCE,
             unsafe = true
     )
-    static void jcIdentSetSym(@Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCIdent") Object ident, @Coerce(targetName = "com.sun.tools.javac.code.Symbol") Object sym) {
+    static void jcIdentSetSym(@Coerce(targetName = JCIDENT) Object ignoredIdent, @Coerce(targetName = SYMBOL) Object ignoredSym) {
         throw new UnsupportedOperationException();
     }
 
@@ -334,7 +345,7 @@ final class Utils {
             type = Open.Type.VIRTUAL,
             unsafe = true
     )
-    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCReturn") Object tmReturn(@Coerce(targetName = TM) Object treeMaker, @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCExpression") Object expr) {
+    static @Coerce(targetName = "com.sun.tools.javac.tree.JCTree$JCReturn") ReturnTree tmReturn(@Coerce(targetName = TM) Object ignoredTreeMaker, @Coerce(targetName = JCEXPRESSION) Object ignoredExpr) {
         throw new UnsupportedOperationException();
     }
 }

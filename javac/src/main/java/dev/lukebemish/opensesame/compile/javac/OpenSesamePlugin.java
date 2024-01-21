@@ -237,7 +237,7 @@ public class OpenSesamePlugin implements Plugin {
 
         var returnType = typeFromTree(method.getReturnType(), types);
         var parameterTypes = new ArrayList<TypeMirror>();
-        var parameters = new ArrayList<>();
+        List<ExpressionTree> parameters = new ArrayList<>();
         if (!method.getModifiers().getFlags().contains(Modifier.STATIC)) {
             parameterTypes.add(typeFromTree(enclosingClass, types));
             parameters.add(Utils.tmIdentVar(tm, method.getReceiverParameter()));
@@ -304,7 +304,7 @@ public class OpenSesamePlugin implements Plugin {
         );
         Utils.mtinSetType(proxyCall, returnType);
 
-        Object execCall;
+        StatementTree execCall;
         if (returnType.getKind() != TypeKind.VOID) {
             execCall = Utils.tmReturn(tm, proxyCall);
         } else {
