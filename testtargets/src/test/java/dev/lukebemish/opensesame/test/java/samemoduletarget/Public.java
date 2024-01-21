@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.test.java.target;
+package dev.lukebemish.opensesame.test.java.samemoduletarget;
 
 public class Public {
     private static class Private {
