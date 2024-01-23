@@ -34,8 +34,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             Type.getType(Constructor.class)
     );
     private static final String CTOR_DUMMY = "$$dev$lukebemish$opensesame$$new";
-    private static final String EXTEND_INFO_GENERATED = "$$dev$lukebemish$opensesame$$extendInfo";
-    private static final String EXTEND_GENERATED_CLASS = "$$dev$lukebemish$opensesame$$extendGENERATED";
 
     private final Set<String> annotationDescriptors;
     private Type type;
@@ -317,146 +315,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     @Override
     public void visitEnd() {
         if (isExtension) {
-            for (var field : fields.values()) {
-                if (field.isFinal() && !field.setters().isEmpty()) {
-                    throw new RuntimeException("@Field "+field.name()+" is final, but has setters");
-                }
-            }
-            var classHolderField = visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_FINAL, EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()), null, null);
-            classHolderField.visitEnd();
-            var setter = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, Type.getMethodDescriptor(Type.getType(void.class), Type.getType(Class.class)), null, null);
-            setter.visitCode();
-            setter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
-            setter.visitInsn(Opcodes.DUP);
-            setter.visitInsn(Opcodes.MONITORENTER);
-            setter.visitInsn(Opcodes.ICONST_0);
-            setter.visitVarInsn(Opcodes.ALOAD, 0);
-            setter.visitInsn(Opcodes.AASTORE);
-            setter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
-            setter.visitInsn(Opcodes.MONITOREXIT);
-            setter.visitInsn(Opcodes.RETURN);
-            setter.visitMaxs(3, 1);
-            setter.visitEnd();
-            var getter = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, Type.getMethodDescriptor(Type.getType(Class.class)), null, null);
-            getter.visitCode();
-            getter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
-            getter.visitInsn(Opcodes.DUP);
-            getter.visitInsn(Opcodes.MONITORENTER);
-            getter.visitInsn(Opcodes.ICONST_0);
-            getter.visitInsn(Opcodes.AALOAD);
-            getter.visitFieldInsn(Opcodes.GETSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
-            getter.visitInsn(Opcodes.MONITOREXIT);
-            getter.visitInsn(Opcodes.ARETURN);
-            getter.visitMaxs(3, 0);
-            getter.visitEnd();
-            var info = visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_INFO_GENERATED, Type.getMethodDescriptor(Type.getType(List.class), Type.getType(ClassLoader.class)), null, null);
-            info.visitCode();
-
-            // 3 - ctor
-            // 4 - override
-            // 5 - field
-            //   +2 - building arraylist, dup arraylist
-            // +1 - root arraylist
-            // +1 - building arraylist
-            // +2 - dup root, dup building
-            int maxStack = 11;
-
-            newArrayList(info);
-
-            // fields:
-            info.visitInsn(Opcodes.DUP);
-            newArrayList(info);
-            // add all the fields
-            for (var field : fields.values()) {
-                info.visitInsn(Opcodes.DUP);
-                // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
-                info.visitLdcInsn(field.name());
-                info.visitLdcInsn(field.type());
-                info.visitLdcInsn(field.isFinal());
-                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(Boolean.class), "valueOf", MethodType.methodType(Boolean.class, boolean.class).descriptorString(), false);
-
-                // add setters through ArrayList
-                newArrayList(info);
-                for (var sName : field.setters()) {
-                    info.visitInsn(Opcodes.DUP);
-                    info.visitLdcInsn(sName);
-                    addToList(info);
-                }
-
-                // add getters through ArrayList
-                newArrayList(info);
-                for (var gName : field.getters()) {
-                    info.visitInsn(Opcodes.DUP);
-                    info.visitLdcInsn(gName);
-                    addToList(info);
-                }
-
-                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class, Object.class, Object.class).descriptorString(), true);
-                addToList(info);
-            }
-            addToList(info);
-
-            // overrides:
-            info.visitInsn(Opcodes.DUP);
-            newArrayList(info);
-            for (var override : overrides) {
-                info.visitInsn(Opcodes.DUP);
-                var interfaceName = remapMethodName(type, override.interfaceName(), override.interfaceReturn().type(), override.interfaceParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
-                info.visitLdcInsn(interfaceName);
-                var interfaceType = conDynUtils().conDynMethodType(override.interfaceReturn().constantDynamic(), override.interfaceParams().stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
-                info.visitLdcInsn(interfaceType);
-                var originalName = remapMethodName(extendTargetClassHandle.type(), override.originalName(), override.originalReturn().type(), override.originalParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
-                info.visitLdcInsn(originalName);
-                var originalType = conDynUtils().conDynMethodType(override.originalReturn().constantDynamic(), override.originalParams().stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
-                info.visitLdcInsn(originalType);
-                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class, Object.class).descriptorString(), true);
-                addToList(info);
-            }
-            addToList(info);
-
-            // ctors:
-            info.visitInsn(Opcodes.DUP);
-            newArrayList(info);
-            for (var ctor : ctors) {
-                info.visitInsn(Opcodes.DUP);
-                info.visitLdcInsn(ctor.ctorType());
-                info.visitLdcInsn(ctor.superCtorType());
-
-                newArrayList(info);
-                for (var field : ctor.fields()) {
-                    info.visitInsn(Opcodes.DUP);
-                    info.visitLdcInsn(field);
-                    addToList(info);
-                }
-
-                info.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(List.class), "of", MethodType.methodType(List.class, Object.class, Object.class, Object.class).descriptorString(), true);
-                addToList(info);
-            }
-            addToList(info);
-
-            info.visitInsn(Opcodes.ARETURN);
-            info.visitMaxs(maxStack, 1);
-            info.visitEnd();
-            if (!hasClassInit) {
-                var clinit = visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
-                clinit.visitCode();
-                clinit.visitInsn(Opcodes.RETURN);
-                clinit.visitMaxs(1, 0);
-                clinit.visitEnd();
-            }
+            this.extensionBytecode(
+                    new ASMClassAccumulator(this),
+                    ctors,
+                    extendTargetClassHandle,
+                    fields,
+                    !hasClassInit,
+                    overrides,
+                    type,
+                    type,
+                    this::remapMethodName
+            );
         }
         super.visitEnd();
-    }
-
-    private static void newArrayList(MethodVisitor info) {
-        info.visitTypeInsn(Opcodes.NEW, Type.getInternalName(ArrayList.class));
-        info.visitInsn(Opcodes.DUP);
-        info.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(ArrayList.class), "<init>", "()V", false);
-    }
-
-    private static void addToList(MethodVisitor info) {
-        info.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(List.class), "add", MethodType.methodType(boolean.class, Object.class).descriptorString(), true);
-        info.visitInsn(Opcodes.POP);
     }
 
     public final class Method extends MethodVisitor {
@@ -533,9 +404,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
             if (isExtension && "<clinit>".equals(this.name)) {
                 hasClassInit = true;
-                visitInsn(Opcodes.ICONST_1);
-                visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Class.class));
-                visitFieldInsn(Opcodes.PUTSTATIC, type.getInternalName(), EXTEND_GENERATED_CLASS, Type.getDescriptor(Class.class.arrayType()));
+                extensionClassInitSetup(new ASMClassAccumulator.ASMMethodMaker(this), type);
             }
 
             if (this.annotations.containsKey(Open.class.descriptorString())) {
@@ -626,7 +495,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         throw new RuntimeException("@Constructor must not have duplicate field parameters");
                     }
                     drop++;
-                    Type fieldType = this.parameterTypes.get(0);
+                    Type fieldType = this.parameterTypes.get(i);
                     var name = field.literals.get("name").toString();
                     var setAsFinal = fieldsFinal != null && fieldsFinal[i] != null;
                     ExtendFieldInfo<Type> fieldInfo = VisitingProcessor.this.fields.computeIfAbsent(name, k -> new ExtendFieldInfo<>(name, fieldType, setAsFinal));
@@ -634,7 +503,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         fieldInfo = new ExtendFieldInfo<>(name, fieldType, true, fieldInfo.getters(), fieldInfo.setters());
                         VisitingProcessor.this.fields.put(name, fieldInfo);
                     }
-                    if (fieldInfo.type() != fieldType) {
+                    if (!fieldInfo.type().equals(fieldType)) {
                         throw new RuntimeException("@Constructor field parameter type must match field type");
                     }
                     fieldNames.add(name);
@@ -671,21 +540,21 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     new Handle(
                             Opcodes.H_INVOKESTATIC,
                             type.getInternalName(),
-                            EXTEND_GENERATED_CLASS,
+                            Processor.EXTEND_GENERATED_CLASS,
                             MethodType.methodType(void.class, Class.class).toMethodDescriptorString(),
                             true
                     ),
                     new Handle(
                             Opcodes.H_INVOKESTATIC,
                             type.getInternalName(),
-                            EXTEND_GENERATED_CLASS,
+                            Processor.EXTEND_GENERATED_CLASS,
                             MethodType.methodType(Class.class).toMethodDescriptorString(),
                             true
                     ),
                     new Handle(
                             Opcodes.H_INVOKESTATIC,
                             type.getInternalName(),
-                            EXTEND_INFO_GENERATED,
+                            Processor.EXTEND_INFO_GENERATED,
                             MethodType.methodType(List.class, ClassLoader.class).toMethodDescriptorString(),
                             true
                     )

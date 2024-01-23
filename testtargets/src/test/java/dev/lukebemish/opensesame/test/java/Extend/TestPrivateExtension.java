@@ -43,8 +43,19 @@ public class TestPrivateExtension {
             throw new AssertionError("Constructor not transformed");
         }
 
+        @Constructor
+        static ExtensionFields constructor(@Field(name = "field") @Field.Final String field, @Field(name = "field2") String field2) {
+            throw new AssertionError("Constructor not transformed");
+        }
+
         @Field(name = "field")
         String getField();
+
+        @Field(name = "field2")
+        String getField2();
+
+        @Field(name = "field2")
+        void setField2(String field2);
 
         @Overrides(name = "toString")
         default String toStringImplementation() {
@@ -74,6 +85,13 @@ public class TestPrivateExtension {
 
     @Test
     void testPrivateExtensionField() {
-        assertEquals("stuff", ExtensionFields.constructor("stuff").toString());
+        var instance = ExtensionFields.constructor("stuff");
+        assertEquals("stuff", instance.toString());
+        assertNull(instance.getField2());
+        instance.setField2("stuff2");
+        assertEquals("stuff2", instance.getField2());
+        instance = ExtensionFields.constructor("stuff", "stuff2");
+        assertEquals("stuff", instance.toString());
+        assertEquals("stuff2", instance.getField2());
     }
 }
