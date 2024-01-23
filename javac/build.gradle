@@ -15,7 +15,6 @@ configurations {
 }
 
 dependencies {
-    implementation project(':opensesame-compile')
     implementation(project(':opensesame-compile')) {
         capabilities {
             requireCapability 'dev.lukebemish.opensesame:opensesame-compile-asm'

@@ -194,7 +194,7 @@ public interface Processor<T, A, M> {
     String EXTEND_INFO_GENERATED = "$$dev$lukebemish$opensesame$$extendInfo";
     String EXTEND_GENERATED_CLASS = "$$dev$lukebemish$opensesame$$extendGENERATED";
 
-    default void extensionBytecode(ClassAccumulator visitor, List<ExtendCtorInfo> ctors, ConDynUtils.TypedDynamic<?, T> extendTargetClassHandle, Map<String, ExtendFieldInfo<T>> fields, boolean generateClassInit, List<ExtendOverrideInfo<T>> overrides, T originalExtensionType, T holdingType, MethodNameMapper<T> mapper) {
+    default void extensionBytecode(ClassAccumulator visitor, List<ExtendCtorInfo> ctors, ConDynUtils.TypedDynamic<?, T> extendTargetClassHandle, Map<String, ExtendFieldInfo<T>> fields, boolean generateClassInit, List<ExtendOverrideInfo<T>> overrides, T extensionType, MethodNameMapper<T> mapper) {
         for (var field : fields.values()) {
             if (field.isFinal() && !field.setters().isEmpty()) {
                 throw new RuntimeException("@Field "+field.name()+" is final, but has setters");
@@ -204,25 +204,25 @@ public interface Processor<T, A, M> {
         classHolderField.visitEnd();
         var setter = visitor.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, MethodType.methodType(void.class, Class.class).descriptorString(), null, null);
         setter.visitCode();
-        setter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(holdingType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
+        setter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(extensionType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
         setter.visitInsn(Opcodes.DUP);
         setter.visitInsn(Opcodes.MONITORENTER);
         setter.visitInsn(Opcodes.ICONST_0);
         setter.visitVarInsn(Opcodes.ALOAD, 0);
         setter.visitInsn(Opcodes.AASTORE);
-        setter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(holdingType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
+        setter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(extensionType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
         setter.visitInsn(Opcodes.MONITOREXIT);
         setter.visitInsn(Opcodes.RETURN);
         setter.visitMaxs(3, 1);
         setter.visitEnd();
         var getter = visitor.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, EXTEND_GENERATED_CLASS, MethodType.methodType(Class.class).descriptorString(), null, null);
         getter.visitCode();
-        getter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(holdingType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
+        getter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(extensionType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
         getter.visitInsn(Opcodes.DUP);
         getter.visitInsn(Opcodes.MONITORENTER);
         getter.visitInsn(Opcodes.ICONST_0);
         getter.visitInsn(Opcodes.AALOAD);
-        getter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(holdingType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
+        getter.visitFieldInsn(Opcodes.GETSTATIC, types().internalName(extensionType), EXTEND_GENERATED_CLASS, Class.class.arrayType().descriptorString());
         getter.visitInsn(Opcodes.MONITOREXIT);
         getter.visitInsn(Opcodes.ARETURN);
         getter.visitMaxs(3, 0);
@@ -238,6 +238,15 @@ public interface Processor<T, A, M> {
         // +1 - building arraylist
         // +2 - dup root, dup building
         int maxStack = 11;
+
+        var interfaces = Processor.class.getInterfaces();
+        for (var i : interfaces) {
+            try {
+                MethodHandles.lookup().findStatic(i, "stuff", MethodType.methodType(void.class)).invokeExact();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         newArrayList(info);
 
@@ -279,7 +288,7 @@ public interface Processor<T, A, M> {
         newArrayList(info);
         for (var override : overrides) {
             info.visitInsn(Opcodes.DUP);
-            var interfaceName = mapper.remapMethodName(originalExtensionType, override.interfaceName(), override.interfaceReturn().type(), override.interfaceParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
+            var interfaceName = mapper.remapMethodName(extensionType, override.interfaceName(), override.interfaceReturn().type(), override.interfaceParams().stream().map(ConDynUtils.TypedDynamic::type).toList());
             info.visitLdcInsn(interfaceName);
             var interfaceType = conDynUtils().conDynMethodType(override.interfaceReturn().constantDynamic(), override.interfaceParams().stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
             info.visitLdcInsn(interfaceType);

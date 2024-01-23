@@ -1,32 +1,31 @@
 package dev.lukebemish.opensesame.compile.groovy
 
-import dev.lukebemish.opensesame.annotations.Coerce
 import dev.lukebemish.opensesame.annotations.Open
 import dev.lukebemish.opensesame.compile.ConDynUtils
 import dev.lukebemish.opensesame.compile.Processor
 import dev.lukebemish.opensesame.compile.TypeProvider
-import dev.lukebemish.opensesame.runtime.OpeningMetafactory
 import groovy.transform.CompileStatic
 import groovy.transform.PackageScope
 import groovy.transform.PackageScopeTarget
 import groovyjarjarasm.asm.Handle
-import groovyjarjarasm.asm.MethodVisitor
 import groovyjarjarasm.asm.Opcodes
 import groovyjarjarasm.asm.Type
-import org.codehaus.groovy.ast.*
+import org.codehaus.groovy.ast.AnnotatedNode
+import org.codehaus.groovy.ast.AnnotationNode
+import org.codehaus.groovy.ast.ClassHelper
+import org.codehaus.groovy.ast.ClassNode
+import org.codehaus.groovy.ast.GenericsType
+import org.codehaus.groovy.ast.MethodNode
+import org.codehaus.groovy.ast.Parameter
 import org.codehaus.groovy.ast.expr.ClosureExpression
 import org.codehaus.groovy.ast.expr.Expression
 import org.codehaus.groovy.ast.expr.PropertyExpression
-import org.codehaus.groovy.ast.stmt.ExpressionStatement
-import org.codehaus.groovy.classgen.BytecodeExpression
 import org.codehaus.groovy.classgen.asm.BytecodeHelper
 import org.codehaus.groovy.control.CompilePhase
-import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.AbstractASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
 import org.jetbrains.annotations.Nullable
 
-import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
@@ -35,10 +34,7 @@ import java.util.function.Function
 @CompileStatic
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
 @PackageScope(PackageScopeTarget.CLASS)
-class OpenSesameTransformation extends AbstractASTTransformation implements Processor<Type, AnnotationNode, MethodNode> {
-    private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
-    private static final ClassNode COERCE = ClassHelper.makeWithoutCaching(Coerce)
-    private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
+class GroovyProcessor implements Processor<Type, AnnotationNode, MethodNode> {
     private static final ClassNode GENERIC_CLASS = ClassHelper.makeWithoutCaching(Class).getPlainNodeReference().tap {
         it.setGenericsTypes(new GenericsType[] {new GenericsType(ClassHelper.OBJECT_TYPE).tap {
             it.wildcard = true
@@ -47,53 +43,10 @@ class OpenSesameTransformation extends AbstractASTTransformation implements Proc
     private static final ClassNode CLASSLOADER = ClassHelper.makeWithoutCaching(ClassLoader)
     private static final String METHOD_CLOSURE_COUNT_META = 'dev.lukebemish.opensesame:closureCount'
 
-    @Override
-    void visit(ASTNode[] nodes, SourceUnit source) {
-        this.init(nodes, source)
+    final AbstractASTTransformation transformation
 
-        MethodNode methodNode = (MethodNode) nodes[1]
-        if (methodNode.getAnnotations(OPEN).size() != 1) {
-            throw new RuntimeException("${Open.simpleName} annotation can only be used once per method")
-        }
-
-        Opening<Type> opening = opening(methodNode)
-
-        methodNode.code = new ExpressionStatement(new BytecodeExpression(methodNode.returnType) {
-            @Override
-            void visit(MethodVisitor methodVisitor) {
-                if (!methodNode.static) {
-                    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-                }
-
-                int j = 0
-                for (int i = 0; i < methodNode.parameters.size(); i++) {
-                    Type parameterType = Type.getType(BytecodeHelper.getTypeDescription(methodNode.parameters[i].type))
-                    methodVisitor.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), methodNode.static ? j : j + 1)
-                    j += parameterType.getSize()
-                }
-
-                var methodType = opening.type().ordinal()
-
-                methodVisitor.visitInvokeDynamicInsn(
-                        opening.type() == Open.Type.CONSTRUCT ? OpenClassTypeCheckingExtension.CTOR_DUMMY : opening.name(),
-                        opening.factoryType().descriptor,
-                        new Handle(
-                                Opcodes.H_INVOKESTATIC,
-                                BytecodeHelper.getClassInternalName(OPENING_METAFACTORY),
-                                opening.unsafe() ? 'invokeUnsafe' : 'invoke',
-                                Type.getMethodDescriptor(Type.getType(CallSite), Type.getType(MethodHandles.Lookup), Type.getType(String), Type.getType(MethodType), Type.getType(MethodHandle), Type.getType(MethodHandle), Type.getType(int.class)),
-                                false
-                        ),
-                        opening.targetProvider(),
-                        opening.methodTypeProvider(),
-                        methodType
-                )
-
-                if (opening.factoryType().returnType.sort == Type.VOID) {
-                    methodVisitor.visitInsn(Opcodes.ACONST_NULL)
-                }
-            }
-        })
+    GroovyProcessor(AbstractASTTransformation transformation) {
+        this.transformation = transformation
     }
 
     @Override
@@ -122,9 +75,9 @@ class OpenSesameTransformation extends AbstractASTTransformation implements Proc
 
         ConDynUtils.TypedDynamic<?, Type> targetClassHandle = null
 
-        var targetName = getMemberStringValue(annotationNode, 'targetName')
-        var targetClass = getMemberClassValue(annotationNode, 'targetClass')
-        var targetFunction = getMemberClassValue(annotationNode, 'targetProvider')
+        var targetName = transformation.getMemberStringValue(annotationNode, 'targetName')
+        var targetClass = transformation.getMemberClassValue(annotationNode, 'targetClass')
+        var targetFunction = transformation.getMemberClassValue(annotationNode, 'targetProvider')
         Object targetClosureHandle = null
         if (targetFunction == null) {
             Expression member = annotationNode.getMember('targetProvider')
@@ -241,23 +194,17 @@ class OpenSesameTransformation extends AbstractASTTransformation implements Proc
 
     @Override
     Open.Type type(AnnotationNode annotation) {
-        if (annotation.classNode != OPEN) {
-            throw new RuntimeException("Attempted to get type from non-${Open.simpleName} annotation ${annotation.toString()}")
-        }
         return Open.Type.valueOf((annotation.getMember('type') as PropertyExpression).propertyAsString)
     }
 
     @Override
     @Nullable String name(AnnotationNode annotation) {
-        if (annotation.classNode != OPEN) {
-            throw new RuntimeException("Attempted to get name from non-${Open.simpleName} annotation ${annotation.toString()}")
-        }
-        return getMemberStringValue(annotation, 'name')
+        return transformation.getMemberStringValue(annotation, 'name')
     }
 
     @Override
     boolean unsafe(AnnotationNode annotation) {
-        return getMemberValue(annotation, 'unsafe')
+        return transformation.getMemberValue(annotation, 'unsafe')
     }
 
     @Override

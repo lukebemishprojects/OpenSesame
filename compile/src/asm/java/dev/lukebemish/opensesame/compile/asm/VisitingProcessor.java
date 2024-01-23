@@ -9,6 +9,7 @@ import dev.lukebemish.opensesame.annotations.extend.Overrides;
 import dev.lukebemish.opensesame.compile.ConDynUtils;
 import dev.lukebemish.opensesame.compile.Processor;
 import dev.lukebemish.opensesame.compile.TypeProvider;
+import dev.lukebemish.opensesame.runtime.Extension;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
@@ -39,18 +40,16 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     private Type type;
 
     public static void main(String[] args) {
-        if ((~args.length & 1) != 1) {
-            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.VisitingProcessor <input> <output> <input> <output> ...");
+        if (args.length != 2) {
+            System.err.println("Usage: java dev.lukebemish.opensesame.compile.asm.VisitingProcessor <input> <output> ...");
             System.exit(1);
         }
-        for (int i = 0; i < args.length; i += 2) {
-            var input = Path.of(args[0]);
-            var output = Path.of(args[1]);
-            try {
-                process(input, output);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        var input = Path.of(args[0]);
+        var output = Path.of(args[1]);
+        try {
+            process(input, output);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -95,9 +94,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     List<ExtendCtorInfo> ctors = new ArrayList<>();
     boolean hasClassInit = false;
     boolean unsafeExtension = false;
+    final AnnotationDependentVisitor delegate;
 
     public VisitingProcessor(ClassVisitor delegate, Set<Type> annotations) {
-        super(Opcodes.ASM9, delegate);
+        super(Opcodes.ASM9, new AnnotationDependentVisitor(Opcodes.ASM9, delegate));
+        this.delegate = (AnnotationDependentVisitor) this.getDelegate();
         this.annotationDescriptors = annotations.stream().map(Type::getDescriptor).collect(Collectors.toSet());
     }
 
@@ -114,6 +115,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 annotation.onEnd(() -> {
                     extendTargetClassHandle = typeProviderFromAnnotation(annotation, null, Extend.class);
                     unsafeExtension = unsafe(annotation);
+                    var interfaces = delegate.classInfo.interfaces;
+                    if (Arrays.stream(interfaces).noneMatch(s -> s.equals(Type.getInternalName(Extension.class)))) {
+                        interfaces = Arrays.copyOf(interfaces, interfaces.length + 1);
+                        interfaces[interfaces.length - 1] = Type.getInternalName(Extension.class);
+                        delegate.classInfo.interfaces = interfaces;
+                    }
                 });
             }
             if (annotations.put(descriptor, annotation) != null) {
@@ -323,7 +330,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     !hasClassInit,
                     overrides,
                     type,
-                    type,
                     this::remapMethodName
             );
         }
@@ -453,119 +459,127 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
 
         private void handleOverrides() {
-            if (this.isStatic) {
-                throw new RuntimeException("@Overrides must not be static");
+            if (isExtension) {
+                if (this.isStatic) {
+                    throw new RuntimeException("@Overrides must not be static");
+                }
+                CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
+                String originalName = this.annotations.get(Overrides.class.descriptorString()).literals.get("name").toString();
+                overrides.add(new ExtendOverrideInfo<>(
+                        name,
+                        conDynUtils().conDynFromClass(returnType),
+                        parameterTypes.stream().<ConDynUtils.TypedDynamic<?, Type>>map(conDynUtils()::conDynFromClass).toList(),
+                        originalName,
+                        descriptor.returnType(),
+                        descriptor.parameterTypes()
+                ));
+            } else {
+                throw new RuntimeException("@Overrides annotation must be used on an interface marked with Extend");
             }
-            CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
-            String originalName = this.annotations.get(Overrides.class.descriptorString()).literals.get("name").toString();
-            overrides.add(new ExtendOverrideInfo<>(
-                    name,
-                    conDynUtils().conDynFromClass(returnType),
-                    parameterTypes.stream().<ConDynUtils.TypedDynamic<?, Type>>map(conDynUtils()::conDynFromClass).toList(),
-                    originalName,
-                    descriptor.returnType(),
-                    descriptor.parameterTypes()
-            ));
         }
 
         private void handleConstructor() {
-            if (!this.isStatic) {
-                throw new RuntimeException("@Constructor must be static");
-            }
-            CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
-            if (!type.equals(descriptor.returnType().type())) {
-                throw new RuntimeException("@Constructor must have return type of "+type.getClassName());
-            }
-            var fields = parameterAnnotations.get(Field.class.descriptorString());
-            var fieldsFinal = parameterAnnotations.get(Field.Final.class.descriptorString());
-            int drop = 0;
-            List<String> fieldNames = new ArrayList<>();
-            if (fields != null) {
-                boolean finished = false;
-                for (int i = 0; i < fields.length; i++) {
-                    var field = fields[i];
-                    if (field == null) {
-                        finished = true;
-                        continue;
-                    }
-                    if (finished) {
-                        throw new RuntimeException("@Constructor must have all field parameters before non-field parameters");
-                    }
-                    if (fieldNames.contains(field.literals.get("name").toString())) {
-                        throw new RuntimeException("@Constructor must not have duplicate field parameters");
-                    }
-                    drop++;
-                    Type fieldType = this.parameterTypes.get(i);
-                    var name = field.literals.get("name").toString();
-                    var setAsFinal = fieldsFinal != null && fieldsFinal[i] != null;
-                    ExtendFieldInfo<Type> fieldInfo = VisitingProcessor.this.fields.computeIfAbsent(name, k -> new ExtendFieldInfo<>(name, fieldType, setAsFinal));
-                    if (!fieldInfo.isFinal() && setAsFinal) {
-                        fieldInfo = new ExtendFieldInfo<>(name, fieldType, true, fieldInfo.getters(), fieldInfo.setters());
-                        VisitingProcessor.this.fields.put(name, fieldInfo);
-                    }
-                    if (!fieldInfo.type().equals(fieldType)) {
-                        throw new RuntimeException("@Constructor field parameter type must match field type");
-                    }
-                    fieldNames.add(name);
+            if (isExtension) {
+                if (!this.isStatic) {
+                    throw new RuntimeException("@Constructor must be static");
                 }
+                CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
+                if (!type.equals(descriptor.returnType().type())) {
+                    throw new RuntimeException("@Constructor must have return type of " + type.getClassName());
+                }
+                var fields = parameterAnnotations.get(Field.class.descriptorString());
+                var fieldsFinal = parameterAnnotations.get(Field.Final.class.descriptorString());
+                int drop = 0;
+                List<String> fieldNames = new ArrayList<>();
+                if (fields != null) {
+                    boolean finished = false;
+                    for (int i = 0; i < fields.length; i++) {
+                        var field = fields[i];
+                        if (field == null) {
+                            finished = true;
+                            continue;
+                        }
+                        if (finished) {
+                            throw new RuntimeException("@Constructor must have all field parameters before non-field parameters");
+                        }
+                        if (fieldNames.contains(field.literals.get("name").toString())) {
+                            throw new RuntimeException("@Constructor must not have duplicate field parameters");
+                        }
+                        drop++;
+                        Type fieldType = this.parameterTypes.get(i);
+                        var name = field.literals.get("name").toString();
+                        var setAsFinal = fieldsFinal != null && fieldsFinal[i] != null;
+                        ExtendFieldInfo<Type> fieldInfo = VisitingProcessor.this.fields.computeIfAbsent(name, k -> new ExtendFieldInfo<>(name, fieldType, setAsFinal));
+                        if (!fieldInfo.isFinal() && setAsFinal) {
+                            fieldInfo = new ExtendFieldInfo<>(name, fieldType, true, fieldInfo.getters(), fieldInfo.setters());
+                            VisitingProcessor.this.fields.put(name, fieldInfo);
+                        }
+                        if (!fieldInfo.type().equals(fieldType)) {
+                            throw new RuntimeException("@Constructor field parameter type must match field type");
+                        }
+                        fieldNames.add(name);
+                    }
+                }
+                List<ConDynUtils.TypedDynamic<?, Type>> superCtorTypes = new ArrayList<>(descriptor.parameterTypes());
+                if (drop > 0) {
+                    superCtorTypes.subList(0, drop).clear();
+                }
+                var voidType = conDynUtils().conDynFromClass(Type.getType(void.class));
+
+                Object superCtorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
+                Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), this.parameterTypes.stream().<Object>map(t -> conDynUtils().conDynFromClass(t).constantDynamic()).toList());
+
+                ctors.add(new ExtendCtorInfo(ctorType, superCtorType, fieldNames));
+
+                int j = 0;
+                for (Type parameterType : this.parameterTypes) {
+                    super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), j);
+                    j += parameterType.getSize();
+                }
+
+                super.visitInvokeDynamicInsn(
+                        name,
+                        Type.getMethodDescriptor(returnType, this.parameterTypes.toArray(Type[]::new)),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                Type.getInternalName(OpeningMetafactory.class),
+                                unsafeExtension ? "makeOpenClassUnsafe" : "makeOpenClass",
+                                MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, MethodHandle.class, MethodHandle.class).toMethodDescriptorString(),
+                                false
+                        ),
+                        extendTargetClassHandle.constantDynamic(),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                type.getInternalName(),
+                                Processor.EXTEND_GENERATED_CLASS,
+                                MethodType.methodType(void.class, Class.class).toMethodDescriptorString(),
+                                true
+                        ),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                type.getInternalName(),
+                                Processor.EXTEND_GENERATED_CLASS,
+                                MethodType.methodType(Class.class).toMethodDescriptorString(),
+                                true
+                        ),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                type.getInternalName(),
+                                Processor.EXTEND_INFO_GENERATED,
+                                MethodType.methodType(List.class, ClassLoader.class).toMethodDescriptorString(),
+                                true
+                        )
+                );
+
+                super.visitInsn(Opcodes.ARETURN);
+
+                super.visitMaxs(Math.max(1, this.parameterTypes.size()), this.parameterTypes.size());
+                super.visitEnd();
+
+                this.mv = null;
+            } else {
+                throw new RuntimeException("@Constructor annotation must be used on an interface marked with Extend");
             }
-            List<ConDynUtils.TypedDynamic<?, Type>> superCtorTypes = new ArrayList<>(descriptor.parameterTypes());
-            if (drop > 0) {
-                superCtorTypes.subList(0, drop).clear();
-            }
-            var voidType = conDynUtils().conDynFromClass(Type.getType(void.class));
-
-            Object superCtorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
-            Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), this.parameterTypes.stream().<Object>map(t -> conDynUtils().conDynFromClass(t).constantDynamic()).toList());
-
-            ctors.add(new ExtendCtorInfo(ctorType, superCtorType, fieldNames));
-
-            int j = 0;
-            for (Type parameterType : this.parameterTypes) {
-                super.visitVarInsn(parameterType.getOpcode(Opcodes.ILOAD), j);
-                j += parameterType.getSize();
-            }
-
-            super.visitInvokeDynamicInsn(
-                    name,
-                    Type.getMethodDescriptor(returnType, this.parameterTypes.toArray(Type[]::new)),
-                    new Handle(
-                            Opcodes.H_INVOKESTATIC,
-                            Type.getInternalName(OpeningMetafactory.class),
-                            unsafeExtension ? "makeOpenClassUnsafe" : "makeOpenClass",
-                            MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, MethodHandle.class, MethodHandle.class).toMethodDescriptorString(),
-                            false
-                    ),
-                    extendTargetClassHandle.constantDynamic(),
-                    new Handle(
-                            Opcodes.H_INVOKESTATIC,
-                            type.getInternalName(),
-                            Processor.EXTEND_GENERATED_CLASS,
-                            MethodType.methodType(void.class, Class.class).toMethodDescriptorString(),
-                            true
-                    ),
-                    new Handle(
-                            Opcodes.H_INVOKESTATIC,
-                            type.getInternalName(),
-                            Processor.EXTEND_GENERATED_CLASS,
-                            MethodType.methodType(Class.class).toMethodDescriptorString(),
-                            true
-                    ),
-                    new Handle(
-                            Opcodes.H_INVOKESTATIC,
-                            type.getInternalName(),
-                            Processor.EXTEND_INFO_GENERATED,
-                            MethodType.methodType(List.class, ClassLoader.class).toMethodDescriptorString(),
-                            true
-                    )
-            );
-
-            super.visitInsn(Opcodes.ARETURN);
-
-            super.visitMaxs(Math.max(1, this.parameterTypes.size()), this.parameterTypes.size());
-            super.visitEnd();
-
-            this.mv = null;
         }
 
         private void handleOpen() {

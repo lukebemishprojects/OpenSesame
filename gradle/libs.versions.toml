@@ -4,7 +4,7 @@ junit = "5.8.1"
 jetbrains_annotations = "24.0.1"
 autoservice = "1.0.1"
 
-groovy = "4.0.15"
+groovy = "4.0.18"
 asm = "9.6"
 
 managedversioning = "1.2.6"
@@ -28,6 +28,7 @@ groovy_core = { module = "org.apache.groovy:groovy", version.ref = "groovy" }
 
 asm_core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm_commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+asm_tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 
 fabric_loom = { module = "net.fabricmc:fabric-loom", version.ref = "fabric_loom" }
 fabric_loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric_loader" }

@@ -303,6 +303,14 @@ public final class OpeningMetafactory {
             throw new OpeningException(e);
         }
         Class<?> holdingClass = caller.lookupClass();
+        // check for interfaces
+        for (Class<?> iFace : holdingClass.getInterfaces()) {
+            if (!iFace.equals(Extension.class)) {
+                if (Extension.class.isAssignableFrom(iFace)) {
+                    throw new OpeningException("Extension interface "+holdingClass.getName()+" implements an interface "+iFace.getName()+" that is an extension, which is not allowed");
+                }
+            }
+        }
         if (!factoryType.returnType().equals(holdingClass)) {
             throw new OpeningException("Factory type return type must be the same as the holding class");
         }

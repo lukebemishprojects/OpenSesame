@@ -23,13 +23,14 @@ configurations {
 
 dependencies {
     api project(':opensesame-core')
-    asmImplementation libs.asm.core
-    asmImplementation project
+    asmApi libs.asm.core
+    asmApi libs.asm.tree
+    asmApi project
     asmCompileOnly libs.jetbrains.annotations
 
-    testImplementation libs.asm.core
-
     testSource project(path: ':testtargets', configuration: 'testSource')
+
+    testImplementation project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')
 }
 
 def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
