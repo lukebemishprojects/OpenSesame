@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestPrivateExtension {
+public class TestPrivate {
     @Extend(targetName = "dev.lukebemish.opensesame.test.target.Public$Private", unsafe = true)
     public interface Extension {
         @Constructor

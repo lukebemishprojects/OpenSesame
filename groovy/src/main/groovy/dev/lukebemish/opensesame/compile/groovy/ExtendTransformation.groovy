@@ -96,7 +96,7 @@ class ExtendTransformation extends AbstractASTTransformation {
         }
 
         Processor.CoercedDescriptor<Type> descriptor = processor.coercedDescriptor(methodNode)
-        if (!holderType.equals(descriptor.returnType().type())) {
+        if (holderType != descriptor.returnType().type()) {
             throw new RuntimeException("@Constructor must have return type of "+holderType.getClassName())
         }
 
@@ -203,6 +203,9 @@ class ExtendTransformation extends AbstractASTTransformation {
         }
         Processor.CoercedDescriptor<Type> descriptor = processor.coercedDescriptor(methodNode)
         String originalName = processor.name(methodNode.getAnnotations(OVERRIDES).find())
+        if (methodNode.name == originalName) {
+            throw new RuntimeException("@Overrides must not have the same name as the original method")
+        }
         overrideConsumer.accept(new Processor.ExtendOverrideInfo<>(
                 methodNode.name,
                 processor.conDynUtils().conDynFromClass(Type.getType(BytecodeHelper.getTypeDescription(methodNode.returnType))),

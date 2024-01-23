@@ -345,7 +345,10 @@ public final class OpeningMetafactory {
     private static Class<?> generateClass(MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         String generatedClassName = Type.getInternalName(targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
-        classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(targetClass), new String[] {Type.getInternalName(holdingClass)});
+        var isInterface = targetClass.isInterface();
+        var superClass = isInterface ? Object.class : targetClass;
+        var interfaces = isInterface ? new String[] {Type.getInternalName(targetClass), Type.getInternalName(holdingClass)} : new String[] {Type.getInternalName(holdingClass)};
+        classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(superClass), interfaces);
 
         Map<String, Class<?>> fieldTypes = new HashMap<>();
 
@@ -472,7 +475,7 @@ public final class OpeningMetafactory {
                 methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
                 j += t.getSize();
             }
-            methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", superType.descriptorString(), false);
+            methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(superClass), "<init>", superType.descriptorString(), false);
             j = 1;
             for (String fieldName : fieldsToSet) {
                 var fieldType = fieldTypes.get(fieldName);

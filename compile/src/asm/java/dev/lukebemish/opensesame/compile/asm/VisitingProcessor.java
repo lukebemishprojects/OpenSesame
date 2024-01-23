@@ -487,6 +487,9 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 }
                 CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
                 String originalName = this.annotations.get(Overrides.class.descriptorString()).literals.get("name").toString();
+                if (this.name.equals(originalName)) {
+                    throw new RuntimeException("@Overrides must not have the same name as the original method");
+                }
                 overrides.add(new ExtendOverrideInfo<>(
                         name,
                         conDynUtils().conDynFromClass(returnType),
