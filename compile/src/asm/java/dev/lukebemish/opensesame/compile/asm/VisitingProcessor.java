@@ -13,6 +13,8 @@ import dev.lukebemish.opensesame.runtime.Extension;
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.io.IOException;
 import java.lang.invoke.CallSite;
@@ -140,8 +142,25 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         super.visit(version, access, name, signature, superName, interfaces);
     }
 
+    private boolean skip(String name) {
+        return name.equals(Processor.EXTEND_INFO_GENERATED) || name.equals(Processor.EXTEND_GENERATED_CLASS);
+    }
+
+    @Override
+    public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+        if (!ending && isExtension && skip(name)) {
+            return new FieldNode(access, name, descriptor, signature, value);
+        }
+
+        return super.visitField(access, name, descriptor, signature, value);
+    }
+
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+        if (!ending && isExtension && skip(name)) {
+            return new MethodNode(access, name, descriptor, signature, exceptions);
+        }
+
         Type returnType = Type.getReturnType(descriptor);
         List<Type> parameterTypes = Arrays.stream(Type.getArgumentTypes(descriptor)).toList();
 
@@ -319,9 +338,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     public record EnumConstant(Type type, String value) {}
 
+    boolean ending = false;
+
     @Override
     public void visitEnd() {
         if (isExtension) {
+            ending = true;
             this.extensionBytecode(
                     new ASMClassAccumulator(this),
                     ctors,
