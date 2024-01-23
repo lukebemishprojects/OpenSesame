@@ -573,7 +573,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
                 super.visitInsn(Opcodes.ARETURN);
 
-                super.visitMaxs(Math.max(1, this.parameterTypes.size()), this.parameterTypes.size());
+                int parametersSize = 0;
+                for (Type parameterType : this.parameterTypes) {
+                    parametersSize += parameterType.getSize();
+                }
+                super.visitMaxs(Math.max(2, parametersSize), parametersSize);
                 super.visitEnd();
 
                 this.mv = null;
@@ -654,7 +658,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 super.visitInsn(Opcodes.RETURN);
             }
 
-            super.visitMaxs(Math.max(1, this.parameterTypes.size() + (isStatic ? 0 : 1)), this.parameterTypes.size() + (isStatic ? 0 : 1));
+            int parametersSize = 0;
+            for (Type parameterType : this.parameterTypes) {
+                parametersSize += parameterType.getSize();
+            }
+            super.visitMaxs(Math.max(2, parametersSize + (isStatic ? 0 : 1)), parametersSize + (isStatic ? 0 : 1));
             super.visitEnd();
 
             this.mv = null;
