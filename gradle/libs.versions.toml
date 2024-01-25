@@ -16,6 +16,8 @@ fabric_loader = "0.15.4"
 
 tinyremapper = "0.10.0"
 
+mixin = "0.8.5"
+
 [libraries]
 
 junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
@@ -33,6 +35,8 @@ asm_tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 fabric_loom = { module = "net.fabricmc:fabric-loom", version.ref = "fabric_loom" }
 fabric_loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric_loader" }
 fabric_tinyremapper = { module = "net.fabricmc:tiny-remapper", version.ref = "tinyremapper" }
+
+mixin = { module = "org.spongepowered:mixin", version.ref = "mixin" }
 
 [plugins]
 

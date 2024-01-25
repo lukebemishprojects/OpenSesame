@@ -115,4 +115,8 @@ public class Public {
     private static String arrayArgument(String[] s) {
         return s[0];
     }
+
+    public final String finalMethod() {
+        return "finalMethod";
+    }
 }

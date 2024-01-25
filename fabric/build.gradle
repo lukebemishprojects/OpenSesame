@@ -19,9 +19,14 @@ configurations {
 dependencies {
     compileOnly libs.fabric.loader
     api project(':opensesame-core')
-    bundle project(':opensesame-core')
+    api project(':opensesame-mixin')
+    bundle(project(':opensesame-core')) {
+        transitive = false
+    }
+    bundle(project(':opensesame-mixin')) {
+        transitive = false
+    }
 }
-
 
 import dev.lukebemish.opensesame.convention.FabricModJson
 import dev.lukebemish.opensesame.convention.Bundler

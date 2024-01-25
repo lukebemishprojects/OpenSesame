@@ -32,6 +32,45 @@ dependencies {
     testModuleClasspath project(':testtargets')
 }
 
+abstract class OpenSesameConventionExtension {
+    abstract Property<Boolean> getTestAsModule();
+
+    OpenSesameConventionExtension() {
+        testAsModule.convention(true)
+    }
+
+    def pomShared(MavenPom it, String name) {
+        it.name = "OpenSesame - $name".toString()
+        it.packaging = 'jar'
+        it.url = 'https://github.com/lukebemishprojects/OpenSesame'
+        it.inceptionYear = '2023'
+
+        it.licenses {
+            license {
+                name = '3-Clause BSD License'
+                url = 'https://opensource.org/license/bsd-3-clause/'
+            }
+        }
+        it.developers {
+            developer {
+                id = 'lukebemish'
+                name = 'Luke Bemish'
+                email = 'lukebemish@lukebemish.dev'
+                url = 'https://github.com/lukebemish/'
+            }
+        }
+        it.scm {
+            connection='scm:git:git://github.com/lukebemishprojects/OpenSesame.git'
+            developerConnection='scm:git:ssh://github.com/lukebemishprojects/OpenSesame.git'
+            url='https://github.com/lukebemishprojects/OpenSesame'
+        }
+    }
+}
+
+project.extensions.add('openSesameConvention', OpenSesameConventionExtension)
+
+OpenSesameConventionExtension openSesameExtension = project.extensions.getByName('openSesameConvention')
+
 testing {
     suites.create('testOn21', JvmTestSuite) {
         targets.configureEach {
@@ -72,6 +111,10 @@ testing {
                     showCauses = true
                     showStackTraces = true
                     events = ['passed', 'failed', 'skipped']
+                }
+
+                if (!openSesameExtension.getTestAsModule().get()) {
+                    modularity.inferModulePath.set(false)
                 }
 
                 testClassesDirs += files(
@@ -160,37 +203,6 @@ if (System.getenv('IS_RELEASE')) {
         sign publishing.publications.mavenJava
     }
 }
-
-class OpenSesameConventionExtension {
-    def pomShared(MavenPom it, String name) {
-        it.name = "OpenSesame - $name".toString()
-        it.packaging = 'jar'
-        it.url = 'https://github.com/lukebemishprojects/OpenSesame'
-        it.inceptionYear = '2023'
-
-        it.licenses {
-            license {
-                name = '3-Clause BSD License'
-                url = 'https://opensource.org/license/bsd-3-clause/'
-            }
-        }
-        it.developers {
-            developer {
-                id = 'lukebemish'
-                name = 'Luke Bemish'
-                email = 'lukebemish@lukebemish.dev'
-                url = 'https://github.com/lukebemish/'
-            }
-        }
-        it.scm {
-            connection='scm:git:git://github.com/lukebemishprojects/OpenSesame.git'
-            developerConnection='scm:git:ssh://github.com/lukebemishprojects/OpenSesame.git'
-            url='https://github.com/lukebemishprojects/OpenSesame'
-        }
-    }
-}
-
-project.extensions.add('openSesameConvention', OpenSesameConventionExtension)
 
 tasks.register('release') {
     dependsOn('publish')

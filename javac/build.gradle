@@ -29,7 +29,7 @@ dependencies {
 
 // bootstrapping! The javac plugin can use OpenSesame itself via this
 def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
-var asmCompileTest = tasks.register('processMainClasses', JavaExec) {
+var asmCompileMain = tasks.register('processMainClasses', JavaExec) {
     dependsOn compileJava
     dependsOn configurations.asmRuntimeClasspath
     inputs.dir(tempClassesDir)
@@ -48,7 +48,7 @@ tasks.named('compileJava', JavaCompile).configure {
 }
 
 tasks.named('classes').configure {
-    dependsOn asmCompileTest
+    dependsOn asmCompileMain
 }
 
 tasks.named('compileTestJava', JavaCompile).configure {

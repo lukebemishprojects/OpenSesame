@@ -199,7 +199,7 @@ public final class OpeningMetafactory {
             throw new OpeningException("Issue creating lookup", e);
         }
         if (type < STATIC_GET_TYPE) {
-            name = remapMethod(name, accessType, holdingClass, caller.lookupClass().getClassLoader());
+            name = remapMethod(name, accessType.descriptorString(), holdingClass.getName(), caller.lookupClass().getClassLoader());
         } else if (type < CONSTRUCT_TYPE) {
             Class<?> fieldType;
             if (type == STATIC_GET_TYPE || type == INSTANCE_GET_TYPE) {
@@ -209,7 +209,7 @@ public final class OpeningMetafactory {
             } else {
                 fieldType = accessType.parameterType(1);
             }
-            name = remapField(name, fieldType, holdingClass, caller.lookupClass().getClassLoader());
+            name = remapField(name, fieldType.descriptorString(), holdingClass.getName(), caller.lookupClass().getClassLoader());
         }
         var handle = makeHandle(lookup, name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
@@ -235,10 +235,18 @@ public final class OpeningMetafactory {
         }
     }
 
-    private static String remapMethod(String targetMethodName, MethodType methodType, Class<?> holdingClass, ClassLoader classLoader) {
+    /**
+     * Remap a class name.
+     * @param targetMethodName the field name to remap
+     * @param methodDescriptor the descriptor of the field to remap
+     * @param holdingClassName the class name of the class that holds the field
+     * @param classLoader the classloader the caller of {@link OpeningMetafactory} is using
+     * @return the remapped class name, or the original if no remapping was found
+     */
+    public static String remapMethod(String targetMethodName, String methodDescriptor, String holdingClassName, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
-            String remapMethodName = remapper.remapMethodName(holdingClass, targetMethodName, methodType.parameterArray(), methodType.returnType());
+            String remapMethodName = remapper.remapMethodName(holdingClassName, targetMethodName, methodDescriptor);
             if (remapMethodName != null) {
                 return remapMethodName;
             }
@@ -246,10 +254,18 @@ public final class OpeningMetafactory {
         return targetMethodName;
     }
 
-    private static String remapField(String targetFieldName, Class<?> targetType, Class<?> holdingClass, ClassLoader classLoader) {
+    /**
+     * Remap a class name.
+     * @param targetFieldName the field name to remap
+     * @param fieldDescriptor the descriptor of the field to remap
+     * @param holdingClassName the class name of the class that holds the field
+     * @param classLoader the classloader the caller of {@link OpeningMetafactory} is using
+     * @return the remapped class name, or the original if no remapping was found
+     */
+    public static String remapField(String targetFieldName, String fieldDescriptor, String holdingClassName, ClassLoader classLoader) {
         List<RuntimeRemapper> remappers = getRemapper(classLoader);
         for (var remapper : remappers) {
-            String remapFieldName = remapper.remapFieldName(holdingClass, targetFieldName, targetType);
+            String remapFieldName = remapper.remapFieldName(holdingClassName, targetFieldName, fieldDescriptor);
             if (remapFieldName != null) {
                 return remapFieldName;
             }
@@ -402,7 +418,7 @@ public final class OpeningMetafactory {
             } catch (Throwable e) {
                 throw new OpeningException(e);
             }
-            overrideName = remapMethod(overrideName, overrideType, targetClass, holdingClass.getClassLoader());
+            overrideName = remapMethod(overrideName, overrideType.descriptorString(), targetClass.getName(), holdingClass.getClassLoader());
             Arrays.stream(holdingClass.getDeclaredMethods())
                     .filter(m -> m.getName().equals(name) && m.getParameterCount() == interfaceType.parameterCount() && m.getReturnType().equals(interfaceType.returnType()) && Arrays.equals(m.getParameterTypes(), interfaceType.parameterArray()))
                     .filter(Method::isDefault)

@@ -31,7 +31,8 @@ def subprojects = [
         'javac',
         'plugin-core',
         'plugin-loom',
-        'fabric'
+        'fabric',
+        'mixin'
 ]
 
 include subprojects

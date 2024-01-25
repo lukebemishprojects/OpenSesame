@@ -20,6 +20,10 @@ repositories {
         name = 'FabricMC'
         url = 'https://maven.fabricmc.net/'
     }
+    maven {
+        name = 'SpongePowered'
+        url = 'https://repo.spongepowered.org/maven'
+    }
 }
 
 dependencies {

@@ -1,0 +1,77 @@
+plugins {
+    id 'opensesame.conventions'
+}
+
+java.withSourcesJar()
+java.withJavadocJar()
+
+repositories {
+    maven {
+        name = 'SpongePowered'
+        url = 'https://repo.spongepowered.org/maven'
+    }
+}
+
+openSesameConvention.testAsModule.set false
+
+configurations {
+    asmRuntimeClasspath {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    implementation project(':opensesame-core')
+    implementation libs.mixin
+    implementation libs.asm.tree
+
+    testImplementation sourceSets.main.output
+    asmRuntimeClasspath project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')
+}
+
+// process test classes with ASM processor
+def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileTestJava")
+var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
+    dependsOn compileTestJava
+    dependsOn configurations.asmRuntimeClasspath
+    inputs.dir(tempClassesDir)
+    inputs.files(configurations.asmRuntimeClasspath)
+    outputs.dir(sourceSets.test.output.classesDirs)
+    doFirst {
+        sourceSets.test.output.classesDirs.singleFile.deleteDir()
+    }
+    classpath = configurations.asmRuntimeClasspath
+    mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
+    args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath]
+}
+
+tasks.named('compileTestJava', JavaCompile).configure {
+    destinationDirectory.set(tempClassesDir)
+}
+
+tasks.named('testClasses').configure {
+    dependsOn asmCompileTest
+}
+
+jar {
+    manifest {
+        attributes.put('FMLModType', 'MOD')
+    }
+}
+
+processResources {
+    filesMatching(['META-INF/mods.toml', 'fabric.mod.json']) {
+        expand(['project': project])
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                openSesameConvention.pomShared(it, 'Mixin')
+                description = 'Mixin plugin that allows removing final and sealed modifiers'
+            }
+        }
+    }
+}

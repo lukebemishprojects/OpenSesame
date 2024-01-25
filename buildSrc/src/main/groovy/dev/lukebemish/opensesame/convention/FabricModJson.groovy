@@ -31,7 +31,7 @@ abstract class FabricModJson extends DefaultTask {
         Object fmj = [
                 'schemaVersion': 1,
                 'id': modid,
-                'version': projectName.get(),
+                'version': projectVersion.get(),
                 'name': projectName.get(),
                 'jars': getBundledDependencies().get().files.collect {
                     ['file': "META-INF/jarjar/${it.name}" as String]

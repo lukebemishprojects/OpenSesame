@@ -43,9 +43,17 @@ public class AnnotationDependentVisitor extends ClassVisitor {
     OuterInfo outerInfo;
 
     public sealed interface AnnotationOrAttribute {}
-    public record AnnotationInfo(AnnotationNode node, boolean visible) implements AnnotationOrAttribute {}
-    public record TypeAnnotationInfo(TypeAnnotationNode node, boolean visible) implements AnnotationOrAttribute {}
-    public record AttributeInfo(Attribute attribute) implements AnnotationOrAttribute {}
+    public static final class AnnotationInfo implements AnnotationOrAttribute {
+        AnnotationNode node;
+        boolean visible;
+    }
+    public static final class TypeAnnotationInfo implements AnnotationOrAttribute {
+        TypeAnnotationNode node;
+        boolean visible;
+    }
+    public static final class AttributeInfo implements AnnotationOrAttribute {
+        Attribute attribute;
+    }
     List<AnnotationOrAttribute> annotationsAndAttributes = new ArrayList<>();
 
     boolean dumped = false;
@@ -112,20 +120,28 @@ public class AnnotationDependentVisitor extends ClassVisitor {
     @Override
     public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
         AnnotationNode annotationNode = new AnnotationNode(descriptor);
-        annotationsAndAttributes.add(new AnnotationInfo(annotationNode, visible));
+        var info = new AnnotationInfo();
+        info.node = annotationNode;
+        info.visible = visible;
+        annotationsAndAttributes.add(info);
         return annotationNode;
     }
 
     @Override
     public AnnotationVisitor visitTypeAnnotation(int typeRef, TypePath typePath, String descriptor, boolean visible) {
         TypeAnnotationNode typeAnnotationNode = new TypeAnnotationNode(typeRef, typePath, descriptor);
-        annotationsAndAttributes.add(new TypeAnnotationInfo(typeAnnotationNode, visible));
+        var info = new TypeAnnotationInfo();
+        info.node = typeAnnotationNode;
+        info.visible = visible;
+        annotationsAndAttributes.add(info);
         return typeAnnotationNode;
     }
 
     @Override
     public void visitAttribute(Attribute attribute) {
-        annotationsAndAttributes.add(new AttributeInfo(attribute));
+        var info = new AttributeInfo();
+        info.attribute = attribute;
+        annotationsAndAttributes.add(info);
     }
 
     @Override
