@@ -22,6 +22,10 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven {
+        name = 'SpongePowered'
+        url = 'https://repo.spongepowered.org/maven'
+    }
 }
 
 dependencies {

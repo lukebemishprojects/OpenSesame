@@ -48,7 +48,6 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     );
     private static final String CTOR_DUMMY = "$$dev$lukebemish$opensesame$$new";
     private static final String MUTABLE_SERVICE = "$$dev$lukebemish$opensesame$$MutableService";
-    private static final String MUTABLE_MIXIN_PKG = MUTABLE_SERVICE + "$mixins";
 
     private final Set<String> annotationDescriptors;
     private Type type;
@@ -86,10 +85,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
     }
 
-    private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, Path rootPath) throws IOException {
+    private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, int index, Path rootPath) throws IOException {
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         String originalName = holderType.getInternalName();
-        String mixinName = originalName + MUTABLE_MIXIN_PKG + "/" + targetType.getInternalName().replace('/','$') + "$" + (forPublic ? "public" : "private") + (forClass ? "class" : "interface");
+        String mixinName = originalName + MUTABLE_SERVICE + "$" + index + "/" + (forPublic ? "public" : "private") + (forClass ? "class" : "interface");
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SYNTHETIC | (forClass ? 0 : (Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE)), mixinName, null, "java/lang/Object", new String[0]);
         var mixin = writer.visitAnnotation(MIXIN.getDescriptor(), false);
         if (forPublic) {
@@ -133,10 +132,23 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     @Override
                     protected void writeMutableLines(List<String> lines, Type selfType) throws IOException {
                         if (rootPath != null) {
+                            Set<Type> targets = new HashSet<>();
+                            for (String line : mutableLines) {
+                                String type = line.split(" ")[0];
+                                targets.add(Type.getObjectType(type.replace('.', '/')));
+                            }
+                            List<Type> orderedTargets = new ArrayList<>(targets);
+                            Map<Type, Integer> targetIndexes = new HashMap<>();
+                            for (int i = 0; i < orderedTargets.size(); i++) {
+                                targetIndexes.put(orderedTargets.get(i), i);
+                            }
                             String generatedClassName = selfType.getInternalName() + MUTABLE_SERVICE;
                             Path generatedClassPath = rootPath.resolve(generatedClassName + ".class");
                             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
                             writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MUTABLE_LINE_PROVIDER.getInternalName()});
+                            var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
+                            generated.visit("value", MUTABLE);
+                            generated.visitEnd();
                             var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
                             initWriter.visitCode();
                             initWriter.visitVarInsn(Opcodes.ALOAD, 0);
@@ -151,7 +163,9 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             for (int i = 0; i < lines.size(); i++) {
                                 implWriter.visitInsn(Opcodes.DUP);
                                 implWriter.visitLdcInsn(i);
-                                implWriter.visitLdcInsn(lines.get(i));
+                                var lineEnd = lines.get(i);
+                                var targetClass = Type.getObjectType(lineEnd.split(" ")[0].replace('.', '/'));
+                                implWriter.visitLdcInsn(generatedClassName + "$" + targetIndexes.get(targetClass)+" "+lineEnd);
                                 implWriter.visitInsn(Opcodes.AASTORE);
                             }
                             implWriter.visitInsn(Opcodes.ARETURN);
@@ -165,16 +179,13 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                 Files.createFile(serviceFile);
                             }
                             Files.write(serviceFile, List.of(generatedClassName.replace('/','.')), StandardOpenOption.APPEND);
-                            Set<Type> targets = new HashSet<>();
-                            for (String line : mutableLines) {
-                                String type = line.split(" ")[0];
-                                targets.add(Type.getObjectType(type.replace('.', '/')));
-                            }
+
                             for (Type target : targets) {
-                                makeMixins(true, true, selfType, target, rootPath);
-                                makeMixins(true, false, selfType, target, rootPath);
-                                makeMixins(false, true, selfType, target, rootPath);
-                                makeMixins(false, false, selfType, target, rootPath);
+                                int index = targetIndexes.get(target);
+                                makeMixins(true, true, selfType, target, index, rootPath);
+                                makeMixins(true, false, selfType, target, index, rootPath);
+                                makeMixins(false, true, selfType, target, index, rootPath);
+                                makeMixins(false, false, selfType, target, index, rootPath);
                             }
                         }
                         super.writeMutableLines(lines, selfType);
@@ -628,23 +639,24 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         public void visitLdcInsn(Object value) {
             if (mutableShouldRemapConstants && value instanceof String line) {
                 var parts = line.split(" ");
+                var packageName = parts[0];
                 if (parts.length == 1) {
-                    var className = parts[0];
-                    line = remapClassName(className);
+                    var className = parts[1];
+                    line = packageName + " " + remapClassName(className);
                 } else if (parts.length == 3) {
-                    var className = parts[0];
-                    var name = parts[1];
-                    var desc = parts[2];
+                    var className = parts[1];
+                    var name = parts[2];
+                    var desc = parts[3];
                     var type = Type.getType(desc);
                     if (type.getSort() == Type.METHOD) {
-                        line = remapMethodName(
+                        line = packageName + " " + remapMethodName(
                                 Type.getObjectType(className.replace('.', '/')),
                                 name,
                                 type.getReturnType(),
                                 Arrays.stream(type.getArgumentTypes()).toList()
                         );
                     } else if (type.getSort() == Type.OBJECT) {
-                        line = remapFieldName(
+                        line = packageName + " " + remapFieldName(
                                 Type.getObjectType(className.replace('.', '/')),
                                 name,
                                 type

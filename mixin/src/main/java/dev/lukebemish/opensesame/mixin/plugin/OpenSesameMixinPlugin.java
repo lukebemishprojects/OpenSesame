@@ -11,8 +11,6 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import java.util.*;
 
 public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
-    private static final String MIXIN_CLASS_NAME = "dev.lukebemish.opensesame.mixin.mixin.MadeMutable";
-
     private final Set<String> deFinalClasses = new HashSet<>();
     private final Map<String, List<String>> deFinalMethods = new HashMap<>();
     private final Map<String, List<String>> deFinalFields = new HashMap<>();
@@ -47,12 +45,13 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 if (line.isBlank())
                     continue;
                 var parts = line.split(" ");
-                var className = parts[0];
-                if (parts.length == 1) {
+                var packageName = parts[0];
+                var className = parts[1];
+                if (parts.length == 2) {
                     deFinalClasses.add(OpeningMetafactory.remapClass(className, classLoader));
                 } else if (parts.length == 3) {
-                    var name = parts[1];
-                    var desc = parts[2];
+                    var name = parts[2];
+                    var desc = parts[3];
                     var type = Type.getType(desc);
                     if (type.getSort() == Type.METHOD) {
                         deFinalMethods.computeIfAbsent(className, k -> List.of()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
@@ -62,12 +61,11 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 } else {
                     throw new RuntimeException("Invalid definal line: " + line);
                 }
-                var providerPath = provider.getClass().getName();
                 var info = ClassInfo.forName(className);
                 if (info != null) {
                     var isPublic = (info.getAccess() & Opcodes.ACC_PUBLIC) != 0;
                     var isClass = (info.getAccess() & Opcodes.ACC_INTERFACE) == 0;
-                    var mixinPath = providerPath + "$mixins." + className.replace('/', '$') + "$" + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
+                    var mixinPath = packageName + "/" + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
                     mixins.add(mixinPath);
                 }
             }
