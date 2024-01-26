@@ -29,7 +29,6 @@ dependencies {
     modImplementation libs.fabric.loader
 
     implementation 'dev.lukebemish.opensesame:opensesame-fabric'
-    include 'dev.lukebemish.opensesame:opensesame-fabric'
 }
 
 opensesame.apply(sourceSets.main)

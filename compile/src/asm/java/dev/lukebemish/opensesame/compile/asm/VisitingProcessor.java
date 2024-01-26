@@ -278,7 +278,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                 if (targets != null) {
                                     for (var target : targets) {
                                         var oldName = (String) target;
-                                        var newName = remapClassName(oldName);
+                                        var newName = remapClassName(oldName.replace('.', '/')).replace('/', '.');
                                         remappedTargets.add(newName);
                                     }
                                 }
@@ -652,25 +652,26 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 var packageName = parts[0];
                 if (parts.length == 2) {
                     var className = parts[1];
-                    line = packageName + " " + remapClassName(className);
+                    line = packageName + " " + remapClassName(className.replace('.', '/')).replace('/', '.');
                 } else if (parts.length == 4) {
                     var className = parts[1];
                     var name = parts[2];
                     var desc = parts[3];
                     var type = Type.getType(desc);
+                    var remapClassName = remapClassName(className.replace('.', '/')).replace('/', '.');
                     if (type.getSort() == Type.METHOD) {
-                        line = packageName + " " + remapMethodName(
+                        line = packageName + " " + remapClassName + " " + remapMethodName(
                                 Type.getObjectType(className.replace('.', '/')),
                                 name,
                                 type.getReturnType(),
                                 Arrays.stream(type.getArgumentTypes()).toList()
-                        );
+                        ) + " " + remapType(type).getDescriptor();
                     } else if (type.getSort() == Type.OBJECT) {
-                        line = packageName + " " + remapFieldName(
+                        line = packageName + " " + remapClassName + " " + remapFieldName(
                                 Type.getObjectType(className.replace('.', '/')),
                                 name,
                                 type
-                        );
+                        ) + " " + remapType(type).getDescriptor();
                     }
                 }
                 super.visitLdcInsn(line);
@@ -753,7 +754,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 ));
                 if (this.annotations.containsKey(UNFINAL.getDescriptor())) {
                     if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).anyMatch(Objects::isNull))) {
-                        String line = remapClassName(extendTargetClassHandle.type().getInternalName().replace('/', '.')) + " " +
+                        String line = remapClassName(extendTargetClassHandle.type().getInternalName()).replace('/', '.') + " " +
                                 remapMethodName(
                                         extendTargetClassHandle.type(),
                                         originalName,
@@ -974,7 +975,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     };
                 }
                 if (line != null) {
-                    unFinalLines.add(remapClassName(opening.targetType().getInternalName().replace('/','.')) + " " + line);
+                    unFinalLines.add(remapClassName(opening.targetType().getInternalName()).replace('/','.') + " " + line);
                 }
             }
 
@@ -991,7 +992,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         } else if (type.getSort() == Type.ARRAY) {
             return Type.getType('['+remapType(type.getElementType()).getDescriptor());
         } else if (type.getSort() == Type.OBJECT) {
-            return Type.getObjectType(remapClassName(type.getInternalName().replace('/', '.')).replace('.', '/'));
+            return Type.getObjectType(remapClassName(type.getInternalName()));
         } else {
             return type;
         }
