@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'fabric-loom'
+    id 'dev.lukebemish.opensesame.loom'
+}
+
+group='dev.lukebemish.opensesame'
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+loom {
+    runs.configureEach {
+        ideConfigGenerated true
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'SpongePowered'
+        url = 'https://repo.spongepowered.org/maven'
+    }
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.20.4'
+    mappings loom.officialMojangMappings()
+
+    modImplementation libs.fabric.loader
+
+    implementation 'dev.lukebemish.opensesame:opensesame-fabric'
+    include 'dev.lukebemish.opensesame:opensesame-fabric'
+}
+
+opensesame.apply(sourceSets.main)

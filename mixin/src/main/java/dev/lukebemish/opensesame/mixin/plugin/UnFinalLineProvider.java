@@ -1,5 +1,5 @@
 package dev.lukebemish.opensesame.mixin.plugin;
 
-public interface MutableLineProvider {
+public interface UnFinalLineProvider {
     String[] lines();
 }

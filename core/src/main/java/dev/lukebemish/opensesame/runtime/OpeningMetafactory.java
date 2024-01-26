@@ -1,9 +1,7 @@
 package dev.lukebemish.opensesame.runtime;
 
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import org.objectweb.asm.*;
+import org.objectweb.asm.commons.InstructionAdapter;
 
 import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
@@ -291,10 +289,12 @@ public final class OpeningMetafactory {
         return className;
     }
 
+    @SuppressWarnings("unused")
     public static CallSite makeOpenClass(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
         return makeOpenClass(caller, constructionMethodName, factoryType, targetClassGetter, classFieldPutter, classFieldGetter, infoGetter, false);
     }
 
+    @SuppressWarnings("unused")
     public static CallSite makeOpenClassUnsafe(MethodHandles.Lookup caller, String constructionMethodName, MethodType factoryType, MethodHandle targetClassGetter, MethodHandle classFieldPutter, MethodHandle classFieldGetter, MethodHandle infoGetter) {
         return makeOpenClass(caller, constructionMethodName, factoryType, targetClassGetter, classFieldPutter, classFieldGetter, infoGetter, true);
     }
@@ -485,10 +485,13 @@ public final class OpeningMetafactory {
                 throw new OpeningException("Super constructor parameter count does not match remaining parameter count");
             }
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-            int j = 1;
+            int j = 1 + fieldsToSet.size();
             for (int i = 0; i < superCtorCount; i++) {
-                var t = Type.getType(ctorType.parameterType(i + fieldsToSet.size() + 1));
+                var ctorArgClass = ctorType.parameterType(i + fieldsToSet.size());
+                var t = Type.getType(ctorArgClass);
                 methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                var superArgClass = superType.parameterType(i);
+                convertToType(methodVisitor, ctorArgClass, superArgClass);
                 j += t.getSize();
             }
             methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(superClass), "<init>", superType.descriptorString(), false);
@@ -532,5 +535,90 @@ public final class OpeningMetafactory {
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating hidden class", e);
         }
+    }
+
+    private static void convertToType(MethodVisitor methodVisitor, Class<?> ctorClass, Class<?> superClass) {
+        if (superClass.isAssignableFrom(ctorClass)) {
+            return;
+        }
+        Type from = Type.getType(ctorClass);
+        Type to = Type.getType(superClass);
+        var adapter = new InstructionAdapter(methodVisitor);
+        if (ctorClass.isPrimitive() && superClass.isPrimitive()) {
+            adapter.cast(from, to);
+        } else if (ctorClass.isPrimitive()) {
+            if (superClass.equals(Double.class)) {
+                adapter.cast(from, Type.DOUBLE_TYPE);
+                valueOf(methodVisitor, Double.class, double.class);
+            } else if (superClass.equals(Float.class)) {
+                adapter.cast(from, Type.FLOAT_TYPE);
+                valueOf(methodVisitor, Float.class, float.class);
+            } else if (superClass.equals(Integer.class)) {
+                adapter.cast(from, Type.INT_TYPE);
+                valueOf(methodVisitor, Integer.class, int.class);
+            } else if (superClass.equals(Boolean.class)) {
+                adapter.cast(from, Type.BOOLEAN_TYPE);
+                valueOf(methodVisitor, Boolean.class, boolean.class);
+            } else if (superClass.equals(Character.class)) {
+                adapter.cast(from, Type.CHAR_TYPE);
+                valueOf(methodVisitor, Character.class, char.class);
+            } else if (superClass.equals(Byte.class)) {
+                adapter.cast(from, Type.BYTE_TYPE);
+                valueOf(methodVisitor, Byte.class, byte.class);
+            } else if (superClass.equals(Short.class)) {
+                adapter.cast(from, Type.SHORT_TYPE);
+                valueOf(methodVisitor, Short.class, short.class);
+            } else if (superClass.equals(Long.class)) {
+                adapter.cast(from, Type.LONG_TYPE);
+                valueOf(methodVisitor, Long.class, long.class);
+            }
+        } else if (superClass.isPrimitive()) {
+            if (ctorClass.equals(Character.class)) {
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Character.class), "charValue", "()C", false);
+                adapter.cast(Type.CHAR_TYPE, to);
+            } else if (ctorClass.equals(Boolean.class)) {
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Boolean.class), "booleanValue", "()Z", false);
+                adapter.cast(Type.BOOLEAN_TYPE, to);
+            } else if (Number.class.isAssignableFrom(ctorClass)) {
+                String name;
+                String desc;
+                boolean fromInt = false;
+                if (superClass.equals(int.class)) {
+                    name = "int";
+                    desc = "I";
+                } else if (superClass.equals(double.class)) {
+                    name = "double";
+                    desc = "D";
+                } else if (superClass.equals(float.class)) {
+                    name = "float";
+                    desc = "F";
+                } else if (superClass.equals(byte.class)) {
+                    name = "byte";
+                    desc = "B";
+                } else if (superClass.equals(short.class)) {
+                    name = "short";
+                    desc = "S";
+                } else if (superClass.equals(long.class)) {
+                    name = "long";
+                    desc = "J";
+                } else {
+                    name = "int";
+                    desc = "I";
+                    fromInt = true;
+                }
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(ctorClass), name+"Value", "()"+desc, false);
+                if (fromInt) {
+                    adapter.cast(Type.INT_TYPE, to);
+                }
+            }
+        } else {
+            methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, to.getInternalName());
+        }
+    }
+
+    private static void valueOf(MethodVisitor methodVisitor, Class<?> clazz, Class<?> primitiveClass) {
+        Type type = Type.getType(clazz);
+        var methodType = MethodType.methodType(clazz, primitiveClass);
+        methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, type.getInternalName(), "valueOf", methodType.descriptorString(), false);
     }
 }

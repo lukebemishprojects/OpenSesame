@@ -22,8 +22,8 @@ configurations {
 
 dependencies {
     implementation project(':opensesame-core')
-    implementation libs.mixin
-    implementation libs.asm.tree
+    compileOnly libs.mixin
+    compileOnly libs.asm.tree
 
     testImplementation sourceSets.main.output
     asmRuntimeClasspath project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')

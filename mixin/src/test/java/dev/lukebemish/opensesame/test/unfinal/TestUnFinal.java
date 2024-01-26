@@ -1,23 +1,23 @@
-package dev.lukebemish.opensesame.test.mutable;
+package dev.lukebemish.opensesame.test.unfinal;
 
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
-import dev.lukebemish.opensesame.mixin.annotations.Mutable;
+import dev.lukebemish.opensesame.mixin.annotations.UnFinal;
 import dev.lukebemish.opensesame.test.target.Final;
 import dev.lukebemish.opensesame.test.target.Public;
 import org.junit.jupiter.api.Disabled;
 
 // We don't have a way to test this besides looking at the bytecode, at present
 @Disabled
-public class TestMutable {
+public class TestUnFinal {
     @Open(
             name = "privateFinalInstanceField",
             targetClass = Public.class,
             type = Open.Type.SET_STATIC
     )
-    @Mutable
+    @UnFinal
     private static void privateFinalInstanceField(String value) {
         throw new AssertionError("Method not replaced");
     }
@@ -26,7 +26,7 @@ public class TestMutable {
             targetClass = Final.class,
             unsafe = true
     )
-    @Mutable
+    @UnFinal
     public interface FinalExtension {
         @Constructor
         static FinalExtension constructor() {
@@ -45,7 +45,7 @@ public class TestMutable {
         }
 
         @Overrides(name = "finalMethod")
-        @Mutable
+        @UnFinal
         default String finalMethodOverride() {
             return "not so final now!";
         }

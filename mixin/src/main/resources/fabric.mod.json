@@ -1,11 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "dev_lukebemish_opensesame_opensesame_mixin",
+  "id": "opensesame_mixin",
   "version": "${project.version}",
-  "name": "opensesame-mixin",
+  "name": "OpenSesame: Mixin Plugin",
   "mixins": [
     "opensesame.mixin.json"
-  ],
-  "compatibilityLevel": "JAVA_17",
-  "plugin": "dev.lukebemish.opensesame.mixin.plugin.OpenSesameMixinPlugin"
+  ]
 }

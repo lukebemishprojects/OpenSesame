@@ -4,9 +4,9 @@ license = "BSD-3-Clause"
 issueTrackerURL = "https://github.com/lukebemishprojects/OpenSesame/issues"
 
 [[mods]]
-modId = "dev_lukebemish_opensesame_opensesame_mixin"
+modId = "opensesame_mixin"
 version = "${project.version}"
-displayName = "OpenSesame - Mixin"
+displayName = "OpenSesame: Mixin Plugin"
 displayURL = "https://github.com/lukebemishprojects/OpenSesame"
 description = "Mixin plugin that allows removing final and sealed modifiers."
 authors = "Luke Bemish"

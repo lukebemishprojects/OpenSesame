@@ -39,7 +39,7 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
     public List<String> getMixins() {
         List<String> mixins = new ArrayList<>();
         var classLoader = OpenSesameMixinPlugin.class.getClassLoader();
-        ServiceLoader.load(MutableLineProvider.class, classLoader).forEach(provider -> {
+        ServiceLoader.load(UnFinalLineProvider.class, classLoader).forEach(provider -> {
             var lines = provider.lines();
             for (var line : lines) {
                 if (line.isBlank())
@@ -49,7 +49,7 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 var className = parts[1];
                 if (parts.length == 2) {
                     deFinalClasses.add(OpeningMetafactory.remapClass(className, classLoader));
-                } else if (parts.length == 3) {
+                } else if (parts.length == 4) {
                     var name = parts[2];
                     var desc = parts[3];
                     var type = Type.getType(desc);
@@ -63,9 +63,9 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 }
                 var info = ClassInfo.forName(className);
                 if (info != null) {
-                    var isPublic = (info.getAccess() & Opcodes.ACC_PUBLIC) != 0;
-                    var isClass = (info.getAccess() & Opcodes.ACC_INTERFACE) == 0;
-                    var mixinPath = packageName + "/" + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
+                    var isPublic = info.isPublic();
+                    var isClass = !info.isInterface();
+                    var mixinPath = packageName + "." + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
                     mixins.add(mixinPath);
                 }
             }
@@ -80,20 +80,20 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        if (deFinalClasses.contains(mixinClassName)) {
+        if (deFinalClasses.contains(targetClassName)) {
             targetClass.access &= ~Opcodes.ACC_FINAL;
             if (targetClass.permittedSubclasses != null) {
                 targetClass.permittedSubclasses.clear();
             }
-        } else if (deFinalMethods.containsKey(mixinClassName)) {
-            var methods = deFinalMethods.get(mixinClassName);
+        } else if (deFinalMethods.containsKey(targetClassName)) {
+            var methods = deFinalMethods.get(targetClassName);
             for (var method : targetClass.methods) {
                 if (methods.contains(method.name + " " + method.desc)) {
                     method.access &= ~Opcodes.ACC_FINAL;
                 }
             }
-        } else if (deFinalFields.containsKey(mixinClassName)) {
-            var fields = deFinalFields.get(mixinClassName);
+        } else if (deFinalFields.containsKey(targetClassName)) {
+            var fields = deFinalFields.get(targetClassName);
             for (var field : targetClass.fields) {
                 if (fields.contains(field.name + " " + field.desc)) {
                     field.access &= ~Opcodes.ACC_FINAL;

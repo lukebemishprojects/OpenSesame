@@ -45,3 +45,4 @@ dependencyResolutionManagement {
 include 'loom'
 include 'loom:exec-named'
 include 'loom:exec-intermediary'
+include 'loom:testmod'
