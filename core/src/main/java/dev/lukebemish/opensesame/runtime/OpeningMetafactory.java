@@ -485,7 +485,12 @@ public final class OpeningMetafactory {
                 throw new OpeningException("Super constructor parameter count does not match remaining parameter count");
             }
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-            int j = 1 + fieldsToSet.size();
+            int fieldsTotalSize = 0;
+            for (String fieldName : fieldsToSet) {
+                var fieldType = fieldTypes.get(fieldName);
+                fieldsTotalSize += Type.getType(fieldType).getSize();
+            }
+            int j = 1 + fieldsTotalSize;
             for (int i = 0; i < superCtorCount; i++) {
                 var ctorArgClass = ctorType.parameterType(i + fieldsToSet.size());
                 var t = Type.getType(ctorArgClass);

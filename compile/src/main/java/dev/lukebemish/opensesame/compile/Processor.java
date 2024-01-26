@@ -258,7 +258,7 @@ public interface Processor<T, A, M> {
             info.visitInsn(Opcodes.DUP);
             // Field list format: String name, Class<?> fieldType, Boolean isFinal, List<String> setters, List<String> getters
             info.visitLdcInsn(field.name());
-            info.visitLdcInsn(field.type());
+            info.visitLdcInsn(conDynUtils().classConstant(field.type()));
             info.visitLdcInsn(field.isFinal());
             info.visitMethodInsn(Opcodes.INVOKESTATIC, types().internalName(Boolean.class), "valueOf", MethodType.methodType(Boolean.class, boolean.class).descriptorString(), false);
 

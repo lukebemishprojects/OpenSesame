@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 
 // Disabled for now - will be enabled once groovy 5 supports the proper targets (static methods in interfaces)
 @Disabled
-class TestPrivateExtension {
+class TestPrivate {
     @Extend(targetName = 'dev.lukebemish.opensesame.test.target.Public$Private', unsafe = true)
     interface Extension {
         /*@Constructor

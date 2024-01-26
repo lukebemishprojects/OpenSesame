@@ -40,4 +40,17 @@ public class BigLVT {
     private static String doubleCenterArgument(String s, double d, String s2) {
         return s + (int) Math.floor(d) + s2;
     }
+
+    private static class Inner {
+        private final String text;
+
+        Inner(long l1, String s1, long l2, String s2) {
+            this.text = l1 + s1 + l2 + s2;
+        }
+
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
 }

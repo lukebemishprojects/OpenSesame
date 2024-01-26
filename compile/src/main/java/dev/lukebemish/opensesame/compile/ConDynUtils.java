@@ -216,12 +216,12 @@ public class ConDynUtils<T, CD, H> {
         );
     }
 
-    public TypedDynamic<CD, T> conDynFromClass(T targetTypeType) {
-        Object targetType = targetTypeType;
+    public Object classConstant(T type) {
+        Object targetType = type;
 
-        if (types.isPrimitiveOrVoid(targetTypeType)) {
+        if (types.isPrimitiveOrVoid(type)) {
             targetType = types.constantDynamic(
-                    types.descriptor(targetTypeType),
+                    types.descriptor(type),
                     Class.class.descriptorString(),
                     types.handle(
                             Opcodes.H_INVOKESTATIC,
@@ -232,6 +232,12 @@ public class ConDynUtils<T, CD, H> {
                     )
             );
         }
+
+        return targetType;
+    }
+
+    public TypedDynamic<CD, T> conDynFromClass(T targetTypeType) {
+        Object targetType = classConstant(targetTypeType);
 
         return new TypedDynamic<>(invoke(
                 MethodHandle.class.descriptorString(),
