@@ -497,7 +497,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             super.visitEnum(name, descriptor, value);
         }
 
-        private class ArrayAnnotationVisitor extends AnnotationVisitor {
+        private static class ArrayAnnotationVisitor extends AnnotationVisitor {
             final List<Object> addTo;
             List<Object> arrayList;
             protected ArrayAnnotationVisitor(List<Object> addTo, AnnotationVisitor annotationVisitor) {
@@ -650,10 +650,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             if (unFinalShouldRemapConstants && value instanceof String line) {
                 var parts = line.split(" ");
                 var packageName = parts[0];
-                if (parts.length == 1) {
+                if (parts.length == 2) {
                     var className = parts[1];
                     line = packageName + " " + remapClassName(className);
-                } else if (parts.length == 3) {
+                } else if (parts.length == 4) {
                     var className = parts[1];
                     var name = parts[2];
                     var desc = parts[3];
@@ -974,7 +974,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     };
                 }
                 if (line != null) {
-                    unFinalLines.add(remapClassName(type.getInternalName().replace('/','.')) + " " + line);
+                    unFinalLines.add(remapClassName(opening.targetType().getInternalName().replace('/','.')) + " " + line);
                 }
             }
 

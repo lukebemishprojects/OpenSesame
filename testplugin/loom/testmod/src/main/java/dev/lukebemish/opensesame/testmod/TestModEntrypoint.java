@@ -8,6 +8,7 @@ import dev.lukebemish.opensesame.annotations.extend.Field;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
 import dev.lukebemish.opensesame.mixin.annotations.UnFinal;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -72,6 +73,16 @@ public class TestModEntrypoint implements ModInitializer {
         throw new UnsupportedOperationException("Method not replaced");
     }
 
+    @Open(
+            name = "namespace",
+            targetClass = ResourceLocation.class,
+            type = Open.Type.SET_INSTANCE
+    )
+    @UnFinal
+    static void setNamespace(ResourceLocation resourceLocation, String namespace) {
+        throw new UnsupportedOperationException("Method not replaced");
+    }
+
     @Override
     public void onInitialize() {
         String value = "Normal";
@@ -95,6 +106,14 @@ public class TestModEntrypoint implements ModInitializer {
             throw new AssertionError(String.format("Expected '%s', got '%s'", fallback, search(tree, targetPoint, distanceMetric)));
         } else {
             LOGGER.info("Successfully overrode Climate$RTree#search");
+        }
+
+        var resourceLocation = new ResourceLocation("minecraft", "test");
+        setNamespace(resourceLocation, "test");
+        if (!resourceLocation.getNamespace().equals("test")) {
+            throw new AssertionError(String.format("Expected '%s', got '%s'", "test", resourceLocation.getNamespace()));
+        } else {
+            LOGGER.info("Successfully made ResourceLocation.namespace mutable");
         }
     }
 }

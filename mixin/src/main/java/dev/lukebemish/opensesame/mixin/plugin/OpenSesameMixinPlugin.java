@@ -47,21 +47,22 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 var parts = line.split(" ");
                 var packageName = parts[0];
                 var className = parts[1];
+                var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
                 if (parts.length == 2) {
-                    deFinalClasses.add(OpeningMetafactory.remapClass(className, classLoader));
+                    deFinalClasses.add(remappedClassName);
                 } else if (parts.length == 4) {
                     var name = parts[2];
                     var desc = parts[3];
                     var type = Type.getType(desc);
                     if (type.getSort() == Type.METHOD) {
-                        deFinalMethods.computeIfAbsent(className, k -> List.of()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
+                        deFinalMethods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
                     } else if (type.getSort() == Type.OBJECT) {
-                        deFinalFields.computeIfAbsent(className, k -> List.of()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
+                        deFinalFields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
                     }
                 } else {
                     throw new RuntimeException("Invalid definal line: " + line);
                 }
-                var info = ClassInfo.forName(className);
+                var info = ClassInfo.forName(remappedClassName);
                 if (info != null) {
                     var isPublic = info.isPublic();
                     var isClass = !info.isInterface();
@@ -85,17 +86,19 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             if (targetClass.permittedSubclasses != null) {
                 targetClass.permittedSubclasses.clear();
             }
-        } else if (deFinalMethods.containsKey(targetClassName)) {
+        }
+        if (deFinalMethods.containsKey(targetClassName)) {
             var methods = deFinalMethods.get(targetClassName);
             for (var method : targetClass.methods) {
                 if (methods.contains(method.name + " " + method.desc)) {
                     method.access &= ~Opcodes.ACC_FINAL;
                 }
             }
-        } else if (deFinalFields.containsKey(targetClassName)) {
+        }
+        if (deFinalFields.containsKey(targetClassName)) {
             var fields = deFinalFields.get(targetClassName);
             for (var field : targetClass.fields) {
-                if (fields.contains(field.name + " " + field.desc)) {
+                if (fields.contains(field.name)) {
                     field.access &= ~Opcodes.ACC_FINAL;
                 }
             }
