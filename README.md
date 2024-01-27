@@ -1,7 +1,7 @@
 # OpenSesame
 
-[![Central](https://img.shields.io/badge/maven_central-blue?style=for-the-badge)](https://central.sonatype.com/artifact/dev.lukebemish.opensesame/opensesame)
-[![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame-core?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame)
+[![Central](https://img.shields.io/badge/maven_central-blue?style=for-the-badge)](https://central.sonatype.com/artifact/dev.lukebemish.opensesame/opensesame-core)
+[![javadoc](https://img.shields.io/maven-central/v/dev.lukebemish.opensesame/opensesame?style=for-the-badge&label=javadoc&color=green)](https://javadoc.io/doc/dev.lukebemish.opensesame/opensesame)
 [![Snapshot](https://img.shields.io/github/actions/workflow/status/lukebemishprojects/OpenSesame/snapshot.yml?style=for-the-badge)](https://github.com/lukebemishprojects/OpenSesame/actions/workflows/snapshot.yml)
 
 OpenSesame provides a tool to break through basically any form of encapsulation in the JVM, in a way that allows you to work with simple accessor method in your code, instead of worrying about `MethodHandle`s or reflection. These accessors are turned
