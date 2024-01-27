@@ -35,7 +35,7 @@ class OpenTransformation extends AbstractASTTransformation {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
-    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.mixin.annotations.UnFinal")
+    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.annotations.mixin.UnFinal")
 
     private final GroovyProcessor processor = new GroovyProcessor(this)
 

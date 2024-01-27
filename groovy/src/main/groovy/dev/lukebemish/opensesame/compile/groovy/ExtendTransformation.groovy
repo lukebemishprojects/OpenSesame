@@ -44,7 +44,7 @@ class ExtendTransformation extends AbstractASTTransformation {
     private static final ClassNode FIELD_FINAL = ClassHelper.makeWithoutCaching(Field.Final)
     private final GroovyProcessor processor = new GroovyProcessor(this)
 
-    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.mixin.annotations.UnFinal")
+    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.annotations.mixin.UnFinal")
 
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {

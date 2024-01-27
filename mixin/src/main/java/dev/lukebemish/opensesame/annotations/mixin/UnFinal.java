@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.mixin.annotations;
+package dev.lukebemish.opensesame.annotations.mixin;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

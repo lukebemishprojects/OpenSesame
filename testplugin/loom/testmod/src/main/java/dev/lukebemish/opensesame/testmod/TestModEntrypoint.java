@@ -6,7 +6,7 @@ import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Field;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
-import dev.lukebemish.opensesame.mixin.annotations.UnFinal;
+import dev.lukebemish.opensesame.annotations.mixin.UnFinal;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;

@@ -4,7 +4,7 @@ import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
-import dev.lukebemish.opensesame.mixin.annotations.UnFinal;
+import dev.lukebemish.opensesame.annotations.mixin.UnFinal;
 import dev.lukebemish.opensesame.test.target.Final;
 import dev.lukebemish.opensesame.test.target.Public;
 import org.junit.jupiter.api.Disabled;
