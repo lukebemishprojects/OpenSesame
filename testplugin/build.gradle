@@ -7,8 +7,6 @@ plugins {
 
 group='dev.lukebemish.opensesame'
 
-println 'Doing stuff'
-
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 
 configurations {
