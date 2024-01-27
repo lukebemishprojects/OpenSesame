@@ -3,7 +3,6 @@ plugins {
     alias libs.plugins.nexuspublish
     id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
-    id 'jvm-test-suite'
     id 'opensesame.publishing'
     id 'opensesame.javadoc'
 }
