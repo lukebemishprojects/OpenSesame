@@ -64,6 +64,13 @@ if (System.getenv('PR_NUMBER')) {
     }
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+        }
+    }
+}
+
 if (System.getenv('IS_RELEASE')) {
     signing {
         final signingKey = System.getenv('SIGNING_KEY') ?: ''
