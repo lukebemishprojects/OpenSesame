@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  * descriptor that the generated invoker will look for is determined by the descriptor of the annotated method, except
  * where {@link Coerce} is used to specify a different type for the parameter or return type. The annotated method must
  * be static, unless the member targeted is an instance method or field on a class that can be coerced to this type.
+ * The method body of the annotated method may be anything, as it will be replaced at compile time - it is recommended to
+ * make it throw an exception to ensure that it is obvious if the processor was not applied.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
