@@ -11,7 +11,9 @@ import java.lang.annotation.Target;
  * Marks an interface as an "extension" interface. Extension interfaces allow you to subclass classes or implement interfaces.
  * You should not implement an extension interface directly, and extension interfaces cannot
  * extend other extension interfaces. Extension interfaces will have a corresponding hidden class generated at runtime.
- * To create instances of that class, use {@link Constructor}.
+ * To create instances of that class, use {@link Constructor}. An extension interface must be visible from its target
+ * class, meaning it almost certainly must be public. OpenSesame will attempt to handle module boundaries and create
+ * any missing edges in the module graph if it is able to.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)

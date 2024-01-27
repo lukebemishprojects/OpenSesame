@@ -15,6 +15,8 @@
  * may be overridden with {@link dev.lukebemish.opensesame.annotations.extend.Overrides}.
  * <p>As an example of use, consider the following package private class:
  * <blockquote><pre>{@code
+ * package xyz;
+ *
  * class Foo {
  *     private Foo(int n) {
  *         ...
@@ -28,6 +30,8 @@
  * We want to create a class that extends {@code Foo}, stores some new field {@code x}, and overrides {@code fizz}. To
  * do so, we create the following interface:
  * <blockquote><pre>{@code
+ * package abc;
+ *
  * @Extend(targetClass = "xyz.Foo", unsafe = true)
  * public interface Bar {
  *     @Constructor
