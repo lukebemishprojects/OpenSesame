@@ -48,7 +48,7 @@ public @interface Open {
     Type type();
 
     /**
-     * {@return whether this invocation should be done unsafely, breaking module boundaries}
+     * {@return whether this invocation should be done unsafely, breaking module boundaries with {@link sun.misc.Unsafe}}
      */
     boolean unsafe() default false;
 

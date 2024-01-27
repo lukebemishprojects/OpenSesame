@@ -36,8 +36,8 @@ public @interface Extend {
     Class<?> targetProvider() default ErrorProvider.class;
 
     /**
-     * Determines whether the extension can occur over module boundaries. Note that this is required to be {@code true}
-     * in order to extend classes in another module.
+     * Determines whether the extension can occur over module boundaries with {@link sun.misc.Unsafe}. Note that this
+     * is required to be {@code true} in order to extend classes in another module.
      * @return whether the extension should be done unsafely, breaking module boundaries
      */
     boolean unsafe();
