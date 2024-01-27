@@ -1,12 +1,3 @@
 plugins {
     id 'groovy-gradle-plugin'
 }
-
-gradlePlugin {
-    plugins {
-        javadocComponent {
-            id = 'opensesame.javadoc'
-            implementationClass = 'dev.lukebemish.opensesame.convention.JavadocComponent'
-        }
-    }
-}

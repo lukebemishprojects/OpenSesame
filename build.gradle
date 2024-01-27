@@ -3,9 +3,12 @@ plugins {
     alias libs.plugins.nexuspublish
     id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
+    id 'java-library'
     id 'opensesame.publishing'
-    id 'opensesame.javadoc'
 }
+
+java.withJavadocJar()
+java.withSourcesJar()
 
 managedVersioning {
     versionFile.set rootProject.file('version.properties')
@@ -35,20 +38,10 @@ configurations {
         canBeResolved = false
         canBeConsumed = false
     }
-    javadocElements {
-        canBeResolved = false
-        canBeConsumed = true
-        extendsFrom javadocImplementation
-        attributes {
-            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.DOCUMENTATION))
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL))
-            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType.class, DocsType.JAVADOC))
-            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME))
-        }
-    }
+    compileOnlyApi.extendsFrom javadocImplementation
     javadocClasspath {
         canBeResolved = true
-        extendsFrom javadocElements
+        extendsFrom javadocImplementation
     }
 }
 
@@ -108,6 +101,7 @@ tasks.register('unpackJavadocSources') {
     def destinationDir = layout.buildDirectory.dir('unpackedJavadocSources').get().asFile
     outputs.dir(destinationDir)
     doLast {
+        destinationDir.deleteDir()
         copy {
             into destinationDir
             configurations.javadocSources.files.each {
@@ -136,7 +130,7 @@ tasks.register('unpackJavadocSources') {
     }
 }
 
-tasks.register('javadoc', Javadoc) {
+tasks.named('javadoc', Javadoc).configure {
     dependsOn tasks.unpackJavadocSources
     dependsOn configurations.javadocClasspath
     inputs.files(configurations.javadocClasspath)
@@ -146,24 +140,9 @@ tasks.register('javadoc', Javadoc) {
     source(tasks.unpackJavadocSources.outputs.files)
 }
 
-tasks.register('javadocJar', Jar) {
-    dependsOn tasks.javadoc
-    inputs.files(tasks.javadoc.outputs.files)
-    destinationDirectory.set(layout.buildDirectory.dir('libs'))
-    archiveClassifier.set('javadoc')
-    from(tasks.javadoc.outputs.files)
-}
-
-conventionJavadocComponent.apply(configurations.javadocElements)
-
-artifacts {
-    javadocElements tasks.javadocJar
-}
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.javadoc
             pom {
                 openSesameConvention.pomShared(it, '')
                 description = 'A tool for breaking encapsulation in JVM projects'

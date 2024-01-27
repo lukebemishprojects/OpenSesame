@@ -67,6 +67,7 @@ if (System.getenv('PR_NUMBER')) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            from components.java
         }
     }
 }
