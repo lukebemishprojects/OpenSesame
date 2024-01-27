@@ -13,5 +13,47 @@
  * Optionally, the constructor may take field types as parameters, which will be set after the super constructor is
  * called - for more information, see {@link dev.lukebemish.opensesame.annotations.extend.Field}. Superclass methods
  * may be overridden with {@link dev.lukebemish.opensesame.annotations.extend.Overrides}.
+ * <p>As an example of use, consider the following package private class:
+ * <blockquote><pre>{@code
+ * class Foo {
+ *     private Foo(int n) {
+ *         ...
+ *     }
+ *
+ *     void fizz() {
+ *         ...
+ *     }
+ * }
+ * }</pre></blockquote>
+ * We want to create a class that extends {@code Foo}, stores some new field {@code x}, and overrides {@code fizz}. To
+ * do so, we create the following interface:
+ * <blockquote><pre>{@code
+ * @Extend(targetClass = "xyz.Foo", unsafe = true)
+ * public interface Bar {
+ *     @Constructor
+ *     static Bar create(@Field("x") int x, int n) {
+ *         throw new UnsupportedOperationException();
+ *     }
+ *
+ *     @Field("x")
+ *     int getX();
+ *
+ *     @Field("x")
+ *     void setX(int x);
+ *
+ *     @Overrides("fizz")
+ *     default void buzz() {
+ *         ...
+ *     }
+ * }
+ * }</pre></blockquote>
+ * Note that this interface is public, so that it will be visible from the nest of {@code Foo}. The
+ * {@link dev.lukebemish.opensesame.annotations.extend.Extend} annotation specifies the target class, and that the hidden
+ * class should be created unsafely, even if the target is in another module. The
+ * {@link dev.lukebemish.opensesame.annotations.extend.Constructor} has its body replaced at compile time, and allows
+ * you to retrieve instances of your new subclass. When the constructor is first invoked, a hidden class will be created
+ * within the nest of {@code Foo}, with constructors and fields based on the annotated methods in {@code Bar}, and overriding
+ * methods of {@code Foo} based on the {@link dev.lukebemish.opensesame.annotations.extend.Overrides} methods in {@code Bar}.
+ * The constructor method will then create an instance of this hidden class on invocation.
  */
 package dev.lukebemish.opensesame.annotations.extend;

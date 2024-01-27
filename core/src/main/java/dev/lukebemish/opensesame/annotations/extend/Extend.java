@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Extend {
     /**
-     * {@return the internal name or descriptor of the target class, or the name ot be passed to {@link #targetProvider()}}
+     * {@return the internal name or descriptor of the target class, or the name to be passed to {@link #targetProvider()}}
      */
     String targetName() default "";
 

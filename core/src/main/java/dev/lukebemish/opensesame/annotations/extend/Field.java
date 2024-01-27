@@ -19,7 +19,7 @@ public @interface Field {
     String value();
 
     /**
-     * Mark a {@link Field} as final. Final fields may not have setters.
+     * Mark a member annotated with {@link Field} as final. Final fields may not have setters.
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD, ElementType.PARAMETER})
