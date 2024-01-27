@@ -12,6 +12,8 @@ loom {
     runs.removeAll()
 }
 
+opensesame.apply(sourceSets.main)
+
 configurations {
     testSource {
         canBeResolved = true
@@ -40,6 +42,8 @@ dependencies {
     implementation libs.asm.core
     implementation libs.junit.api
     modImplementation libs.fabric.loader
+
+    testRuntimeOnly libs.junit.engine
 }
 
 tasks.named('compileJava', JavaCompile).configure {
@@ -49,4 +53,24 @@ tasks.named('compileJava', JavaCompile).configure {
 
 artifacts {
     testClasses tasks.remapJar
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events = ['passed', 'failed', 'skipped']
+    }
+
+    testClassesDirs += files(
+            sourceSets.main.output
+    )
+
+    classpath += files(
+            sourceSets.main.output
+    )
+
+    outputs.upToDateWhen {false}
 }
