@@ -16,7 +16,7 @@ public class TestInterfaces {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Overrides(name = "value")
+        @Overrides(value = "value")
         default String valueImplementation() {
             return "Extension";
         }

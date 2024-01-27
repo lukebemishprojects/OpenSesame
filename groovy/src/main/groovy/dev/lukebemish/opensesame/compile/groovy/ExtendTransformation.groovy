@@ -4,6 +4,7 @@ import dev.lukebemish.opensesame.annotations.extend.Constructor
 import dev.lukebemish.opensesame.annotations.extend.Extend
 import dev.lukebemish.opensesame.annotations.extend.Field
 import dev.lukebemish.opensesame.annotations.extend.Overrides
+import dev.lukebemish.opensesame.compile.ConDynUtils
 import dev.lukebemish.opensesame.compile.ConDynUtils.TypedDynamic
 import dev.lukebemish.opensesame.compile.Processor
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
@@ -43,6 +44,8 @@ class ExtendTransformation extends AbstractASTTransformation {
     private static final ClassNode FIELD_FINAL = ClassHelper.makeWithoutCaching(Field.Final)
     private final GroovyProcessor processor = new GroovyProcessor(this)
 
+    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.mixin.annotations.UnFinal")
+
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
         this.init(nodes, source)
@@ -60,13 +63,23 @@ class ExtendTransformation extends AbstractASTTransformation {
         List<Processor.ExtendCtorInfo> ctors = new ArrayList<>()
         List<Processor.ExtendOverrideInfo<Type>> overrides = new ArrayList<>()
 
+        if (!classNode.getAnnotations(UNFINAL).empty) {
+            String line = BytecodeHelper.getClassInternalName(classNode).replace('/', '.')
+            List<String> lines = classNode.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+            if (lines == null) {
+                lines = new ArrayList<>()
+                classNode.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
+            }
+            lines.add(line)
+        }
+
         var holderType = Type.getType(BytecodeHelper.getTypeDescription(classNode))
 
         for (MethodNode methodNode : classNode.methods) {
             if (methodNode.getAnnotations(CONSTRUCTOR).size() > 0) {
                 processConstructor(methodNode, holderType, ctors::add, fieldMap, extendUnsafe, extendTargetClassHandle)
             } else if (methodNode.getAnnotations(OVERRIDES).size() > 0) {
-                processOverrides(methodNode, overrides::add)
+                processOverrides(methodNode, extendTargetClassHandle, overrides::add)
             } else if (methodNode.getAnnotations(FIELD).size() > 0) {
                 processField(methodNode, fieldMap)
             }
@@ -195,7 +208,7 @@ class ExtendTransformation extends AbstractASTTransformation {
         })
     }
 
-    void processOverrides(MethodNode methodNode, Consumer<Processor.ExtendOverrideInfo<Type>> overrideConsumer) {
+    void processOverrides(MethodNode methodNode, TypedDynamic<?, Type> extendTargetClassHandle, Consumer<Processor.ExtendOverrideInfo<Type>> overrideConsumer) {
         if (methodNode.static) {
             throw new RuntimeException("@Overrides must not be static")
         } else if (methodNode.abstract) {
@@ -214,6 +227,20 @@ class ExtendTransformation extends AbstractASTTransformation {
                 descriptor.returnType(),
                 descriptor.parameterTypes()
         ))
+
+        if (!methodNode.getAnnotations(UNFINAL).empty) {
+            if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(TypedDynamic::type).anyMatch(Objects::isNull))) {
+                String line = extendTargetClassHandle.type().getInternalName().replace('/', '.') + " " +
+                        originalName + " " +
+                        Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(TypedDynamic::type).toArray(Type[]::new)).getDescriptor()
+                List<String> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+                if (lines == null) {
+                    lines = new ArrayList<>()
+                    methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
+                }
+                lines.add(line)
+            }
+        }
     }
 
     void processField(MethodNode methodNode, Map<String, Processor.ExtendFieldInfo<Type>> fieldMap) {

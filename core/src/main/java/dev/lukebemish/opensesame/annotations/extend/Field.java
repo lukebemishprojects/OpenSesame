@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.PARAMETER})
 public @interface Field {
-    String name();
+    String value();
 
     @interface Final {}
 }

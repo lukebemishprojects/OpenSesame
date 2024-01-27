@@ -36,16 +36,16 @@ public class TestBigLVT {
     public interface AddField {
         @Constructor
         static AddField constructor(
-                @Field(name = "text") String text,
+                @Field(value = "text") String text,
                 long l1, String s1, long l2, String s2
         ) {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Field(name = "text")
+        @Field(value = "text")
         String getText();
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return getText() + superToString(this);
         }
@@ -57,16 +57,16 @@ public class TestBigLVT {
     public interface AddBigField {
         @Constructor
         static AddBigField constructor(
-                @Field(name = "value") long value,
+                @Field(value = "value") long value,
                 long l1, String s1, long l2, String s2
         ) {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Field(name = "value")
+        @Field(value = "value")
         long getValue();
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return getValue() + superToString(this);
         }

@@ -17,7 +17,7 @@ class TestPrivate {
             throw new AssertionError("Constructor not transformed")
         }*/
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return "Extension"
         }
@@ -30,7 +30,7 @@ class TestPrivate {
             throw new AssertionError("Constructor not transformed")
         }*/
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return "Extension"
         }
@@ -48,16 +48,16 @@ class TestPrivate {
             throw new AssertionError("Constructor not transformed")
         }*/
 
-        @Field(name = "field")
+        @Field("field")
         String getField();
 
-        @Field(name = "field2")
+        @Field("field2")
         String getField2();
 
-        @Field(name = "field2")
+        @Field("field2")
         void setField2(String field2);
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return getField()
         }

@@ -35,6 +35,8 @@ class OpenTransformation extends AbstractASTTransformation {
     private static final ClassNode OPEN = ClassHelper.makeWithoutCaching(Open)
     private static final ClassNode OPENING_METAFACTORY = ClassHelper.makeWithoutCaching(OpeningMetafactory)
 
+    private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.mixin.annotations.UnFinal")
+
     private final GroovyProcessor processor = new GroovyProcessor(this)
 
     @Override
@@ -47,6 +49,33 @@ class OpenTransformation extends AbstractASTTransformation {
         }
 
         Processor.Opening<Type> opening = processor.opening(methodNode)
+
+        if (!methodNode.getAnnotations(UNFINAL).empty) {
+            String line
+            if (opening.targetType() == null || opening.returnType() == null || opening.parameterTypes().stream().anyMatch(Objects::isNull)) {
+                line = null
+            } else {
+                line = switch (opening.type()) {
+                    case Open.Type.STATIC -> opening.name() + " " + Type.getMethodType(opening.returnType(), opening.parameterTypes().toArray(Type[]::new)).getDescriptor()
+                    case Open.Type.VIRTUAL, Open.Type.SPECIAL -> {
+                        List<Type> parameterTypes = new ArrayList<>(opening.parameterTypes())
+                        parameterTypes.remove(0)
+                        yield opening.name() + " " + Type.getMethodType(opening.returnType(), parameterTypes.toArray(Type[]::new)).getDescriptor()
+                    }
+                    case Open.Type.GET_STATIC, Open.Type.GET_INSTANCE -> opening.name() + " " + opening.returnType().getDescriptor()
+                    case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> opening.name() + " " + opening.parameterTypes().get(opening.parameterTypes().size()-1).getDescriptor()
+                    default -> null
+                }
+            }
+            if (line != null) {
+                List<String> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+                if (lines == null) {
+                    lines = new ArrayList<>()
+                    methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
+                }
+                lines.add(opening.targetType().getInternalName().replace('/', '.') + " " + line)
+            }
+        }
 
         methodNode.code = new ExpressionStatement(new BytecodeExpression(methodNode.returnType) {
             @Override

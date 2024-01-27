@@ -199,7 +199,7 @@ class GroovyProcessor implements Processor<Type, AnnotationNode, MethodNode> {
 
     @Override
     @Nullable String name(AnnotationNode annotation) {
-        return transformation.getMemberStringValue(annotation, 'name')
+        return transformation.getMemberStringValue(annotation, 'name') ?: transformation.getMemberStringValue(annotation, 'value')
     }
 
     @Override

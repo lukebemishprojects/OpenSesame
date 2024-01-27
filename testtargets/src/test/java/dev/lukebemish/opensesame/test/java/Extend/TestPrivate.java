@@ -17,7 +17,7 @@ public class TestPrivate {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return "Extension";
         }
@@ -30,7 +30,7 @@ public class TestPrivate {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return "Extension";
         }
@@ -39,25 +39,25 @@ public class TestPrivate {
     @Extend(targetName = "dev.lukebemish.opensesame.test.target.Public$Private", unsafe = true)
     public interface ExtensionFields {
         @Constructor
-        static ExtensionFields constructor(@Field(name = "field") @Field.Final String field) {
+        static ExtensionFields constructor(@Field(value = "field") @Field.Final String field) {
             throw new AssertionError("Constructor not transformed");
         }
 
         @Constructor
-        static ExtensionFields constructor(@Field(name = "field") @Field.Final String field, @Field(name = "field2") String field2) {
+        static ExtensionFields constructor(@Field(value = "field") @Field.Final String field, @Field(value = "field2") String field2) {
             throw new AssertionError("Constructor not transformed");
         }
 
-        @Field(name = "field")
+        @Field(value = "field")
         String getField();
 
-        @Field(name = "field2")
+        @Field(value = "field2")
         String getField2();
 
-        @Field(name = "field2")
+        @Field(value = "field2")
         void setField2(String field2);
 
-        @Overrides(name = "toString")
+        @Overrides(value = "toString")
         default String toStringImplementation() {
             return getField();
         }

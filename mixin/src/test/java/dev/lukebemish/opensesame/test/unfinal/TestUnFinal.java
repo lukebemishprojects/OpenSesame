@@ -44,7 +44,7 @@ public class TestUnFinal {
             throw new AssertionError("Constructor not replaced");
         }
 
-        @Overrides(name = "finalMethod")
+        @Overrides(value = "finalMethod")
         @UnFinal
         default String finalMethodOverride() {
             return "not so final now!";

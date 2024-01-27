@@ -23,14 +23,14 @@ public class TestModEntrypoint implements ModInitializer {
     @UnFinal
     public interface Extension<T> {
         @Constructor
-        static <A> Extension<A> constructor(@Field(name = "fallback") @Field.Final A fallback, @Coerce(targetName = "net.minecraft.world.level.biome.Climate$RTree$Node") Object node) {
+        static <A> Extension<A> constructor(@Field(value = "fallback") @Field.Final A fallback, @Coerce(targetName = "net.minecraft.world.level.biome.Climate$RTree$Node") Object node) {
             throw new UnsupportedOperationException("Constructor not replaced");
         }
 
-        @Field(name = "fallback")
+        @Field("fallback")
         T getFallback();
 
-        @Overrides(name = "search")
+        @Overrides("search")
         default T searchOverride(Climate.TargetPoint targetPoint, @Coerce(targetName = "net.minecraft.world.level.biome.Climate$DistanceMetric") Object distanceMetric) {
             return getFallback();
         }
@@ -46,7 +46,7 @@ public class TestModEntrypoint implements ModInitializer {
             throw new UnsupportedOperationException("Constructor not replaced");
         }
 
-        @Overrides(name = "distance")
+        @Overrides(value = "distance")
         default long distanceImpl(@Coerce(targetName = "net.minecraft.world.level.biome.Climate$RTree$Node") Object node, long[] ls) {
             return 0;
         }

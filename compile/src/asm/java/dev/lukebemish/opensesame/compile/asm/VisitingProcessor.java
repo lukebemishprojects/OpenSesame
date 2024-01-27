@@ -134,7 +134,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     protected void writeUnFinalLines(List<String> lines, Type selfType) throws IOException {
                         if (rootPath != null) {
                             Set<Type> targets = new HashSet<>();
-                            for (String line : unFinalLines) {
+                            for (String line : lines) {
                                 String type = line.split(" ")[0];
                                 targets.add(Type.getObjectType(type.replace('.', '/')));
                             }
@@ -224,6 +224,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     }
 
+    final List<Runnable> extendCallbacks = new ArrayList<>();
+
     @Override
     public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
         if (annotationDescriptors.contains(descriptor)) {
@@ -243,18 +245,23 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         interfaces[interfaces.length - 1] = Type.getInternalName(Extension.class);
                         delegate.classInfo.interfaces = interfaces;
                     }
+                    extendCallbacks.forEach(Runnable::run);
                 });
             } else if (descriptor.equals(UNFINAL.getDescriptor())) {
-                annotation.onEnd(() -> {
-                    if (!isExtension) {
-                        throw new RuntimeException("@UnFinal annotation must be only used on an interface with @Extend");
-                    }
+                Runnable callback = () -> {
                     var extendType = VisitingProcessor.this.extendTargetClassHandle.type();
                     if (extendType == null) {
                         throw new RuntimeException("Could not determine target class for @UnFinal");
                     }
                     String name = remapClassName(extendType.getInternalName().replace('/', '.'));
                     this.unFinalLines.add(name);
+                };
+                annotation.onEnd(() -> {
+                    if (!isExtension) {
+                        extendCallbacks.add(callback);
+                    } else {
+                        callback.run();
+                    }
                 });
             } else if (descriptor.equals(OpenSesameGenerated.class.descriptorString())) {
                 annotation.onEnd(() -> {
@@ -422,7 +429,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     @Override
     public @Nullable String name(Annotation annotation) {
-        return (String) annotation.literals.get("name");
+        var name = (String) annotation.literals.get("name");
+        if (name == null) {
+            return (String) annotation.literals.get("value");
+        }
+        return name;
     }
 
     @Override
@@ -704,7 +715,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     throw new RuntimeException("@Field getter/setter must have at most one parameter and must not be static");
                 }
                 var setter = this.parameterTypes.size() == 1;
-                var fieldName = this.annotations.get(Field.class.descriptorString()).literals.get("name").toString();
+                var fieldName = name(this.annotations.get(Field.class.descriptorString()));
                 var setAsFinal = this.annotations.containsKey(Field.Final.class.descriptorString());
                 if (setter) {
                     if (this.returnType.getSort() != Type.VOID) {
@@ -740,7 +751,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     throw new RuntimeException("@Overrides must not be static");
                 }
                 CoercedDescriptor<Type> descriptor = coercedDescriptor(this);
-                String originalName = this.annotations.get(Overrides.class.descriptorString()).literals.get("name").toString();
+                String originalName = name(this.annotations.get(Overrides.class.descriptorString()));
                 if (this.name.equals(originalName)) {
                     throw new RuntimeException("@Overrides must not have the same name as the original method");
                 }
@@ -761,7 +772,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                         descriptor.returnType().type(),
                                         descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toList()
                                 ) + " " +
-                                remapType(Type.getMethodType(returnType, parameterTypes.toArray(Type[]::new))).getDescriptor();
+                                remapType(Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toArray(Type[]::new))).getDescriptor();
                         unFinalLines.add(line);
                     }
                 }
@@ -794,12 +805,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         if (finished) {
                             throw new RuntimeException("@Constructor must have all field parameters before non-field parameters");
                         }
-                        if (fieldNames.contains(field.literals.get("name").toString())) {
+                        if (fieldNames.contains(name(field))) {
                             throw new RuntimeException("@Constructor must not have duplicate field parameters");
                         }
                         drop++;
                         Type fieldType = this.parameterTypes.get(i);
-                        var name = field.literals.get("name").toString();
+                        var name = name(field);
                         var setAsFinal = fieldsFinal != null && fieldsFinal[i] != null;
                         ExtendFieldInfo<Type> fieldInfo = VisitingProcessor.this.fields.computeIfAbsent(name, k -> new ExtendFieldInfo<>(name, fieldType, setAsFinal));
                         if (!fieldInfo.isFinal() && setAsFinal) {
