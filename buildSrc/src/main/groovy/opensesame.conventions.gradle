@@ -127,47 +127,10 @@ jar {
     }
 }
 
-if (System.getenv('PR_NUMBER')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'LocalMaven'
-                url = rootProject.layout.buildDirectory.dir('repo')
-            }
-        }
-    }
-} else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'PersonalMaven'
-                url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
-                credentials {
-                    username = System.getenv('MAVEN_USER')
-                    password = System.getenv('MAVEN_PASSWORD')
-                }
-            }
-        }
-    }
-}
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
         }
     }
-}
-
-if (System.getenv('IS_RELEASE')) {
-    signing {
-        final signingKey = System.getenv('SIGNING_KEY') ?: ''
-        final signingPassword = System.getenv('SIGNING_PASSWORD') ?: ''
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign publishing.publications.mavenJava
-    }
-}
-
-tasks.register('release') {
-    dependsOn('publish')
 }
