@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.lukebemish.opensesame.mixin.targets",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "dev.lukebemish.opensesame.mixin.plugin.OpenSesameMixinPlugin"
+}

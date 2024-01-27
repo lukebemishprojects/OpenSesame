@@ -3,7 +3,8 @@ plugins {
     alias libs.plugins.nexuspublish
     id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
-    id 'jvm-test-suite'
+    id 'opensesame.publishing'
+    id 'opensesame.javadoc'
 }
 
 managedVersioning {
@@ -20,6 +21,35 @@ repositories {
         name = 'FabricMC'
         url = 'https://maven.fabricmc.net/'
     }
+    maven {
+        name = 'SpongePowered'
+        url = 'https://repo.spongepowered.org/maven'
+    }
+}
+
+configurations {
+    javadocSources {
+        canBeResolved = true
+    }
+    javadocImplementation {
+        canBeResolved = false
+        canBeConsumed = false
+    }
+    javadocElements {
+        canBeResolved = false
+        canBeConsumed = true
+        extendsFrom javadocImplementation
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.DOCUMENTATION))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL))
+            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType.class, DocsType.JAVADOC))
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME))
+        }
+    }
+    javadocClasspath {
+        canBeResolved = true
+        extendsFrom javadocElements
+    }
 }
 
 dependencies {
@@ -29,6 +59,18 @@ dependencies {
             testReportAggregation p
         }
     }
+
+    [
+            'mixin',
+            'core',
+            'groovy'
+    ].each { p ->
+        javadocSources project(path: ":opensesame-$p", configuration: 'sourcesElements')
+        javadocImplementation project(path: ":opensesame-$p", configuration: 'apiElements')
+    }
+
+    javadocClasspath libs.jetbrains.annotations
+    javadocClasspath libs.groovy.core
 }
 
 println "Building: ${rootProject.version}"
@@ -56,6 +98,76 @@ reporting {
         }
         testAggregateTestReport(AggregateTestReport) {
             testType = TestSuiteType.UNIT_TEST
+        }
+    }
+}
+
+tasks.register('unpackJavadocSources') {
+    dependsOn configurations.javadocSources
+    inputs.files(configurations.javadocSources)
+    def destinationDir = layout.buildDirectory.dir('unpackedJavadocSources').get().asFile
+    outputs.dir(destinationDir)
+    doLast {
+        copy {
+            into destinationDir
+            configurations.javadocSources.files.each {
+                from(zipTree(it)) {
+                    include('**/*.java')
+                    exclude('module-info.java')
+                }
+            }
+        }
+
+        destinationDir.traverse {
+            if (it.isDirectory()) {
+                def packageInfo = it.toPath().resolve('package-info.java').toFile()
+                if (packageInfo.exists()) {
+                    String packageInfoContent = packageInfo.text
+                    if (packageInfoContent.contains('@ApiStatus.Internal')) {
+                        it.listFiles().each {
+                            if (it.isFile()) {
+                                it.delete()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register('javadoc', Javadoc) {
+    dependsOn tasks.unpackJavadocSources
+    dependsOn configurations.javadocClasspath
+    inputs.files(configurations.javadocClasspath)
+    inputs.files(tasks.unpackJavadocSources.outputs.files)
+    destinationDir = layout.buildDirectory.dir('javadoc').get().asFile
+    classpath = configurations.javadocClasspath
+    source(tasks.unpackJavadocSources.outputs.files)
+}
+
+tasks.register('javadocJar', Jar) {
+    dependsOn tasks.javadoc
+    inputs.files(tasks.javadoc.outputs.files)
+    destinationDirectory.set(layout.buildDirectory.dir('libs'))
+    archiveClassifier.set('javadoc')
+    from(tasks.javadoc.outputs.files)
+}
+
+conventionJavadocComponent.apply(configurations.javadocElements)
+
+artifacts {
+    javadocElements tasks.javadocJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.javadoc
+            pom {
+                openSesameConvention.pomShared(it, '')
+                description = 'A tool for breaking encapsulation in JVM projects'
+            }
         }
     }
 }

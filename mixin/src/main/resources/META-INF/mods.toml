@@ -1,0 +1,15 @@
+modLoader = "lowcodefml"
+loaderVersion = "[1,)"
+license = "BSD-3-Clause"
+issueTrackerURL = "https://github.com/lukebemishprojects/OpenSesame/issues"
+
+[[mods]]
+modId = "opensesame_mixin"
+version = "${project.version}"
+displayName = "OpenSesame: Mixin Plugin"
+displayURL = "https://github.com/lukebemishprojects/OpenSesame"
+description = "Mixin plugin that allows removing final and sealed modifiers."
+authors = "Luke Bemish"
+
+[[mixins]]
+config = "mixin.opensesame.json"

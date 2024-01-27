@@ -5,16 +5,13 @@ import dev.lukebemish.opensesame.runtime.RuntimeRemapper;
 import net.fabricmc.loader.api.FabricLoader;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.invoke.MethodType;
-
 @AutoService(RuntimeRemapper.class)
 public class FabricRuntimeRemapper implements RuntimeRemapper {
     private static final String SOURCE_NAMESPACE = "intermediary";
     @Override
-    public @Nullable String remapMethodName(Class<?> parent, String name, Class<?>[] args, Class<?> returnType) {
+    public @Nullable String remapMethodName(String parent, String name, String methodDesc) {
         try {
-            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent.getName());
-            var methodDesc = MethodType.methodType(returnType, args).descriptorString();
+            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent);
             var newName = FabricLoader.getInstance().getMappingResolver().mapMethodName(SOURCE_NAMESPACE, originalClassName, name, methodDesc);
             if (!newName.equals(name))
                 return newName;
@@ -23,11 +20,10 @@ public class FabricRuntimeRemapper implements RuntimeRemapper {
     }
 
     @Override
-    public @Nullable String remapFieldName(Class<?> parent, String name, Class<?> type) {
+    public @Nullable String remapFieldName(String parent, String name, String descriptor) {
         try {
-            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent.getName());
-            var fieldDesc = classToDesc(type);
-            var newName = FabricLoader.getInstance().getMappingResolver().mapFieldName(SOURCE_NAMESPACE, originalClassName, name, fieldDesc);
+            var originalClassName = FabricLoader.getInstance().getMappingResolver().unmapClassName(SOURCE_NAMESPACE, parent);
+            var newName = FabricLoader.getInstance().getMappingResolver().mapFieldName(SOURCE_NAMESPACE, originalClassName, name, descriptor);
             if (!newName.equals(name))
                 return newName;
         } catch (Exception ignored) {}
@@ -44,9 +40,5 @@ public class FabricRuntimeRemapper implements RuntimeRemapper {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private String classToDesc(Class<?> type) {
-        return type.descriptorString();
     }
 }

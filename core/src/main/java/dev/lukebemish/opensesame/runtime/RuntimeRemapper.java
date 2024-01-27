@@ -8,22 +8,21 @@ import org.jetbrains.annotations.Nullable;
 public interface RuntimeRemapper {
     /**
      * Remap a method name.
-     * @param parent the class that contains the method
+     * @param parent the name (as in {@link Class#getName()} of the class that contains the method
      * @param name the name of the method
-     * @param args the argument types of the method
-     * @param returnType the return type of the method
+     * @param methodDesc the descriptor of the method
      * @return the new name of the method, or {@code null} to use the original name
      */
-    @Nullable String remapMethodName(Class<?> parent, String name, Class<?>[] args, Class<?> returnType);
+    @Nullable String remapMethodName(String parent, String name, String methodDesc);
 
     /**
      * Remap a field name.
-     * @param parent the class that contains the field
+     * @param parent the name (as in {@link Class#getName()} of the class that contains the field
      * @param name the name of the field
-     * @param type the type of the field
+     * @param descriptor the descriptor of the field
      * @return the new name of the field, or {@code null} to use the original name
      */
-    @Nullable String remapFieldName(Class<?> parent, String name, Class<?> type);
+    @Nullable String remapFieldName(String parent, String name, String descriptor);
 
     /**
      * Remap a class internal name

@@ -9,4 +9,8 @@ public class Hidden {
     private static String hiddenByModulesPrivate() {
         return "hiddenByModulesPrivate";
     }
+
+    private String hiddenByModulesPrivateInstance() {
+        return "hiddenByModulesPrivateInstance";
+    }
 }

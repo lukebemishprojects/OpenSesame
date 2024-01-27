@@ -5,6 +5,11 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
+dependencies {
+    implementation libs.asm.core
+    implementation libs.asm.commons
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {

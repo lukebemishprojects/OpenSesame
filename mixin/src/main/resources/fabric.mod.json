@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "opensesame_mixin",
+  "version": "${project.version}",
+  "name": "OpenSesame: Mixin Plugin",
+  "mixins": [
+    "opensesame.mixin.json"
+  ]
+}

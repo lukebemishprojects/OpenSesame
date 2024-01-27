@@ -23,8 +23,8 @@ dependencies {
     annotationProcessor(libs.autoservice)
     compileOnly(libs.autoservice)
 
-    implementation libs.fabric.loom
-    implementation libs.fabric.tinyremapper
+    compileOnly libs.fabric.loom
+    compileOnly libs.fabric.tinyremapper
     implementation libs.asm.commons
     implementation libs.asm.core
 

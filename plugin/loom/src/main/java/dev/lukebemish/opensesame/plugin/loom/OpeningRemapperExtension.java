@@ -1,6 +1,6 @@
 package dev.lukebemish.opensesame.plugin.loom;
 
-import dev.lukebemish.opensesame.compile.asm.VisitingOpenProcessor;
+import dev.lukebemish.opensesame.compile.asm.VisitingProcessor;
 import net.fabricmc.loom.api.remapping.RemapperContext;
 import net.fabricmc.loom.api.remapping.RemapperExtension;
 import net.fabricmc.loom.api.remapping.RemapperParameters;
@@ -44,7 +44,7 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
 
             var remapper = cls.getEnvironment().getRemapper();
 
-            return new VisitingOpenProcessor(classVisitor, VisitingOpenProcessor.ANNOTATIONS) {
+            return new VisitingProcessor(classVisitor, VisitingProcessor.ANNOTATIONS) {
                 @Override
                 protected String remapClassName(String name) {
                     return remapper.map(name);

@@ -3,6 +3,7 @@ plugins {
     id 'signing'
     id 'maven-publish'
     id 'jacoco'
+    id 'opensesame.publishing'
 }
 
 java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
@@ -31,6 +32,8 @@ dependencies {
     testImplementation project(':testtargets')
     testModuleClasspath project(':testtargets')
 }
+
+def openSesameExtension = project.extensions.getByName('openSesameConvention')
 
 testing {
     suites.create('testOn21', JvmTestSuite) {
@@ -69,7 +72,13 @@ testing {
                 testLogging {
                     showStandardStreams = true
                     exceptionFormat = 'full'
+                    showCauses = true
+                    showStackTraces = true
                     events = ['passed', 'failed', 'skipped']
+                }
+
+                if (!openSesameExtension.getTestAsModule().get()) {
+                    modularity.inferModulePath.set(false)
                 }
 
                 testClassesDirs += files(
@@ -118,78 +127,10 @@ jar {
     }
 }
 
-if (System.getenv('PR_NUMBER')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'LocalMaven'
-                url = rootProject.layout.buildDirectory.dir('repo')
-            }
-        }
-    }
-} else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'PersonalMaven'
-                url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
-                credentials {
-                    username = System.getenv('MAVEN_USER')
-                    password = System.getenv('MAVEN_PASSWORD')
-                }
-            }
-        }
-    }
-}
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
         }
     }
-}
-
-if (System.getenv('IS_RELEASE')) {
-    signing {
-        final signingKey = System.getenv('SIGNING_KEY') ?: ''
-        final signingPassword = System.getenv('SIGNING_PASSWORD') ?: ''
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign publishing.publications.mavenJava
-    }
-}
-
-class OpenSesameConventionExtension {
-    def pomShared(MavenPom it, String name) {
-        it.name = "OpenSesame - $name".toString()
-        it.packaging = 'jar'
-        it.url = 'https://github.com/lukebemishprojects/OpenSesame'
-        it.inceptionYear = '2023'
-
-        it.licenses {
-            license {
-                name = '3-Clause BSD License'
-                url = 'https://opensource.org/license/bsd-3-clause/'
-            }
-        }
-        it.developers {
-            developer {
-                id = 'lukebemish'
-                name = 'Luke Bemish'
-                email = 'lukebemish@lukebemish.dev'
-                url = 'https://github.com/lukebemish/'
-            }
-        }
-        it.scm {
-            connection='scm:git:git://github.com/lukebemishprojects/OpenSesame.git'
-            developerConnection='scm:git:ssh://github.com/lukebemishprojects/OpenSesame.git'
-            url='https://github.com/lukebemishprojects/OpenSesame'
-        }
-    }
-}
-
-project.extensions.add('openSesameConvention', OpenSesameConventionExtension)
-
-tasks.register('release') {
-    dependsOn('publish')
 }

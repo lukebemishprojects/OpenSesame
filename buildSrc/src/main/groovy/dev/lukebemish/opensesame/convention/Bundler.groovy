@@ -23,6 +23,8 @@ import java.util.jar.JarInputStream
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+
 // Stole my own code from groovybundler... it works though
 @CompileStatic
 abstract class Bundler extends DefaultTask {
@@ -90,10 +92,21 @@ abstract class Bundler extends DefaultTask {
             var outLicenseDir = getOutputDirectory().get().dir("META-INF").dir("licenses").dir(name)
             outLicenseDir.asFile.deleteDir()
 
+            var hasModsToml = false
+            try {
+                var modsToml = new ZipFile(artifactFile).getEntry("META-INF/mods.toml")
+                if (modsToml !== null) {
+                    hasModsToml = true
+                }
+            } catch (Exception ignored) {}
+
             try (final input = new JarInputStream(artifactFile.newInputStream())
                  final output = new JarOutputStream(outArchive.asFile.newOutputStream())) {
                 final manifest = new Manifest(input.getManifest())
-                manifest.mainAttributes.putValue('FMLModType', modType.get())
+                // only add attribute it it doesn't exist and doesn't have a mods.toml file
+                if (!manifest.mainAttributes.getValue('FMLModType') && !hasModsToml) {
+                    manifest.mainAttributes.putValue('FMLModType', modType.get())
+                }
                 if (!manifest.mainAttributes.getValue('Automatic-Module-Name')) {
                     manifest.mainAttributes.putValue('Automatic-Module-Name', (modulePrefix.get() + '.' + group + '.' + name).replace('-', '.'))
                 }
@@ -101,9 +114,14 @@ abstract class Bundler extends DefaultTask {
                 manifest.write(output)
                 output.closeEntry()
 
+                boolean hasFmj = false
+
                 ZipEntry entry
                 while ((entry = input.nextEntry) !== null) {
                     if (entry.name.endsWith('module-info.class')) continue
+                    if (entry.name.endsWith('fabric.mod.json')) {
+                        hasFmj = true
+                    }
                     ZipEntry newEntry = new ZipEntry(entry.name)
                     if (entry.comment !== null) newEntry.setComment(entry.comment)
                     output.putNextEntry(newEntry)
@@ -131,10 +149,12 @@ abstract class Bundler extends DefaultTask {
                     }
                 }
 
-                ZipEntry fmjEntry = new ZipEntry("fabric.mod.json")
-                output.putNextEntry(fmjEntry)
-                output.write(new JsonBuilder(fmj).toPrettyString().getBytes(StandardCharsets.UTF_8))
-                output.closeEntry()
+                if (!hasFmj) {
+                    ZipEntry fmjEntry = new ZipEntry("fabric.mod.json")
+                    output.putNextEntry(fmjEntry)
+                    output.write(new JsonBuilder(fmj).toPrettyString().getBytes(StandardCharsets.UTF_8))
+                    output.closeEntry()
+                }
             }
 
             jarJarJars << [
