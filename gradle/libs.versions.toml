@@ -7,7 +7,7 @@ autoservice = "1.0.1"
 groovy = "4.0.18"
 asm = "9.6"
 
-managedversioning = "1.2.6"
+managedversioning = "1.2.13"
 nexuspublish = "1.3.0"
 gradlepublish = "1.1.0"
 

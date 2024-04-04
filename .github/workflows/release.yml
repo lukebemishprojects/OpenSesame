@@ -1,70 +1,189 @@
-name: Release
-concurrency: ci-${{ github.ref }}
-on:
-  workflow_dispatch:
-permissions:
-  contents: write
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Setup Java
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: fregante/setup-git-user@v2
-      - uses: gradle/gradle-build-action@v2
-        name: Setup Gradle
-        with:
-          gradle-home-cache-excludes: |
-            caches/build-cache-1
-      - name: Tag Release
-        run: |
-          ./gradlew tagRelease
-        env:
-          BUILD_CACHE_URL: ${{ secrets.BUILD_CACHE_URL }}
-          BUILD_CACHE_USER: ${{ secrets.BUILD_CACHE_USER }}
-          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
-      - name: Build
-        run: |
-          ./gradlew build
-        env:
-          BUILD_CACHE_URL: ${{ secrets.BUILD_CACHE_URL }}
-          BUILD_CACHE_USER: ${{ secrets.BUILD_CACHE_USER }}
-          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
-      - name: Publish
-        run: |
-          ./gradlew release closeAndReleaseSonatypeStagingRepository
-        env:
-          IS_RELEASE: true
-          MAVEN_USER: github
-          MAVEN_PASSWORD: ${{ secrets.RELEASE_MAVEN_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.GPG_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.GPG_PASSWORD }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
-          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PLUGIN_KEY }}
-          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PLUGIN_SECRET }}
-          BUILD_CACHE_URL: ${{ secrets.BUILD_CACHE_URL }}
-          BUILD_CACHE_USER: ${{ secrets.BUILD_CACHE_USER }}
-          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
-      - run: |
-          git push
-          git push --tags
-      - name: Submit Dependencies
-        uses: mikepenz/gradle-dependency-submission@v0.9.0
-        with:
-          gradle-build-module: |-
-            :opensesame-core
-            :opensesame-compile
-            :opensesame-groovy
-            :opensesame-javac
-            :opensesame-fabric
-            :opensesame-plugin-core
-            :opensesame-plugin-loom
-          gradle-build-configuration: |-
-            compileClasspath
-          sub-module-mode: COMBINED
-          include-build-environment: true
+{
+    "jobs": {
+        "build": {
+            "outputs": {
+                "version": "${{ steps.record_version_capture_version.outputs.version }}"
+            },
+            "runs-on": "ubuntu-22.04",
+            "permissions": {
+                "contents": "write"
+            },
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "with": {
+                        "fetch-depth": "0"
+                    },
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4"
+                },
+                {
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    },
+                    "name": "Cache",
+                    "uses": "actions/cache@v4"
+                },
+                {
+                    "with": {
+                        "gradle-home-cache-cleanup": true
+                    },
+                    "name": "Setup Gradle",
+                    "uses": "gradle/gradle-build-action@v3"
+                },
+                {
+                    "uses": "fregante/setup-git-user@v2"
+                },
+                {
+                    "name": "Tag Release",
+                    "run": "./gradlew tagRelease",
+                    "id": "tag_release"
+                },
+                {
+                    "name": "Build",
+                    "run": "./gradlew build",
+                    "id": "build"
+                },
+                {
+                    "run": "git push && git push --tags"
+                },
+                {
+                    "with": {
+                        "gradle-build-module": ":opensesame-core\n:opensesame-compile\n:opensesame-groovy\n:opensesame-javac\n:opensesame-fabric\n:opensesame-plugin-core\n:opensesame-plugin-loom",
+                        "gradle-build-configuration": "compileClasspath",
+                        "sub-module-mode": "COMBINED",
+                        "include-build-environment": "true"
+                    },
+                    "name": "Submit Dependencies",
+                    "uses": "mikepenz/gradle-dependency-submission@v0.9.0"
+                },
+                {
+                    "name": "Record Version",
+                    "run": "./gradlew recordVersion",
+                    "id": "record_version"
+                },
+                {
+                    "name": "Capture Recorded Version",
+                    "run": "echo version=$(cat build/recordVersion.txt) >> \"$GITHUB_OUTPUT\"",
+                    "id": "record_version_capture_version"
+                }
+            ]
+        },
+        "publishCentral": {
+            "needs": [
+                "build"
+            ],
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "with": {
+                        "fetch-depth": "0",
+                        "ref": "refs/tags/${{needs.build.outputs.version}}",
+                        "persist-credentials": "false"
+                    },
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4"
+                },
+                {
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    },
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4"
+                },
+                {
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    },
+                    "name": "Setup Gradle",
+                    "uses": "gradle/gradle-build-action@v3"
+                },
+                {
+                    "name": "Publish",
+                    "run": "./gradlew publishCentral closeAndReleaseSonatypeStagingRepository",
+                    "id": "publish",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GPG_KEY": "${{ secrets.GPG_KEY }}",
+                        "GPG_PASSWORD": "${{ secrets.GPG_PASSWORD }}",
+                        "SONATYPE_PASSWORD": "${{ secrets.SONATYPE_PASSWORD }}",
+                        "SONATYPE_USER": "${{ secrets.SONATYPE_USER }}"
+                    }
+                }
+            ]
+        },
+        "publishPlugins": {
+            "needs": [
+                "build"
+            ],
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "with": {
+                        "fetch-depth": "0",
+                        "ref": "refs/tags/${{needs.build.outputs.version}}",
+                        "persist-credentials": "false"
+                    },
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4"
+                },
+                {
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    },
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4"
+                },
+                {
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    },
+                    "name": "Setup Gradle",
+                    "uses": "gradle/gradle-build-action@v3"
+                },
+                {
+                    "name": "Publish Plugins",
+                    "run": "./gradlew publishPlugins",
+                    "id": "publish_plugins",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GPG_KEY": "${{ secrets.GPG_KEY }}",
+                        "GPG_PASSWORD": "${{ secrets.GPG_PASSWORD }}",
+                        "GRADLE_PUBLISH_KEY": "${{ secrets.GRADLE_PLUGIN_KEY }}",
+                        "GRADLE_PUBLISH_SECRET": "${{ secrets.GRADLE_PLUGIN_SECRET }}"
+                    }
+                }
+            ]
+        }
+    },
+    "name": "Release",
+    "concurrency": "ci-${{ github.ref }}",
+    "on": {
+        "workflow_dispatch": {
+            
+        }
+    }
+}

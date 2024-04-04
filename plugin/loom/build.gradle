@@ -57,30 +57,5 @@ processResources {
     from rootProject.file('LICENSE')
 }
 
-if (System.getenv('PR_NUMBER')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'LocalMaven'
-                url = rootProject.layout.buildDirectory.dir('repo')
-            }
-        }
-    }
-} else if (System.getenv('SNAPSHOT_MAVEN_URL')) {
-    publishing {
-        repositories {
-            maven {
-                name = 'PersonalMaven'
-                url = uri(System.getenv('SNAPSHOT_MAVEN_URL'))
-                credentials {
-                    username = System.getenv('MAVEN_USER')
-                    password = System.getenv('MAVEN_PASSWORD')
-                }
-            }
-        }
-    }
-}
-
-tasks.register('release') {
-    dependsOn('publishPlugins')
-}
+managedVersioning.publishing.mavenPullRequest(publishing)
+managedVersioning.publishing.mavenSnapshot(publishing)

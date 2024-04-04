@@ -1,62 +1,106 @@
-name: Build PR
-concurrency: ci-${{ github.ref }}
-on: [pull_request]
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Setup Java
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: fregante/setup-git-user@v2
-      - uses: gradle/gradle-build-action@v2
-        name: Setup Gradle
-        with:
-          cache-read-only: true
-      - name: Build
-        id: assemble
-        run: |
-          ./gradlew assemble
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-      - name: Test
-        run: |
-          ./gradlew check --continue
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-      - name: Test Plugin
-        if: (success() || failure()) && steps.assemble.conclusion == 'success'
-        working-directory: ./testplugin
-        run: |
-          ./gradlew check --continue
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v3
-        if: (success() || failure()) && steps.assemble.conclusion == 'success'
-        with:
-          name: junit-test-results
-          path: "**/build/test-results/*/TEST-*.xml"
-          retention-days: 1
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v3
-        if: (success() || failure()) && steps.assemble.conclusion == 'success'
-        with:
-          name: jacoco-coverage
-          path: "build/reports/jacoco/testCodeCoverageReport"
-      - name: Publish
-        if: steps.assemble.conclusion == 'success'
-        run: |
-          ./gradlew publish
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-      - name: Archive publishable artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: artifacts
-          path: build/repo
-          retention-days: 1
+{
+    "jobs": {
+        "build": {
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "with": {
+                        "fetch-depth": "0",
+                        "persist-credentials": "false"
+                    },
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4"
+                },
+                {
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    },
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4"
+                },
+                {
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    },
+                    "name": "Setup Gradle",
+                    "uses": "gradle/gradle-build-action@v3"
+                },
+                {
+                    "name": "Assemble",
+                    "run": "./gradlew assemble",
+                    "id": "assemble",
+                    "env": {
+                        "PR_NUMBER": "${{ github.event.pull_request.number }}"
+                    }
+                },
+                {
+                    "name": "Test",
+                    "run": "./gradlew check --continue",
+                    "id": "test",
+                    "env": {
+                        "PR_NUMBER": "${{ github.event.pull_request.number }}"
+                    }
+                },
+                {
+                    "name": "Test Plugin",
+                    "run": "./gradlew check --continue",
+                    "id": "test_plugin",
+                    "env": {
+                        "PR_NUMBER": "${{ github.event.pull_request.number }}"
+                    },
+                    "working-directory": "./testplugin",
+                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
+                },
+                {
+                    "with": {
+                        "name": "junit-test-results",
+                        "path": "**/build/test-results/*/TEST-*.xml",
+                        "retention-days": "1"
+                    },
+                    "name": "Upload Test Report",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
+                },
+                {
+                    "with": {
+                        "name": "jacoco-coverage",
+                        "path": "build/reports/jacoco/testCodeCoverageReport"
+                    },
+                    "name": "Upload Coverage Report",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
+                },
+                {
+                    "name": "Publish",
+                    "run": "./gradlew publish",
+                    "id": "publish",
+                    "env": {
+                        "PR_NUMBER": "${{ github.event.pull_request.number }}"
+                    }
+                },
+                {
+                    "with": {
+                        "name": "artifacts",
+                        "path": "build/repo"
+                    },
+                    "name": "Archive Publishable Artifacts",
+                    "uses": "actions/upload-artifact@v4"
+                }
+            ]
+        }
+    },
+    "name": "Build PR",
+    "concurrency": "ci-${{ github.ref }}",
+    "on": {
+        "pull_request": {
+            
+        }
+    }
+}
