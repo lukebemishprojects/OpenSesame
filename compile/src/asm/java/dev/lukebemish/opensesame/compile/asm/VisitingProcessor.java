@@ -87,7 +87,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, int index, Path rootPath) throws IOException {
-        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         String originalName = holderType.getInternalName();
         String mixinName = MIXIN_PACKAGE + "/" + originalName + "$" + index + "/" + (forPublic ? "public" : "private") + (forClass ? "class" : "interface");
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SYNTHETIC | (forClass ? 0 : (Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE)), mixinName, null, "java/lang/Object", new String[0]);
@@ -127,7 +127,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
         try (var inputStream = Files.newInputStream(file)) {
             ClassReader reader = new ClassReader(inputStream);
-            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             try {
                 reader.accept(new VisitingProcessor(writer, VisitingProcessor.ANNOTATIONS) {
                     @Override
