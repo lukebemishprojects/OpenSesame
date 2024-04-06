@@ -18,7 +18,6 @@ import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.ASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
 
-import java.lang.reflect.Field
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -67,17 +66,17 @@ class Discoverer implements ASTTransformation {
         }
     }
 
-    private static final String UNFINAL_SERVICE = '$$dev$lukebemish$opensesame$$UnFinalService'
+    private static final String UNFINAL_SERVICE = '$$dev$lukebemish$opensesame$$MixinActionProvider'
     private static final String MIXIN_PACKAGE = 'dev/lukebemish/opensesame/mixin/targets'
     private static final Type MIXIN = Type.getObjectType('org/spongepowered/asm/mixin/Mixin')
     private static final Type UNFINAL = Type.getObjectType('dev/lukebemish/opensesame/mixin/annotations/UnFinal')
-    private static final Type UNFINAL_LINE_PROVIDER = Type.getObjectType('dev/lukebemish/opensesame/mixin/plugin/UnFinalLineProvider')
+    private static final Type MIXIN_PROVIDER = Type.getObjectType('dev/lukebemish/opensesame/mixin/plugin/OpenSesameMixinProvider')
 
     private static void writeUnFinalLines(List<String> lines, Type selfType, Path rootPath) {
         if (rootPath != null) {
             Set<Type> targets = new HashSet<>()
             for (String line : lines) {
-                String type = line.split(" ")[0]
+                String type = line.split("\\.")[0]
                 targets.add(Type.getObjectType(type.replace('.', '/')))
             }
             List<Type> orderedTargets = new ArrayList<>(targets)
@@ -91,7 +90,7 @@ class Discoverer implements ASTTransformation {
                 Files.createDirectories(generatedClassPath.getParent())
             }
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS)
-            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{UNFINAL_LINE_PROVIDER.getInternalName()})
+            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()})
             var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false)
             generated.visit("value", UNFINAL)
             generated.visitEnd()
@@ -102,7 +101,7 @@ class Discoverer implements ASTTransformation {
             initWriter.visitInsn(Opcodes.RETURN)
             initWriter.visitMaxs(1, 1)
             initWriter.visitEnd()
-            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "lines", "()[Ljava/lang/String;", null, null)
+            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "unFinal", "()[Ljava/lang/String;", null, null)
             implWriter.visitCode()
             implWriter.visitLdcInsn(lines.size())
             implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
@@ -120,7 +119,7 @@ class Discoverer implements ASTTransformation {
             implWriter.visitEnd()
             writer.visitEnd()
             Files.write(generatedClassPath, writer.toByteArray())
-            var serviceFile = rootPath.resolve("META-INF/services/" + UNFINAL_LINE_PROVIDER.getInternalName().replace('/', '.'))
+            var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'))
             if (!Files.exists(serviceFile)) {
                 Files.createDirectories(serviceFile.getParent())
                 Files.createFile(serviceFile)

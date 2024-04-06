@@ -34,6 +34,7 @@ asm_tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 
 fabric_loom = { module = "net.fabricmc:fabric-loom", version.ref = "fabric_loom" }
 fabric_loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric_loader" }
+fabric_loader_junit = { module = "net.fabricmc:fabric-loader-junit", version.ref = "fabric_loader" }
 fabric_tinyremapper = { module = "net.fabricmc:tiny-remapper", version.ref = "tinyremapper" }
 
 mixin = { module = "org.spongepowered:mixin", version.ref = "mixin" }

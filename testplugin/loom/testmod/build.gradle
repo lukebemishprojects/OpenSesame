@@ -10,7 +10,7 @@ java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 
 loom {
     runs.configureEach {
-        ideConfigGenerated true
+        ideConfigGenerated false
     }
 }
 
@@ -29,6 +29,15 @@ dependencies {
     modImplementation libs.fabric.loader
 
     implementation 'dev.lukebemish.opensesame:opensesame-fabric'
+
+    testImplementation libs.junit.api
+    testImplementation libs.fabric.loader.junit
+    testRuntimeOnly libs.junit.engine
 }
 
 opensesame.apply(sourceSets.main)
+opensesame.apply(sourceSets.test)
+
+test {
+    useJUnitPlatform()
+}

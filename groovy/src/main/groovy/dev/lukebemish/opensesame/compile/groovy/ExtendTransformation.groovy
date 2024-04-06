@@ -64,7 +64,7 @@ class ExtendTransformation extends AbstractASTTransformation {
         List<Processor.ExtendOverrideInfo<Type>> overrides = new ArrayList<>()
 
         if (!classNode.getAnnotations(UNFINAL).empty) {
-            String line = BytecodeHelper.getClassInternalName(classNode).replace('/', '.')
+            String line = BytecodeHelper.getClassInternalName(classNode)
             List<String> lines = classNode.getNodeMetaData(Discoverer.MIXIN_LINES_META)
             if (lines == null) {
                 lines = new ArrayList<>()
@@ -230,8 +230,8 @@ class ExtendTransformation extends AbstractASTTransformation {
 
         if (!methodNode.getAnnotations(UNFINAL).empty) {
             if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(TypedDynamic::type).anyMatch(Objects::isNull))) {
-                String line = extendTargetClassHandle.type().getInternalName().replace('/', '.') + " " +
-                        originalName + " " +
+                String line = extendTargetClassHandle.type().getInternalName() + "." +
+                        originalName + "." +
                         Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(TypedDynamic::type).toArray(Type[]::new)).getDescriptor()
                 List<String> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
                 if (lines == null) {

@@ -14,6 +14,9 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
     private final Set<String> deFinalClasses = new HashSet<>();
     private final Map<String, List<String>> deFinalMethods = new HashMap<>();
     private final Map<String, List<String>> deFinalFields = new HashMap<>();
+    private final Set<String> exposeClasses = new HashSet<>();
+    private final Map<String, List<String>> exposeMethods = new HashMap<>();
+    private final Map<String, List<String>> exposeFields = new HashMap<>();
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -39,39 +42,53 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
     public List<String> getMixins() {
         List<String> mixins = new ArrayList<>();
         var classLoader = OpenSesameMixinPlugin.class.getClassLoader();
-        ServiceLoader.load(UnFinalLineProvider.class, classLoader).forEach(provider -> {
-            var lines = provider.lines();
-            for (var line : lines) {
-                if (line.isBlank())
-                    continue;
-                var parts = line.split(" ");
-                var packageName = parts[0];
-                var className = parts[1];
-                var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
-                if (parts.length == 2) {
-                    deFinalClasses.add(remappedClassName);
-                } else if (parts.length == 4) {
-                    var name = parts[2];
-                    var desc = parts[3];
-                    var type = Type.getType(desc);
-                    if (type.getSort() == Type.METHOD) {
-                        deFinalMethods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
-                    } else if (type.getSort() == Type.OBJECT) {
-                        deFinalFields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
-                    }
-                } else {
-                    throw new RuntimeException("Invalid definal line: " + line);
-                }
-                var info = ClassInfo.forName(remappedClassName);
-                if (info != null) {
-                    var isPublic = info.isPublic();
-                    var isClass = !info.isInterface();
-                    var mixinPath = packageName + "." + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
-                    mixins.add(mixinPath);
-                }
+        List<OpenSesameMixinProvider> providers = new ArrayList<>();
+        ServiceLoader.load(OpenSesameMixinProvider.class, classLoader).forEach(providers::add);
+        collectLegacyProviders(classLoader, providers);
+        for (var provider : providers) {
+            for (var line : provider.unFinal()) {
+                extractActions(line, classLoader, mixins, deFinalClasses, deFinalMethods, deFinalFields);
             }
-        });
+            for (var line : provider.exposeClasses()) {
+                extractActions(line, classLoader, mixins, exposeClasses, exposeMethods, exposeFields);
+            }
+        }
         return mixins;
+    }
+
+    @SuppressWarnings("removal")
+    private static void collectLegacyProviders(ClassLoader classLoader, List<OpenSesameMixinProvider> providers) {
+        ServiceLoader.load(UnFinalLineProvider.class, classLoader).forEach(provider -> providers.add(provider.makeToOpen()));
+    }
+
+    private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields) {
+        if (line.isBlank())
+            return;
+        var parts = line.split("\\.");
+        var packageName = parts[0];
+        var className = parts[1].replace("/", ".");
+        var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
+        if (parts.length == 2) {
+            classes.add(remappedClassName);
+        } else if (parts.length == 4) {
+            var name = parts[2];
+            var desc = parts[3];
+            var type = Type.getType(desc);
+            if (type.getSort() == Type.METHOD) {
+                methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
+            } else if (type.getSort() == Type.OBJECT) {
+                fields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
+            }
+        } else {
+            throw new RuntimeException("Invalid definal line: " + line);
+        }
+        var info = ClassInfo.forName(remappedClassName);
+        if (info != null) {
+            var isPublic = info.isPublic();
+            var isClass = !info.isInterface();
+            var mixinPath = packageName + "." + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
+            mixins.add(mixinPath);
+        }
     }
 
     @Override
@@ -87,10 +104,13 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                 targetClass.permittedSubclasses.clear();
             }
         }
+        if (exposeClasses.contains(targetClassName)) {
+            targetClass.access |= Opcodes.ACC_PUBLIC;
+        }
         if (deFinalMethods.containsKey(targetClassName)) {
             var methods = deFinalMethods.get(targetClassName);
             for (var method : targetClass.methods) {
-                if (methods.contains(method.name + " " + method.desc)) {
+                if (methods.contains(method.name + "." + method.desc)) {
                     method.access &= ~Opcodes.ACC_FINAL;
                 }
             }

@@ -3,9 +3,5 @@
   "id": "opensesame_testmod",
   "version": "0.1.0",
   "name": "opensesame_testmod",
-  "entrypoints": {
-    "main": [
-      "dev.lukebemish.opensesame.testmod.TestModEntrypoint"
-    ]
-  }
+  "entrypoints": {}
 }

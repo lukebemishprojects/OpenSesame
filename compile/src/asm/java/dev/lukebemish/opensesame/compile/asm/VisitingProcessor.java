@@ -30,9 +30,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class VisitingProcessor extends ClassVisitor implements Processor<Type, VisitingProcessor.Annotation, VisitingProcessor.Method> {
-    private static final Type UNFINAL = Type.getObjectType("dev/lukebemish/opensesame/mixin/annotations/UnFinal");
+    private static final Type UNFINAL = Type.getObjectType("dev/lukebemish/opensesame/annotations/mixin/UnFinal");
     private static final Type MIXIN = Type.getObjectType("org/spongepowered/asm/mixin/Mixin");
-    private static final Type UNFINAL_LINE_PROVIDER = Type.getObjectType("dev/lukebemish/opensesame/mixin/plugin/UnFinalLineProvider");
+    private static final Type MIXIN_PROVIDER = Type.getObjectType("dev/lukebemish/opensesame/mixin/plugin/OpenSesameMixinProvider");
 
     public static final Set<Type> ANNOTATIONS = Set.of(
             Type.getType(Open.class),
@@ -47,7 +47,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             MIXIN
     );
     private static final String CTOR_DUMMY = "$$dev$lukebemish$opensesame$$new";
-    private static final String UNFINAL_SERVICE = "$$dev$lukebemish$opensesame$$UnFinalService";
+    private static final String UNFINAL_SERVICE = "$$dev$lukebemish$opensesame$$MixinActionProvider";
     private static final String MIXIN_PACKAGE = "dev/lukebemish/opensesame/mixin/targets";
 
     private final Set<String> annotationDescriptors;
@@ -68,9 +68,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     public static void process(Path input, Path output) throws IOException {
-        if (Files.isRegularFile(input)) {
-            processFile(input, output, null);
-        } else {
+        if (Files.isDirectory(input)) {
             try (var paths = Files.walk(input)) {
                 paths.filter(Files::isRegularFile).forEach(file -> {
                     try {
@@ -83,6 +81,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     }
                 });
             }
+        } else {
+            processFile(input, output, null);
         }
     }
 
@@ -135,8 +135,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         if (rootPath != null) {
                             Set<Type> targets = new HashSet<>();
                             for (String line : lines) {
-                                String type = line.split(" ")[0];
-                                targets.add(Type.getObjectType(type.replace('.', '/')));
+                                String type = line.split("\\.")[0];
+                                targets.add(Type.getObjectType(type));
                             }
                             List<Type> orderedTargets = new ArrayList<>(targets);
                             Map<Type, Integer> targetIndexes = new HashMap<>();
@@ -146,7 +146,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             String generatedClassName = selfType.getInternalName() + UNFINAL_SERVICE;
                             Path generatedClassPath = rootPath.resolve(generatedClassName + ".class");
                             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-                            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{UNFINAL_LINE_PROVIDER.getInternalName()});
+                            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()});
                             var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
                             generated.visit("value", UNFINAL);
                             generated.visitEnd();
@@ -157,7 +157,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             initWriter.visitInsn(Opcodes.RETURN);
                             initWriter.visitMaxs(1, 1);
                             initWriter.visitEnd();
-                            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "lines", "()[Ljava/lang/String;", null, null);
+                            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "unFinal", "()[Ljava/lang/String;", null, null);
                             implWriter.visitCode();
                             implWriter.visitLdcInsn(lines.size());
                             implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String");
@@ -165,9 +165,9 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                 implWriter.visitInsn(Opcodes.DUP);
                                 implWriter.visitLdcInsn(i);
                                 var lineEnd = lines.get(i);
-                                var targetClass = Type.getObjectType(lineEnd.split(" ")[0].replace('.', '/'));
+                                var targetClass = Type.getObjectType(lineEnd.split("\\.")[0]);
                                 var mixinPackageFull = selfType.getInternalName() + "$" + targetIndexes.get(targetClass);
-                                implWriter.visitLdcInsn(mixinPackageFull.replace('/','.') +" "+lineEnd);
+                                implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd);
                                 implWriter.visitInsn(Opcodes.AASTORE);
                             }
                             implWriter.visitInsn(Opcodes.ARETURN);
@@ -175,7 +175,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             implWriter.visitEnd();
                             writer.visitEnd();
                             Files.write(generatedClassPath, writer.toByteArray());
-                            var serviceFile = rootPath.resolve("META-INF/services/" + UNFINAL_LINE_PROVIDER.getInternalName().replace('/', '.'));
+                            var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'));
                             if (!Files.exists(serviceFile)) {
                                 Files.createDirectories(serviceFile.getParent());
                                 Files.createFile(serviceFile);
@@ -253,7 +253,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     if (extendType == null) {
                         throw new RuntimeException("Could not determine target class for @UnFinal");
                     }
-                    String name = remapClassName(extendType.getInternalName().replace('/', '.'));
+                    String name = remapClassName(extendType.getInternalName());
                     this.unFinalLines.add(name);
                 };
                 annotation.onEnd(() -> {
@@ -659,30 +659,30 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         @Override
         public void visitLdcInsn(Object value) {
             if (unFinalShouldRemapConstants && value instanceof String line) {
-                var parts = line.split(" ");
+                var parts = line.split("\\.");
                 var packageName = parts[0];
                 if (parts.length == 2) {
                     var className = parts[1];
-                    line = packageName + " " + remapClassName(className.replace('.', '/')).replace('/', '.');
+                    line = packageName + "." + remapClassName(className);
                 } else if (parts.length == 4) {
                     var className = parts[1];
                     var name = parts[2];
                     var desc = parts[3];
                     var type = Type.getType(desc);
-                    var remapClassName = remapClassName(className.replace('.', '/')).replace('/', '.');
+                    var remapClassName = remapClassName(className);
                     if (type.getSort() == Type.METHOD) {
-                        line = packageName + " " + remapClassName + " " + remapMethodName(
-                                Type.getObjectType(className.replace('.', '/')),
+                        line = packageName + "." + remapClassName + "." + remapMethodName(
+                                Type.getObjectType(className),
                                 name,
                                 type.getReturnType(),
                                 Arrays.stream(type.getArgumentTypes()).toList()
-                        ) + " " + remapType(type).getDescriptor();
+                        ) + "." + remapType(type).getDescriptor();
                     } else if (type.getSort() == Type.OBJECT) {
-                        line = packageName + " " + remapClassName + " " + remapFieldName(
-                                Type.getObjectType(className.replace('.', '/')),
+                        line = packageName + "." + remapClassName + "." + remapFieldName(
+                                Type.getObjectType(className),
                                 name,
                                 type
-                        ) + " " + remapType(type).getDescriptor();
+                        ) + "." + remapType(type).getDescriptor();
                     }
                 }
                 super.visitLdcInsn(line);
@@ -765,13 +765,13 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                 ));
                 if (this.annotations.containsKey(UNFINAL.getDescriptor())) {
                     if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).anyMatch(Objects::isNull))) {
-                        String line = remapClassName(extendTargetClassHandle.type().getInternalName()).replace('/', '.') + " " +
+                        String line = remapClassName(extendTargetClassHandle.type().getInternalName()) + "." +
                                 remapMethodName(
                                         extendTargetClassHandle.type(),
                                         originalName,
                                         descriptor.returnType().type(),
                                         descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toList()
-                                ) + " " +
+                                ) + "." +
                                 remapType(Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toArray(Type[]::new))).getDescriptor();
                         unFinalLines.add(line);
                     }
@@ -974,19 +974,19 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     line = null;
                 } else {
                     line = switch (opening.type()) {
-                        case STATIC -> remappedName + " " + remapType(Type.getMethodType(opening.returnType(), opening.parameterTypes().toArray(Type[]::new))).getDescriptor();
+                        case STATIC -> remappedName + "." + remapType(Type.getMethodType(opening.returnType(), opening.parameterTypes().toArray(Type[]::new))).getDescriptor();
                         case VIRTUAL, SPECIAL -> {
                             List<Type> parameterTypes = new ArrayList<>(opening.parameterTypes());
                             parameterTypes.remove(0);
-                            yield remappedName + " " + remapType(Type.getMethodType(opening.returnType(), parameterTypes.toArray(Type[]::new))).getDescriptor();
+                            yield remappedName + "." + remapType(Type.getMethodType(opening.returnType(), parameterTypes.toArray(Type[]::new))).getDescriptor();
                         }
-                        case GET_STATIC, GET_INSTANCE -> remappedName + " " + remapType(opening.returnType()).getDescriptor();
-                        case SET_STATIC, SET_INSTANCE -> remappedName + " " + remapType(opening.parameterTypes().get(opening.parameterTypes().size()-1)).getDescriptor();
+                        case GET_STATIC, GET_INSTANCE -> remappedName + "." + remapType(opening.returnType()).getDescriptor();
+                        case SET_STATIC, SET_INSTANCE -> remappedName + "." + remapType(opening.parameterTypes().get(opening.parameterTypes().size()-1)).getDescriptor();
                         default -> null;
                     };
                 }
                 if (line != null) {
-                    unFinalLines.add(remapClassName(opening.targetType().getInternalName()).replace('/','.') + " " + line);
+                    unFinalLines.add(remapClassName(opening.targetType().getInternalName()) + "." + line);
                 }
             }
 

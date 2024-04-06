@@ -56,14 +56,14 @@ class OpenTransformation extends AbstractASTTransformation {
                 line = null
             } else {
                 line = switch (opening.type()) {
-                    case Open.Type.STATIC -> opening.name() + " " + Type.getMethodType(opening.returnType(), opening.parameterTypes().toArray(Type[]::new)).getDescriptor()
+                    case Open.Type.STATIC -> opening.name().replace('.', '/') + "." + Type.getMethodType(opening.returnType(), opening.parameterTypes().toArray(Type[]::new)).getDescriptor()
                     case Open.Type.VIRTUAL, Open.Type.SPECIAL -> {
                         List<Type> parameterTypes = new ArrayList<>(opening.parameterTypes())
                         parameterTypes.remove(0)
-                        yield opening.name() + " " + Type.getMethodType(opening.returnType(), parameterTypes.toArray(Type[]::new)).getDescriptor()
+                        yield opening.name().replace('.', '/') + "." + Type.getMethodType(opening.returnType(), parameterTypes.toArray(Type[]::new)).getDescriptor()
                     }
-                    case Open.Type.GET_STATIC, Open.Type.GET_INSTANCE -> opening.name() + " " + opening.returnType().getDescriptor()
-                    case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> opening.name() + " " + opening.parameterTypes().get(opening.parameterTypes().size()-1).getDescriptor()
+                    case Open.Type.GET_STATIC, Open.Type.GET_INSTANCE -> opening.name().replace('.', '/') + "." + opening.returnType().getDescriptor()
+                    case Open.Type.SET_STATIC, Open.Type.SET_INSTANCE -> opening.name().replace('.', '/') + "." + opening.parameterTypes().get(opening.parameterTypes().size()-1).getDescriptor()
                     default -> null
                 }
             }
@@ -73,7 +73,7 @@ class OpenTransformation extends AbstractASTTransformation {
                     lines = new ArrayList<>()
                     methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
                 }
-                lines.add(opening.targetType().getInternalName().replace('/', '.') + " " + line)
+                lines.add(opening.targetType().getInternalName() + "." + line)
             }
         }
 
