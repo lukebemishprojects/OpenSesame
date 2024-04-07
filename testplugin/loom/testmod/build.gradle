@@ -40,5 +40,9 @@ opensesame.apply(sourceSets.test)
 
 test {
     useJUnitPlatform()
-    workingDir(project.file('run'))
+    def runDir = project.file('run')
+    workingDir(runDir)
+    doFirst {
+        runDir.mkdirs()
+    }
 }
