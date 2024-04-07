@@ -365,7 +365,12 @@ public final class OpeningMetafactory {
         var superClass = isInterface ? Object.class : targetClass;
         var interfaces = isInterface ? new String[] {Type.getInternalName(targetClass), Type.getInternalName(holdingClass)} : new String[] {Type.getInternalName(holdingClass)};
 
+        var targetModule = targetClass.getModule();
+        var holdingModule = holdingClass.getModule();
         boolean allVisible = (targetClass.getModifiers() & Opcodes.ACC_PUBLIC) != 0;
+        if (targetModule != holdingModule && holdingModule != null && targetModule != null && (!targetModule.isExported(targetClass.getPackageName(), holdingModule) || !holdingModule.canRead(targetModule))) {
+            allVisible = false;
+        }
         for (var override : overrides) {
             var overrideName = (String) override.get(2);
             MethodType overrideType;
@@ -558,30 +563,23 @@ public final class OpeningMetafactory {
         byte[] bytes = classWriter.toByteArray();
 
         try {
-            var targetModule = targetClass.getModule();
-            var hostModule = holdingClass.getModule();
-            if (targetModule != hostModule && targetModule != null && hostModule != null && !targetModule.canRead(hostModule)) {
+            var lookupIn = allVisible ? originalLookup.in(holdingClass) : lookup.in(targetClass);
+            if (targetModule != holdingModule && targetModule != null && holdingModule != null && !targetModule.canRead(holdingModule)) {
                 try {
-                    MethodHandle handle = lookup.in(targetClass).findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
-                    handle.invokeWithArguments(targetModule, hostModule);
+                    MethodHandle handle = lookupIn.findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
+                    handle.invokeWithArguments(targetModule, holdingModule);
                 } catch (Throwable e) {
-                    throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+hostModule, e);
+                    throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+holdingModule, e);
                 }
             }
             var openingModule = OpeningMetafactory.class.getModule();
             if (targetModule != openingModule && targetModule != null && openingModule != null && !targetModule.canRead(openingModule)) {
                 try {
-                    MethodHandle handle = lookup.in(targetClass).findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
+                    MethodHandle handle = lookupIn.findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
                     handle.invokeWithArguments(targetModule, openingModule);
                 } catch (Throwable e) {
                     throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+openingModule, e);
                 }
-            }
-            MethodHandles.Lookup lookupIn;
-            if (allVisible) {
-                lookupIn = originalLookup.in(holdingClass);
-            } else {
-                lookupIn = lookup.in(targetClass);
             }
             return lookupIn.defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
         } catch (IllegalAccessException e) {
