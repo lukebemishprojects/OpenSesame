@@ -6,21 +6,22 @@ import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Field;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
+import dev.lukebemish.opensesame.annotations.mixin.Expose;
 import dev.lukebemish.opensesame.annotations.mixin.UnFinal;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 // These are here to avoid issues with classloading mixin classes
 public class TestModOpenedClasses {
     @Extend(
             targetName = "net.minecraft.world.level.biome.Climate$RTree",
-            unsafe = true
+            unsafe = false
     )
+    @Expose
     @UnFinal
     public interface Extension<T> {
         @Constructor
+        @Expose
         static <A> Extension<A> constructor(@Field(value = "fallback") @Field.Final A fallback, @Coerce(targetName = "net.minecraft.world.level.biome.Climate$RTree$Node") Object node) {
             throw new UnsupportedOperationException("Constructor not replaced");
         }
@@ -36,8 +37,9 @@ public class TestModOpenedClasses {
 
     @Extend(
             targetName = "net.minecraft.world.level.biome.Climate$DistanceMetric",
-            unsafe = true
+            unsafe = false
     )
+    @Expose
     public interface DistanceMetric {
         @Constructor
         static DistanceMetric constructor() {

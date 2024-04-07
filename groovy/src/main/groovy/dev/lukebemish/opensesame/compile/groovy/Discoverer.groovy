@@ -56,39 +56,49 @@ class Discoverer implements ASTTransformation {
             }
             if (ran) {
                 // post-process
-                List<String> lines = classNode.getNodeMetaData(MIXIN_LINES_META)
+                Map<MixinProviderType, List<String>> lines = classNode.getNodeMetaData(MIXIN_LINES_META)
                 if (lines != null && !lines.empty) {
                     Type selfType = Type.getType(BytecodeHelper.getTypeDescription(classNode))
                     Path rootPath = source.configuration.targetDirectory.toPath()
-                    writeUnFinalLines(lines, selfType, rootPath)
+                    writeMixinProviderLines(lines, selfType, rootPath)
                 }
             }
         }
     }
 
-    private static final String UNFINAL_SERVICE = '$$dev$lukebemish$opensesame$$MixinActionProvider'
+    enum MixinProviderType {
+        UNFINAL("unFinal"),
+        EXPOSE_TO_OVERRIDE("exposeToOverride");
+
+        private final String methodName
+
+        MixinProviderType(String methodName) {
+            this.methodName = methodName
+        }
+    }
+
+    private static final String MIXIN_PROVIDER_SERVICE = '$$dev$lukebemish$opensesame$$MixinActionProvider'
     private static final String MIXIN_PACKAGE = 'dev/lukebemish/opensesame/mixin/targets'
     private static final Type MIXIN = Type.getObjectType('org/spongepowered/asm/mixin/Mixin')
     private static final Type UNFINAL = Type.getObjectType('dev/lukebemish/opensesame/mixin/annotations/UnFinal')
     private static final Type MIXIN_PROVIDER = Type.getObjectType('dev/lukebemish/opensesame/mixin/plugin/OpenSesameMixinProvider')
 
-    private static void writeUnFinalLines(List<String> lines, Type selfType, Path rootPath) {
+    protected static void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType, Path rootPath) throws IOException {
         if (rootPath != null) {
             Set<Type> targets = new HashSet<>()
-            for (String line : lines) {
-                String type = line.split("\\.")[0]
-                targets.add(Type.getObjectType(type.replace('.', '/')))
-            }
+            lines.forEach((k, v) -> {
+                for (String line : v) {
+                    String type = line.split("\\.")[0]
+                    targets.add(Type.getObjectType(type))
+                }
+            })
             List<Type> orderedTargets = new ArrayList<>(targets)
             Map<Type, Integer> targetIndexes = new HashMap<>()
             for (int i = 0; i < orderedTargets.size(); i++) {
                 targetIndexes.put(orderedTargets.get(i), i)
             }
-            String generatedClassName = selfType.getInternalName() + UNFINAL_SERVICE
+            String generatedClassName = selfType.getInternalName() + MIXIN_PROVIDER_SERVICE
             Path generatedClassPath = rootPath.resolve(generatedClassName + ".class")
-            if (!Files.exists(generatedClassPath)) {
-                Files.createDirectories(generatedClassPath.getParent())
-            }
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS)
             writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()})
             var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false)
@@ -101,23 +111,12 @@ class Discoverer implements ASTTransformation {
             initWriter.visitInsn(Opcodes.RETURN)
             initWriter.visitMaxs(1, 1)
             initWriter.visitEnd()
-            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "unFinal", "()[Ljava/lang/String;", null, null)
-            implWriter.visitCode()
-            implWriter.visitLdcInsn(lines.size())
-            implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
-            for (int i = 0; i < lines.size(); i++) {
-                implWriter.visitInsn(Opcodes.DUP)
-                implWriter.visitLdcInsn(i)
-                var lineEnd = lines.get(i)
-                var targetClass = Type.getObjectType(lineEnd.split(" ")[0].replace('.', '/'))
-                var mixinPackageFull = selfType.getInternalName() + '$' + targetIndexes.get(targetClass)
-                implWriter.visitLdcInsn(mixinPackageFull.replace('/','.') +" "+lineEnd)
-                implWriter.visitInsn(Opcodes.AASTORE)
+            for (MixinProviderType type : MixinProviderType.values()) {
+                List<String> specificLines = lines.getOrDefault(type, List.of())
+                if (!lines.isEmpty()) {
+                    generateImpl(type.methodName, selfType, writer, specificLines, targetIndexes)
+                }
             }
-            implWriter.visitInsn(Opcodes.ARETURN)
-            implWriter.visitMaxs(3, 1)
-            implWriter.visitEnd()
-            writer.visitEnd()
             Files.write(generatedClassPath, writer.toByteArray())
             var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'))
             if (!Files.exists(serviceFile)) {
@@ -134,6 +133,26 @@ class Discoverer implements ASTTransformation {
                 makeMixins(false, false, selfType, target, index, rootPath)
             }
         }
+    }
+    
+    private static void generateImpl(String implMethodName, Type selfType, ClassWriter writer, List<String> typeLines, Map<Type, Integer> targetIndexes) {
+        var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, implMethodName, "()[Ljava/lang/String;", null, null)
+        implWriter.visitCode()
+        implWriter.visitLdcInsn(typeLines.size())
+        implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+        for (int i = 0; i < typeLines.size(); i++) {
+            implWriter.visitInsn(Opcodes.DUP)
+            implWriter.visitLdcInsn(i)
+            var lineEnd = typeLines.get(i)
+            var targetClass = Type.getObjectType(lineEnd.split("\\.")[0])
+            var mixinPackageFull = selfType.getInternalName() + '$' + targetIndexes.get(targetClass)
+            implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd)
+            implWriter.visitInsn(Opcodes.AASTORE)
+        }
+        implWriter.visitInsn(Opcodes.ARETURN)
+        implWriter.visitMaxs(3, 1)
+        implWriter.visitEnd()
+        writer.visitEnd()
     }
 
     private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, int index, Path rootPath) throws IOException {

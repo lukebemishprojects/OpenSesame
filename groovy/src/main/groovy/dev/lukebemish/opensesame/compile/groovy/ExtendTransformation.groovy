@@ -4,7 +4,6 @@ import dev.lukebemish.opensesame.annotations.extend.Constructor
 import dev.lukebemish.opensesame.annotations.extend.Extend
 import dev.lukebemish.opensesame.annotations.extend.Field
 import dev.lukebemish.opensesame.annotations.extend.Overrides
-import dev.lukebemish.opensesame.compile.ConDynUtils
 import dev.lukebemish.opensesame.compile.ConDynUtils.TypedDynamic
 import dev.lukebemish.opensesame.compile.Processor
 import dev.lukebemish.opensesame.runtime.OpeningMetafactory
@@ -45,6 +44,7 @@ class ExtendTransformation extends AbstractASTTransformation {
     private final GroovyProcessor processor = new GroovyProcessor(this)
 
     private static final ClassNode UNFINAL = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.annotations.mixin.UnFinal")
+    private static final ClassNode EXPOSE = ClassHelper.makeWithoutCaching("dev.lukebemish.opensesame.annotations.mixin.Expose")
 
     @Override
     void visit(ASTNode[] nodes, SourceUnit source) {
@@ -65,12 +65,21 @@ class ExtendTransformation extends AbstractASTTransformation {
 
         if (!classNode.getAnnotations(UNFINAL).empty) {
             String line = BytecodeHelper.getClassInternalName(classNode)
-            List<String> lines = classNode.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+            Map<Discoverer.MixinProviderType, List<String>> lines = classNode.getNodeMetaData(Discoverer.MIXIN_LINES_META)
             if (lines == null) {
-                lines = new ArrayList<>()
+                lines = new HashMap<>()
                 classNode.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
             }
-            lines.add(line)
+            lines.computeIfAbsent(Discoverer.MixinProviderType.UNFINAL, { new ArrayList<>() }).add(line)
+        }
+        if (!classNode.getAnnotations(EXPOSE).empty) {
+            String line = BytecodeHelper.getClassInternalName(classNode)
+            Map<Discoverer.MixinProviderType, List<String>> lines = classNode.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+            if (lines == null) {
+                lines = new HashMap<>()
+                classNode.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
+            }
+            lines.computeIfAbsent(Discoverer.MixinProviderType.EXPOSE_TO_OVERRIDE, { new ArrayList<>() }).add(line)
         }
 
         var holderType = Type.getType(BytecodeHelper.getTypeDescription(classNode))
@@ -153,6 +162,10 @@ class ExtendTransformation extends AbstractASTTransformation {
         }
         var voidType = processor.conDynUtils().conDynFromClass(Type.getType(void.class))
 
+        if (!methodNode.getAnnotations(EXPOSE).empty) {
+            mixinProviderLine(extendTargetClassHandle, new Processor.CoercedDescriptor<Type>(superCtorTypes, voidType), methodNode, "<init>", Discoverer.MixinProviderType.EXPOSE_TO_OVERRIDE)
+        }
+
         Object superCtorType = processor.conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(TypedDynamic::constantDynamic).toList())
         Object ctorType = processor.conDynUtils().conDynMethodType(voidType.constantDynamic(), parameterTypes.collect {(Object) processor.conDynUtils().conDynFromClass(it)})
 
@@ -229,17 +242,24 @@ class ExtendTransformation extends AbstractASTTransformation {
         ))
 
         if (!methodNode.getAnnotations(UNFINAL).empty) {
-            if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(TypedDynamic::type).anyMatch(Objects::isNull))) {
-                String line = extendTargetClassHandle.type().getInternalName() + "." +
-                        originalName + "." +
-                        Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(TypedDynamic::type).toArray(Type[]::new)).getDescriptor()
-                List<String> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
-                if (lines == null) {
-                    lines = new ArrayList<>()
-                    methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
-                }
-                lines.add(line)
+            mixinProviderLine(extendTargetClassHandle, descriptor, methodNode, originalName, Discoverer.MixinProviderType.UNFINAL)
+        }
+        if (!methodNode.getAnnotations(EXPOSE).empty) {
+            mixinProviderLine(extendTargetClassHandle, descriptor, methodNode, originalName, Discoverer.MixinProviderType.EXPOSE_TO_OVERRIDE)
+        }
+    }
+
+    private static void mixinProviderLine(TypedDynamic<?, Type> extendTargetClassHandle, Processor.CoercedDescriptor<Type> descriptor, MethodNode methodNode, String originalName, Discoverer.MixinProviderType type) {
+        if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(TypedDynamic::type).anyMatch(Objects::isNull))) {
+            String line = extendTargetClassHandle.type().getInternalName() + "." +
+                    originalName + "." +
+                    Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(TypedDynamic::type).toArray(Type[]::new)).getDescriptor()
+            Map<Discoverer.MixinProviderType, List<String>> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+            if (lines == null) {
+                lines = new HashMap<>()
+                methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
             }
+            lines.computeIfAbsent(type, { new ArrayList<>() }).add(line)
         }
     }
 

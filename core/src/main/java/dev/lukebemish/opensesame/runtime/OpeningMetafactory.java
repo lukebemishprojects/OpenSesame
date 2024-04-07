@@ -6,6 +6,7 @@ import org.objectweb.asm.commons.InstructionAdapter;
 import java.lang.invoke.*;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -348,7 +349,7 @@ public final class OpeningMetafactory {
         try {
             generatedClass = (Class<?>) classFieldGetter.invokeExact();
             if (generatedClass == null) {
-                generatedClass = generateClass(lookup, targetClass, constructionMethodName, holdingClass, fields, overrides, ctors);
+                generatedClass = generateClass(caller, lookup, targetClass, constructionMethodName, holdingClass, fields, overrides, ctors);
                 classFieldPutter.invokeExact(generatedClass);
             }
             MethodHandle ctor = lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class)).asType(factoryType);
@@ -358,12 +359,52 @@ public final class OpeningMetafactory {
         }
     }
 
-    private static Class<?> generateClass(MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
+    private static Class<?> generateClass(MethodHandles.Lookup originalLookup, MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
         var classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-        String generatedClassName = Type.getInternalName(targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
         var isInterface = targetClass.isInterface();
         var superClass = isInterface ? Object.class : targetClass;
         var interfaces = isInterface ? new String[] {Type.getInternalName(targetClass), Type.getInternalName(holdingClass)} : new String[] {Type.getInternalName(holdingClass)};
+
+        boolean allVisible = (targetClass.getModifiers() & Opcodes.ACC_PUBLIC) != 0;
+        for (var override : overrides) {
+            var overrideName = (String) override.get(2);
+            MethodType overrideType;
+            try {
+                overrideType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
+            } catch (Throwable e) {
+                throw new OpeningException(e);
+            }
+            overrideName = remapMethod(overrideName, overrideType.descriptorString(), targetClass.getName(), holdingClass.getClassLoader());
+            try {
+                Method originalMethod = targetClass.getDeclaredMethod(overrideName, overrideType.parameterArray());
+                if ((originalMethod.getModifiers() & Opcodes.ACC_PUBLIC) == 0 && (originalMethod.getModifiers() & Opcodes.ACC_PROTECTED) == 0) {
+                    allVisible = false;
+                }
+            } catch (NoSuchMethodException e) {
+                allVisible = false;
+            }
+        }
+        if (!isInterface) {
+            for (var ctor : ctors) {
+                MethodType superType;
+                try {
+                    superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+                } catch (Throwable e) {
+                    throw new OpeningException(e);
+                }
+
+                try {
+                    Constructor<?> originalCtor = targetClass.getDeclaredConstructor(superType.parameterArray());
+                    if ((originalCtor.getModifiers() & Opcodes.ACC_PUBLIC) == 0 && (originalCtor.getModifiers() & Opcodes.ACC_PROTECTED) == 0) {
+                        allVisible = false;
+                    }
+                } catch (NoSuchMethodException e) {
+                    allVisible = false;
+                }
+            }
+        }
+        String generatedClassName = Type.getInternalName(allVisible ? holdingClass : targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
+
         classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(superClass), interfaces);
 
         Map<String, Class<?>> fieldTypes = new HashMap<>();
@@ -536,7 +577,13 @@ public final class OpeningMetafactory {
                     throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+openingModule, e);
                 }
             }
-            return lookup.in(targetClass).defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
+            MethodHandles.Lookup lookupIn;
+            if (allVisible) {
+                lookupIn = originalLookup.in(holdingClass);
+            } else {
+                lookupIn = lookup.in(targetClass);
+            }
+            return lookupIn.defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating hidden class", e);
         }

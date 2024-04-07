@@ -68,12 +68,12 @@ class OpenTransformation extends AbstractASTTransformation {
                 }
             }
             if (line != null) {
-                List<String> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
+                Map<Discoverer.MixinProviderType, List<String>> lines = methodNode.declaringClass.getNodeMetaData(Discoverer.MIXIN_LINES_META)
                 if (lines == null) {
-                    lines = new ArrayList<>()
+                    lines = new HashMap<>()
                     methodNode.declaringClass.putNodeMetaData(Discoverer.MIXIN_LINES_META, lines)
                 }
-                lines.add(opening.targetType().getInternalName() + "." + line)
+                lines.computeIfAbsent(Discoverer.MixinProviderType.UNFINAL, { new ArrayList<>() }).add(opening.targetType().getInternalName() + "." + line)
             }
         }
 

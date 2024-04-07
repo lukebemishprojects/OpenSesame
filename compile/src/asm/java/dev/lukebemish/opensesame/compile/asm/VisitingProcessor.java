@@ -19,6 +19,7 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 
 public class VisitingProcessor extends ClassVisitor implements Processor<Type, VisitingProcessor.Annotation, VisitingProcessor.Method> {
     private static final Type UNFINAL = Type.getObjectType("dev/lukebemish/opensesame/annotations/mixin/UnFinal");
+    private static final Type EXPOSE = Type.getObjectType("dev/lukebemish/opensesame/annotations/mixin/Expose");
     private static final Type MIXIN = Type.getObjectType("org/spongepowered/asm/mixin/Mixin");
     private static final Type MIXIN_PROVIDER = Type.getObjectType("dev/lukebemish/opensesame/mixin/plugin/OpenSesameMixinProvider");
 
@@ -44,6 +46,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             Type.getType(Constructor.class),
             Type.getType(OpenSesameGenerated.class),
             UNFINAL,
+            EXPOSE,
             MIXIN
     );
     private static final String CTOR_DUMMY = "$$dev$lukebemish$opensesame$$new";
@@ -69,6 +72,20 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     public static void process(Path input, Path output) throws IOException {
         if (Files.isDirectory(input)) {
+            try (var paths = Files.walk(input)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(file ->
+                                file.getFileName().toString().endsWith(VisitingProcessor.UNFINAL_SERVICE + ".class")
+                                        || file.getFileName().toString().endsWith(MIXIN_PROVIDER.getClassName())
+                        )
+                        .forEach(file -> {
+                            try {
+                                Files.delete(file);
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+                        });
+            }
             try (var paths = Files.walk(input)) {
                 paths.filter(Files::isRegularFile).forEach(file -> {
                     try {
@@ -103,7 +120,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
         mixin.visitEnd();
         var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
-        generated.visit("value", UNFINAL);
+        generated.visit("value", MIXIN_PROVIDER);
         generated.visitEnd();
         if (forClass) {
             var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
@@ -120,6 +137,17 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         Files.write(mixinPath, writer.toByteArray());
     }
 
+    protected enum MixinProviderType {
+        UNFINAL("unFinal"),
+        EXPOSE_TO_OVERRIDE("exposeToOverride");
+
+        private final String methodName;
+
+        MixinProviderType(String methodName) {
+            this.methodName = methodName;
+        }
+    }
+
     private static void processFile(Path file, Path out, @Nullable Path rootPath) throws IOException {
         if (!file.getFileName().toString().endsWith(".class")) {
             Files.copy(file, out);
@@ -131,13 +159,15 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             try {
                 reader.accept(new VisitingProcessor(writer, VisitingProcessor.ANNOTATIONS) {
                     @Override
-                    protected void writeUnFinalLines(List<String> lines, Type selfType) throws IOException {
+                    protected void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType) throws IOException {
                         if (rootPath != null) {
                             Set<Type> targets = new HashSet<>();
-                            for (String line : lines) {
-                                String type = line.split("\\.")[0];
-                                targets.add(Type.getObjectType(type));
-                            }
+                            lines.forEach((k, v) -> {
+                                for (String line : v) {
+                                    String type = line.split("\\.")[0];
+                                    targets.add(Type.getObjectType(type));
+                                }
+                            });
                             List<Type> orderedTargets = new ArrayList<>(targets);
                             Map<Type, Integer> targetIndexes = new HashMap<>();
                             for (int i = 0; i < orderedTargets.size(); i++) {
@@ -157,23 +187,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             initWriter.visitInsn(Opcodes.RETURN);
                             initWriter.visitMaxs(1, 1);
                             initWriter.visitEnd();
-                            var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "unFinal", "()[Ljava/lang/String;", null, null);
-                            implWriter.visitCode();
-                            implWriter.visitLdcInsn(lines.size());
-                            implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String");
-                            for (int i = 0; i < lines.size(); i++) {
-                                implWriter.visitInsn(Opcodes.DUP);
-                                implWriter.visitLdcInsn(i);
-                                var lineEnd = lines.get(i);
-                                var targetClass = Type.getObjectType(lineEnd.split("\\.")[0]);
-                                var mixinPackageFull = selfType.getInternalName() + "$" + targetIndexes.get(targetClass);
-                                implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd);
-                                implWriter.visitInsn(Opcodes.AASTORE);
+                            for (MixinProviderType type : MixinProviderType.values()) {
+                                List<String> specificLines = lines.getOrDefault(type, List.of());
+                                if (!lines.isEmpty()) {
+                                    generateImpl(type.methodName, selfType, writer, specificLines, targetIndexes);
+                                }
                             }
-                            implWriter.visitInsn(Opcodes.ARETURN);
-                            implWriter.visitMaxs(3, 1);
-                            implWriter.visitEnd();
-                            writer.visitEnd();
                             Files.write(generatedClassPath, writer.toByteArray());
                             var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'));
                             if (!Files.exists(serviceFile)) {
@@ -190,7 +209,27 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                 makeMixins(false, false, selfType, target, index, rootPath);
                             }
                         }
-                        super.writeUnFinalLines(lines, selfType);
+                        super.writeMixinProviderLines(lines, selfType);
+                    }
+
+                    private static void generateImpl(String implMethodName, Type selfType, ClassWriter writer, List<String> typeLines, Map<Type, Integer> targetIndexes) {
+                        var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, implMethodName, "()[Ljava/lang/String;", null, null);
+                        implWriter.visitCode();
+                        implWriter.visitLdcInsn(typeLines.size());
+                        implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String");
+                        for (int i = 0; i < typeLines.size(); i++) {
+                            implWriter.visitInsn(Opcodes.DUP);
+                            implWriter.visitLdcInsn(i);
+                            var lineEnd = typeLines.get(i);
+                            var targetClass = Type.getObjectType(lineEnd.split("\\.")[0]);
+                            var mixinPackageFull = selfType.getInternalName() + "$" + targetIndexes.get(targetClass);
+                            implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd);
+                            implWriter.visitInsn(Opcodes.AASTORE);
+                        }
+                        implWriter.visitInsn(Opcodes.ARETURN);
+                        implWriter.visitMaxs(3, 1);
+                        implWriter.visitEnd();
+                        writer.visitEnd();
                     }
                 }, 0);
             } catch (RuntimeException e) {
@@ -201,7 +240,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     List<String> unFinalLines = new ArrayList<>();
-    boolean unFinalShouldRemapConstants = false;
+    List<String> exposeToOverrideLines = new ArrayList<>();
+    boolean mixinProviderShouldRemapConstants = false;
 
     boolean isExtension = false;
     private boolean isInterface = false;
@@ -220,7 +260,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         this.annotationDescriptors = annotations.stream().map(Type::getDescriptor).collect(Collectors.toSet());
     }
 
-    protected void writeUnFinalLines(List<String> lines, Type selfType) throws IOException {
+    protected void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType) throws IOException {
 
     }
 
@@ -263,10 +303,26 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         callback.run();
                     }
                 });
+            } else if (descriptor.equals(EXPOSE.getDescriptor())) {
+                Runnable callback = () -> {
+                    var extendType = VisitingProcessor.this.extendTargetClassHandle.type();
+                    if (extendType == null) {
+                        throw new RuntimeException("Could not determine target class for @Expose");
+                    }
+                    String name = remapClassName(extendType.getInternalName());
+                    this.exposeToOverrideLines.add(name);
+                };
+                annotation.onEnd(() -> {
+                    if (!isExtension) {
+                        extendCallbacks.add(callback);
+                    } else {
+                        callback.run();
+                    }
+                });
             } else if (descriptor.equals(OpenSesameGenerated.class.descriptorString())) {
                 annotation.onEnd(() -> {
-                    if (UNFINAL.equals(annotation.literals.get("value"))) {
-                        unFinalShouldRemapConstants = true;
+                    if (MIXIN_PROVIDER.equals(annotation.literals.get("value"))) {
+                        mixinProviderShouldRemapConstants = true;
                     }
                     delegate.annotationsAndAttributes.forEach(annotationOrAttribute -> {
                         if (annotationOrAttribute instanceof AnnotationDependentVisitor.AnnotationInfo annotationInfo) {
@@ -578,9 +634,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     this::remapMethodName
             );
         }
-        if (!unFinalLines.isEmpty()) {
+        if (!unFinalLines.isEmpty() || !exposeToOverrideLines.isEmpty()) {
             try {
-                writeUnFinalLines(unFinalLines, type);
+                writeMixinProviderLines(Map.of(
+                        MixinProviderType.UNFINAL, unFinalLines,
+                        MixinProviderType.EXPOSE_TO_OVERRIDE, exposeToOverrideLines
+                ), type);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -658,7 +717,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
         @Override
         public void visitLdcInsn(Object value) {
-            if (unFinalShouldRemapConstants && value instanceof String line) {
+            if (mixinProviderShouldRemapConstants && value instanceof String line) {
                 var parts = line.split("\\.");
                 var packageName = parts[0];
                 if (parts.length == 2) {
@@ -764,20 +823,27 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         descriptor.parameterTypes()
                 ));
                 if (this.annotations.containsKey(UNFINAL.getDescriptor())) {
-                    if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).anyMatch(Objects::isNull))) {
-                        String line = remapClassName(extendTargetClassHandle.type().getInternalName()) + "." +
-                                remapMethodName(
-                                        extendTargetClassHandle.type(),
-                                        originalName,
-                                        descriptor.returnType().type(),
-                                        descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toList()
-                                ) + "." +
-                                remapType(Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toArray(Type[]::new))).getDescriptor();
-                        unFinalLines.add(line);
-                    }
+                    mixinProviderLine(descriptor, originalName, unFinalLines);
+                }
+                if (this.annotations.containsKey(EXPOSE.getDescriptor())) {
+                    mixinProviderLine(descriptor, originalName, exposeToOverrideLines);
                 }
             } else {
                 throw new RuntimeException("@Overrides annotation must be used on an interface marked with Extend");
+            }
+        }
+
+        private void mixinProviderLine(CoercedDescriptor<Type> descriptor, String originalName, List<String> lines) {
+            if (!(extendTargetClassHandle.type() == null || descriptor.returnType().type() == null || descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).anyMatch(Objects::isNull))) {
+                String line = remapClassName(extendTargetClassHandle.type().getInternalName()) + "." +
+                        remapMethodName(
+                                extendTargetClassHandle.type(),
+                                originalName,
+                                descriptor.returnType().type(),
+                                descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toList()
+                        ) + "." +
+                        remapType(Type.getMethodType(descriptor.returnType().type(), descriptor.parameterTypes().stream().map(ConDynUtils.TypedDynamic::type).toArray(Type[]::new))).getDescriptor();
+                lines.add(line);
             }
         }
 
@@ -828,6 +894,10 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     superCtorTypes.subList(0, drop).clear();
                 }
                 var voidType = conDynUtils().conDynFromClass(Type.getType(void.class));
+
+                if (this.annotations.containsKey(EXPOSE.getDescriptor())) {
+                    mixinProviderLine(new CoercedDescriptor<>(superCtorTypes, voidType), "<init>", exposeToOverrideLines);
+                }
 
                 Object superCtorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), superCtorTypes.stream().<Object>map(ConDynUtils.TypedDynamic::constantDynamic).toList());
                 Object ctorType = conDynUtils().conDynMethodType(voidType.constantDynamic(), this.parameterTypes.stream().<Object>map(t -> conDynUtils().conDynFromClass(t).constantDynamic()).toList());

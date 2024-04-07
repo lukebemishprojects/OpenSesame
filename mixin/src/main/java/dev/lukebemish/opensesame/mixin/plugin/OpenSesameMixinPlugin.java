@@ -11,12 +11,7 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import java.util.*;
 
 public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
-    private final Set<String> deFinalClasses = new HashSet<>();
-    private final Map<String, List<String>> deFinalMethods = new HashMap<>();
-    private final Map<String, List<String>> deFinalFields = new HashMap<>();
-    private final Set<String> exposeClasses = new HashSet<>();
-    private final Map<String, List<String>> exposeMethods = new HashMap<>();
-    private final Map<String, List<String>> exposeFields = new HashMap<>();
+    private final Map<String, ForClass> forClasses = new HashMap<>();
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -45,13 +40,30 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         List<OpenSesameMixinProvider> providers = new ArrayList<>();
         ServiceLoader.load(OpenSesameMixinProvider.class, classLoader).forEach(providers::add);
         collectLegacyProviders(classLoader, providers);
+        final Set<String> targetClasses = new HashSet<>();
+        final Set<String> deFinalClasses = new HashSet<>();
+        final Map<String, List<String>> deFinalMethods = new HashMap<>();
+        final Map<String, List<String>> deFinalFields = new HashMap<>();
+        final Set<String> exposeClasses = new HashSet<>();
+        final Map<String, List<String>> exposeToOverrideMethods = new HashMap<>();
+        final Map<String, List<String>> exposeToOverrideFields = new HashMap<>();
         for (var provider : providers) {
             for (var line : provider.unFinal()) {
-                extractActions(line, classLoader, mixins, deFinalClasses, deFinalMethods, deFinalFields);
+                extractActions(line, classLoader, mixins, targetClasses, deFinalClasses, deFinalMethods, deFinalFields, true, "unFinal");
             }
-            for (var line : provider.exposeClasses()) {
-                extractActions(line, classLoader, mixins, exposeClasses, exposeMethods, exposeFields);
+            for (var line : provider.exposeToOverride()) {
+                extractActions(line, classLoader, mixins, targetClasses, exposeClasses, exposeToOverrideMethods, exposeToOverrideFields, false, "exposeToOverride");
             }
+        }
+        for (var target : targetClasses) {
+            var forClass = new ForClass(
+                    deFinalClasses.contains(target),
+                    exposeClasses.contains(target),
+                    Set.copyOf(deFinalFields.getOrDefault(target, List.of())),
+                    Set.copyOf(deFinalMethods.getOrDefault(target, List.of())),
+                    Set.copyOf(exposeToOverrideMethods.getOrDefault(target, List.of()))
+            );
+            forClasses.put(target, forClass);
         }
         return mixins;
     }
@@ -61,11 +73,11 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         ServiceLoader.load(UnFinalLineProvider.class, classLoader).forEach(provider -> providers.add(provider.makeToOpen()));
     }
 
-    private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields) {
+    private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> targetClasses, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields, boolean allowFields, String searchingName) {
         if (line.isBlank())
             return;
         var parts = line.split("\\.");
-        var packageName = parts[0];
+        var packageName = parts[0].replace("/", ".");
         var className = parts[1].replace("/", ".");
         var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
         if (parts.length == 2) {
@@ -77,10 +89,13 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             if (type.getSort() == Type.METHOD) {
                 methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
             } else if (type.getSort() == Type.OBJECT) {
+                if (!allowFields) {
+                    throw new RuntimeException("Invalid " + searchingName + " line: " + line);
+                }
                 fields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
             }
         } else {
-            throw new RuntimeException("Invalid definal line: " + line);
+            throw new RuntimeException("Invalid " + searchingName + " line: " + line);
         }
         var info = ClassInfo.forName(remappedClassName);
         if (info != null) {
@@ -88,6 +103,7 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             var isClass = !info.isInterface();
             var mixinPath = packageName + "." + (isPublic ? "public" : "private") + (isClass ? "class" : "interface");
             mixins.add(mixinPath);
+            targetClasses.add(remappedClassName);
         }
     }
 
@@ -98,30 +114,49 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        if (deFinalClasses.contains(targetClassName)) {
-            targetClass.access &= ~Opcodes.ACC_FINAL;
-            if (targetClass.permittedSubclasses != null) {
-                targetClass.permittedSubclasses.clear();
-            }
-        }
-        if (exposeClasses.contains(targetClassName)) {
-            targetClass.access |= Opcodes.ACC_PUBLIC;
-        }
-        if (deFinalMethods.containsKey(targetClassName)) {
-            var methods = deFinalMethods.get(targetClassName);
-            for (var method : targetClass.methods) {
-                if (methods.contains(method.name + "." + method.desc)) {
-                    method.access &= ~Opcodes.ACC_FINAL;
+        var forClass = forClasses.get(targetClassName);
+        if (forClass != null) {
+            if (forClass.unFinalClass) {
+                targetClass.access &= ~Opcodes.ACC_FINAL;
+                if (targetClass.permittedSubclasses != null) {
+                    targetClass.permittedSubclasses.clear();
                 }
             }
-        }
-        if (deFinalFields.containsKey(targetClassName)) {
-            var fields = deFinalFields.get(targetClassName);
-            for (var field : targetClass.fields) {
-                if (fields.contains(field.name)) {
-                    field.access &= ~Opcodes.ACC_FINAL;
+            if (!forClass.unFinalMethods.isEmpty()) {
+                for (var method : targetClass.methods) {
+                    if (forClass.unFinalMethods.contains(method.name + "." + method.desc)) {
+                        method.access &= ~Opcodes.ACC_FINAL;
+                    }
+                }
+            }
+            if (!forClass.unFinalFields.isEmpty()) {
+                for (var field : targetClass.fields) {
+                    if (forClass.unFinalFields.contains(field.name)) {
+                        field.access &= ~Opcodes.ACC_FINAL;
+                    }
+                }
+            }
+
+            if (forClass.exposeClass) {
+                targetClass.access |= Opcodes.ACC_PUBLIC;
+            }
+
+            if (!forClass.exposeToOverrideMethods.isEmpty()) {
+                for (var method : targetClass.methods) {
+                    if ((method.access & Opcodes.ACC_STATIC) == 0 && (method.access & Opcodes.ACC_PUBLIC) == 0 && forClass.exposeToOverrideMethods.contains(method.name)) {
+                        method.access &= ~Opcodes.ACC_PRIVATE;
+                        method.access |= Opcodes.ACC_PROTECTED;
+                    }
                 }
             }
         }
     }
+
+    private record ForClass(
+            boolean unFinalClass,
+            boolean exposeClass,
+            Set<String> unFinalFields,
+            Set<String> unFinalMethods,
+            Set<String> exposeToOverrideMethods
+    ) {}
 }

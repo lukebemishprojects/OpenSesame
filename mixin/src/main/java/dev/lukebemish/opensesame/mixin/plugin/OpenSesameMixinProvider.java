@@ -4,8 +4,7 @@ public interface OpenSesameMixinProvider {
     default String[] unFinal() {
         return new String[0];
     }
-
-    default String[] exposeClasses() {
+    default String[] exposeToOverride() {
         return new String[0];
     }
 }
