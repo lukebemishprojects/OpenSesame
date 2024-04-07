@@ -40,4 +40,5 @@ opensesame.apply(sourceSets.test)
 
 test {
     useJUnitPlatform()
+    workingDir(project.file('run'))
 }
