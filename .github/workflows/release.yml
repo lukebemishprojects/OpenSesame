@@ -21,6 +21,10 @@
                     "uses": "actions/checkout@v4"
                 },
                 {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v3"
+                },
+                {
                     "with": {
                         "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
                         "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
@@ -34,7 +38,7 @@
                         "gradle-home-cache-cleanup": true
                     },
                     "name": "Setup Gradle",
-                    "uses": "gradle/gradle-build-action@v3"
+                    "uses": "gradle/actions/setup-gradle@v3"
                 },
                 {
                     "uses": "fregante/setup-git-user@v2"
@@ -54,10 +58,10 @@
                 },
                 {
                     "with": {
-                        "gradle-build-module": ":opensesame-core\n:opensesame-compile\n:opensesame-groovy\n:opensesame-javac\n:opensesame-fabric\n:opensesame-plugin-core\n:opensesame-plugin-loom",
+                        "gradle-build-module": ":\n:opensesame-compile\n:opensesame-core\n:opensesame-fabric\n:opensesame-groovy\n:opensesame-javac\n:opensesame-mixin\n:opensesame-plugin-core\n:opensesame-plugin-loom",
                         "gradle-build-configuration": "compileClasspath",
-                        "sub-module-mode": "COMBINED",
-                        "include-build-environment": "true"
+                        "sub-module-mode": "INDIVIDUAL_DEEP",
+                        "include-build-environment": true
                     },
                     "name": "Submit Dependencies",
                     "uses": "mikepenz/gradle-dependency-submission@v0.9.0"
@@ -94,6 +98,10 @@
                     "uses": "actions/checkout@v4"
                 },
                 {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v3"
+                },
+                {
                     "with": {
                         "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
                         "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
@@ -108,7 +116,7 @@
                         "gradle-home-cache-cleanup": true
                     },
                     "name": "Setup Gradle",
-                    "uses": "gradle/gradle-build-action@v3"
+                    "uses": "gradle/actions/setup-gradle@v3"
                 },
                 {
                     "name": "Publish",
@@ -146,6 +154,10 @@
                     "uses": "actions/checkout@v4"
                 },
                 {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v3"
+                },
+                {
                     "with": {
                         "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
                         "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
@@ -160,7 +172,7 @@
                         "gradle-home-cache-cleanup": true
                     },
                     "name": "Setup Gradle",
-                    "uses": "gradle/gradle-build-action@v3"
+                    "uses": "gradle/actions/setup-gradle@v3"
                 },
                 {
                     "name": "Publish Plugins",

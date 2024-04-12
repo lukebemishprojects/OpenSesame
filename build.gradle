@@ -21,30 +21,13 @@ managedVersioning {
             workflowDispatch = true
             gradleJob {
                 name = 'build'
-                step {
-                    setupGitUser()
-                }
+                setupGitUser()
                 readOnly = false
                 gradlew 'Tag Release', 'tagRelease'
                 gradlew 'Build', 'build'
-                step {
-                    run = 'git push && git push --tags'
-                }
-                step {
-                    name.set 'Submit Dependencies'
-                    uses.set 'mikepenz/gradle-dependency-submission@v0.9.0'
-                    with.put('gradle-build-module', [
-                            ':opensesame-core',
-                            ':opensesame-compile',
-                            ':opensesame-groovy',
-                            ':opensesame-javac',
-                            ':opensesame-fabric',
-                            ':opensesame-plugin-core',
-                            ':opensesame-plugin-loom'
-                    ].join('\n'))
-                    with.put('gradle-build-configuration', 'compileClasspath')
-                    with.put('sub-module-mode', 'COMBINED')
-                    with.put('include-build-environment', 'true')
+                push()
+                dependencySubmission {
+                    projects(allprojects.findAll { it.name != 'testtargets' })
                 }
                 recordVersion 'Record Version', 'version'
             }
@@ -77,31 +60,19 @@ managedVersioning {
                 name.set 'build'
                 gradlew 'Assemble', 'assemble'
                 gradlew 'Test', 'check', '--continue'
-                step {
-                    name.set 'Test Plugin'
-                    id.set 'test_plugin'
-                    env.putAll gradleEnv
-                    run.set './gradlew check --continue'
+                gradlew('Test Plugin', ['check', '--continue']) {
                     workingDirectory.set './testplugin'
                     runsOnError.set true
                     requiredSteps.add 'assemble'
                 }
-                step {
-                    name.set 'Upload Test Report'
-                    uses.set 'actions/upload-artifact@v4'
+                upload('junit-test-results', ['**/build/test-results/*/TEST-*.xml']) {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
-                    with.put('name', 'junit-test-results')
-                    with.put('path', '**/build/test-results/*/TEST-*.xml')
                     with.put('retention-days', '1')
                 }
-                step {
-                    name.set 'Upload Coverage Report'
-                    uses.set 'actions/upload-artifact@v4'
+                upload('jacoco-coverage', ['build/reports/jacoco/testCodeCoverageReport']) {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
-                    with.put('name', 'jacoco-coverage')
-                    with.put('path', 'build/reports/jacoco/testCodeCoverageReport')
                 }
                 gradlew 'Publish', 'publish'
                 mavenSnapshot('github')
@@ -114,31 +85,19 @@ managedVersioning {
                 name.set 'build'
                 gradlew 'Assemble', 'assemble'
                 gradlew 'Test', 'check', '--continue'
-                step {
-                    name.set 'Test Plugin'
-                    id.set 'test_plugin'
-                    env.putAll gradleEnv
-                    run.set './gradlew check --continue'
+                gradlew('Test Plugin', ['check', '--continue']) {
                     workingDirectory.set './testplugin'
                     runsOnError.set true
                     requiredSteps.add 'assemble'
                 }
-                step {
-                    name.set 'Upload Test Report'
-                    uses.set 'actions/upload-artifact@v4'
+                upload('junit-test-results', ['**/build/test-results/*/TEST-*.xml']) {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
-                    with.put('name', 'junit-test-results')
-                    with.put('path', '**/build/test-results/*/TEST-*.xml')
                     with.put('retention-days', '1')
                 }
-                step {
-                    name.set 'Upload Coverage Report'
-                    uses.set 'actions/upload-artifact@v4'
+                upload('jacoco-coverage', ['build/reports/jacoco/testCodeCoverageReport']) {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
-                    with.put('name', 'jacoco-coverage')
-                    with.put('path', 'build/reports/jacoco/testCodeCoverageReport')
                 }
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
