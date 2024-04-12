@@ -86,8 +86,6 @@ testing {
                         configurations.testModuleClasspath
                 )
 
-                outputs.upToDateWhen {false}
-
                 jacoco {
                     excludes += 'dev/lukebemish/opensesame/test/target/*'
                 }

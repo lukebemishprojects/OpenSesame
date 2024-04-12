@@ -1,6 +1,5 @@
 plugins {
-    alias libs.plugins.managedversioning
-    alias libs.plugins.nexuspublish
+    alias cLibs.plugins.managedversioning
     id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
     id 'java-library'
@@ -216,18 +215,7 @@ dependencies {
 
 println "Building: ${rootProject.version}"
 
-if (!System.getenv('PR_NUMBER') && !System.getenv('SNAPSHOT_MAVEN_URL')) {
-    nexusPublishing {
-        repositories {
-            sonatype {
-                username.set(System.getenv('SONATYPE_USER') ?: '')
-                password.set(System.getenv('SONATYPE_PASSWORD') ?: '')
-                nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            }
-        }
-
-    }
-}
+managedVersioning.publishing.mavenCentral()
 
 reporting {
     reports {

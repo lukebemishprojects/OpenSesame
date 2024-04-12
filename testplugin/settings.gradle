@@ -2,6 +2,9 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         maven {
+            url "https://maven.lukebemish.dev/releases/"
+        }
+        maven {
             name = 'FabricMC'
             url = 'https://maven.fabricmc.net/'
         }
@@ -9,25 +12,8 @@ pluginManagement {
     includeBuild('../')
 }
 
-buildscript {
-    dependencies {
-        classpath("com.google.code.gson:gson:2.10.1")
-    }
-}
-
 plugins {
-    id 'com.gradle.enterprise' version '3.15'
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.5.0'
-}
-
-gradleEnterprise {
-    if (System.getenv('CI') != null) {
-        buildScan {
-            publishAlways()
-            termsOfServiceUrl = "https://gradle.com/terms-of-service"
-            termsOfServiceAgree = "yes"
-        }
-    }
+    id 'dev.lukebemish.conventions' version '0.1.9'
 }
 
 rootProject.name = 'testplugin'

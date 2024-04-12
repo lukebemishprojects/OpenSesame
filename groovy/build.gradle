@@ -60,7 +60,6 @@ def testCompileOn(int v) {
         extensions.configure(JacocoTaskExtension) {
             it.excludes += 'dev/lukebemish/opensesame/test/target/*'
         }
-        outputs.upToDateWhen { false }
 
         finalizedBy tasks.named('testCompileOn'+v+'CodeCoverateReport')
     }

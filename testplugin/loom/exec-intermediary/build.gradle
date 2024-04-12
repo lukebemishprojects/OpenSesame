@@ -71,6 +71,4 @@ test {
     classpath += files(
             tasks.unpackRemappedJar.outputs
     )
-
-    outputs.upToDateWhen {false}
 }

@@ -71,6 +71,4 @@ test {
     classpath += files(
             sourceSets.main.output
     )
-
-    outputs.upToDateWhen {false}
 }

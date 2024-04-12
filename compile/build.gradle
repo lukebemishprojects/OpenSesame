@@ -55,7 +55,6 @@ var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
     extensions.configure(JacocoTaskExtension) {
         it.excludes += 'dev/lukebemish/opensesame/test/target/*'
     }
-    outputs.upToDateWhen { false }
 
     finalizedBy tasks.named('testAsmCompileCodeCoverateReport')
 }

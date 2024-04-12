@@ -58,6 +58,4 @@ test {
             sourceSets.test.output,
             configurations.testModuleClasspath
     )
-
-    outputs.upToDateWhen {false}
 }
