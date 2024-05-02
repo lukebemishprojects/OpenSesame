@@ -1,11 +1,15 @@
 package dev.lukebemish.opensesame.testmod.tests;
 
 import dev.lukebemish.opensesame.testmod.TestModOpenedClasses;
+import dev.lukebemish.opensesame.testmod.TestRecord;
+import dev.lukebemish.opensesame.testmod.TestSealed;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestUnFinal {
+    @SuppressWarnings("UnreachableCode")
     @Test
     void testUnFinalOverride() {
         String value = "Normal";
@@ -30,6 +34,7 @@ public class TestUnFinal {
         }
     }
 
+    @SuppressWarnings("UnreachableCode")
     @Test
     void testUnFinalMutable() {
         var resourceLocation = new ResourceLocation("minecraft", "test");
@@ -37,5 +42,21 @@ public class TestUnFinal {
         if (!resourceLocation.getNamespace().equals("test")) {
             throw new AssertionError(String.format("Expected '%s', got '%s'", "test", resourceLocation.getNamespace()));
         }
+    }
+
+    @SuppressWarnings("UnreachableCode")
+    @Test
+    void testExtendRecord() {
+        var instance = TestModOpenedClasses.RecordExtension.constructor("fieldValue", 1, 2);
+        Assertions.assertInstanceOf(TestRecord.class, instance);
+        Assertions.assertEquals("TestRecord[a=1, b=2]", instance.toString());
+        Assertions.assertEquals("fieldValue", instance.field());
+    }
+
+    @SuppressWarnings("UnreachableCode")
+    @Test
+    void testExtendSealed() {
+        var instance = TestModOpenedClasses.SealedClassExtension.constructor();
+        Assertions.assertInstanceOf(TestSealed.class, instance);
     }
 }

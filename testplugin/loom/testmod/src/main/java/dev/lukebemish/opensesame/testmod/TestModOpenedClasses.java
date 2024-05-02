@@ -82,4 +82,31 @@ public class TestModOpenedClasses {
     public static void setNamespace(ResourceLocation resourceLocation, String namespace) {
         throw new UnsupportedOperationException("Method not replaced");
     }
+
+    @Extend(
+            targetClass = TestRecord.class,
+            unsafe = false
+    )
+    @UnFinal
+    public interface RecordExtension {
+        @Constructor
+        static RecordExtension constructor(@Field(value = "field") @Field.Final String field, int a, int b) {
+            throw new UnsupportedOperationException("Constructor not replaced");
+        }
+
+        @Field("field")
+        String field();
+    }
+
+    @Extend(
+            targetClass = TestSealed.class,
+            unsafe = false
+    )
+    @UnFinal
+    public interface SealedClassExtension {
+        @Constructor
+        static SealedClassExtension constructor() {
+            throw new UnsupportedOperationException("Constructor not replaced");
+        }
+    }
 }

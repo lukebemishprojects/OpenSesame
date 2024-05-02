@@ -118,9 +118,9 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         if (forClass != null) {
             if (forClass.unFinalClass) {
                 targetClass.access &= ~Opcodes.ACC_FINAL;
-                if (targetClass.permittedSubclasses != null) {
-                    targetClass.permittedSubclasses.clear();
-                }
+                targetClass.access &= ~Opcodes.ACC_RECORD;
+                targetClass.permittedSubclasses = null;
+                targetClass.recordComponents = null;
             }
             if (!forClass.unFinalMethods.isEmpty()) {
                 for (var method : targetClass.methods) {
