@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Can be applied alongside various other mixins to mark a target to be made non-final and unsealed on class load via
+ * Can be applied alongside various other annotations to mark a target to be made non-final and unsealed on class load via
  * the mixin plugin. Can be used on:
  * <ul>
  *     <li>{@link dev.lukebemish.opensesame.annotations.Open} field setters/getters, to make the field mutable.</li>
