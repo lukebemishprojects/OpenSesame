@@ -4,13 +4,28 @@ import dev.lukebemish.opensesame.runtime.OpeningMetafactory;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
 
-import java.util.*;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
 
 public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
+    private static final String EXPOSE_LOOKUP_FIELD = "$$dev$lukebemish$opensesame$$LOOKUP";
+
     private final Map<String, ForClass> forClasses = new HashMap<>();
 
     @Override
@@ -147,6 +162,29 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
                         method.access &= ~Opcodes.ACC_PRIVATE;
                         method.access |= Opcodes.ACC_PROTECTED;
                     }
+                }
+            }
+
+            if (forClass.exposeClass || !forClass.exposeToOverrideMethods.isEmpty()) {
+                if (targetClass.fields.stream().noneMatch(it -> it.name.equals(EXPOSE_LOOKUP_FIELD))) {
+                    targetClass.visitField(
+                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
+                            EXPOSE_LOOKUP_FIELD,
+                            MethodHandles.Lookup.class.descriptorString(),
+                            null,
+                            null
+                    );
+                    MethodNode clinit = targetClass.methods.stream().filter(it -> it.name.equals("<clinit>")).findAny().orElseGet(() -> {
+                        MethodNode it = new MethodNode(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+                        it.instructions.add(new InsnNode(Opcodes.RETURN));
+                        targetClass.methods.add(it);
+                        return it;
+                    });
+                    InsnList setup = new InsnList();
+                    setup.add(new MethodInsnNode(Opcodes.INVOKESTATIC, Type.getInternalName(MethodHandles.class), "lookup", MethodType.methodType(MethodHandles.Lookup.class).descriptorString(), false));
+                    setup.add(new FieldInsnNode(Opcodes.PUTSTATIC, targetClass.name, EXPOSE_LOOKUP_FIELD, MethodHandles.Lookup.class.descriptorString()));
+
+                    clinit.instructions.insert(setup);
                 }
             }
         }

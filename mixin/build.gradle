@@ -21,7 +21,7 @@ configurations {
 }
 
 dependencies {
-    implementation project(':opensesame-core')
+    api project(':opensesame-core')
     compileOnly libs.mixin
     compileOnly libs.asm.tree
 

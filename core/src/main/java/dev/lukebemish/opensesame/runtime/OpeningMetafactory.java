@@ -385,6 +385,12 @@ public final class OpeningMetafactory {
                 if ((originalMethod.getModifiers() & Opcodes.ACC_PUBLIC) == 0 && (originalMethod.getModifiers() & Opcodes.ACC_PROTECTED) == 0) {
                     allVisible = false;
                 }
+                if ((Arrays.stream(originalMethod.getParameterTypes()).anyMatch(it -> (it.getModifiers() & Opcodes.ACC_PUBLIC) == 0))) {
+                    allVisible = false;
+                }
+                if ((originalMethod.getReturnType().getModifiers() & Opcodes.ACC_PUBLIC) == 0) {
+                    allVisible = false;
+                }
             } catch (NoSuchMethodException e) {
                 allVisible = false;
             }

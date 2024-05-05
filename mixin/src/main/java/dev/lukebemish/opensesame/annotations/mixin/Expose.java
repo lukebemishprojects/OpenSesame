@@ -7,7 +7,8 @@ import java.lang.annotation.Target;
 
 /**
  * Can be used to mark an otherwise hidden (private or package-private) target as being exposed to implementors on class
- * load via mixin plugin. Can be used on:
+ * load via mixin plugin. Additionally, gives OpenSesame a lookup within the target module while accessing the annotated
+ * target. Can be used on:
  * <ul>
  *     <li>{@link dev.lukebemish.opensesame.annotations.extend.Extend} interfaces, to mark the target class/interface as public.</li>
  *     <li>{@link dev.lukebemish.opensesame.annotations.extend.Overrides} methods, to mark the method being overridden as protected if it is package private or private.</li>
