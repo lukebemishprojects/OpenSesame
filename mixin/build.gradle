@@ -60,7 +60,7 @@ jar {
 }
 
 processResources {
-    filesMatching(['META-INF/mods.toml', 'fabric.mod.json']) {
+    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml', 'fabric.mod.json']) {
         expand(['project': project])
     }
 }
