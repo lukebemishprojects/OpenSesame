@@ -276,6 +276,14 @@ tasks.named('javadoc', Javadoc).configure {
     source(tasks.unpackJavadocSources.outputs.files)
 }
 
+components.java.withVariantsFromConfiguration(configurations.apiElements) {
+    skip()
+}
+
+components.java.withVariantsFromConfiguration(configurations.runtimeElements) {
+    skip()
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
