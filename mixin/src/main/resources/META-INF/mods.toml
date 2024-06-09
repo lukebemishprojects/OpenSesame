@@ -5,7 +5,7 @@ issueTrackerURL = "https://github.com/lukebemishprojects/OpenSesame/issues"
 
 [[mods]]
 modId = "opensesame_mixin"
-version = "${project.version}"
+version = "${version}"
 displayName = "OpenSesame: Mixin Plugin"
 displayURL = "https://github.com/lukebemishprojects/OpenSesame"
 description = "Mixin plugin that allows removing final and sealed modifiers."
