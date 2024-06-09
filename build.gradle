@@ -284,12 +284,17 @@ components.java.withVariantsFromConfiguration(configurations.runtimeElements) {
     skip()
 }
 
+components.java.withVariantsFromConfiguration(configurations.sourcesElements) {
+    skip()
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             pom {
                 openSesameConvention.pomShared(it, '')
                 description = 'A tool for breaking encapsulation in JVM projects'
+                packaging = 'pom'
             }
         }
     }
