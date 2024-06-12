@@ -336,10 +336,10 @@ public final class OpeningMetafactory {
             if (unsafe) {
                 lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, targetClass);
             } else {
-                if (targetClass.getModule() != holdingClass.getModule()) {
-                    throw new OpeningException("Holding interface and class to extend must be in the same module if `unsafe` is false");
-                }
                 lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, targetClass);
+                if (targetClass.getModule() != holdingClass.getModule() && (lookup.lookupModes() & MethodHandles.Lookup.ORIGINAL) == 0) {
+                    throw new OpeningException("Holding interface and class to extend must be in the same module, or otherwise have ORIGINAL lookup access, if `unsafe` is false");
+                }
             }
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating lookup", e);
