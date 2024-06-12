@@ -12,4 +12,4 @@ description = "Mixin plugin that allows removing final and sealed modifiers."
 authors = "Luke Bemish"
 
 [[mixins]]
-config = "mixin.opensesame.json"
+config = "opensesame.mixin.json"
