@@ -15,7 +15,7 @@ class LookupProviderFallback implements LookupProvider {
             Field field = target.getDeclaredField(EXPOSE_LOOKUP_FIELD);
             Object obj = field.get(null);
             if (obj instanceof MethodHandles.Lookup lookup) {
-                return MethodHandles.privateLookupIn(target, lookup);
+                return lookup;
             }
         } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException | NullPointerException ignored) {
 
