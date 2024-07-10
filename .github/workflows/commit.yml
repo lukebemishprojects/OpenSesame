@@ -25,8 +25,8 @@ jobs:
             libname: libopensesamenative.dylib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
-            c_compiler: clang
-            cpp_compiler: clang++
+            c_compiler: cl
+            cpp_compiler: cl
             runner: windows-latest
             libname: opensesamenative.dll
             java_home: "$JAVA_HOME_17_X64"
@@ -80,15 +80,15 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DJAVA_HOME=${{ matrix.java_home }}
+          -DLIBRARY_OUTPUT_DIRECTORY=out
           ${{ matrix.cmake_args }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
-      - run: ls -R cmakebuild
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: cmakebuild/${{ matrix.libname }}
+          path: out/${{ matrix.libname }}
   publish:
     permissions:
       packages: write
