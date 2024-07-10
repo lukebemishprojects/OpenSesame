@@ -9,20 +9,24 @@ jobs:
       fail-fast: false
       matrix:
         os: [linux, macos, windows]
-        arch: [i386, x86_64, aarch64]
+        arch: [i386, x86_64, aarch64, arm]
         build_type: [Release]
         include:
           - os: linux
-            arch: arm
-          - os: linux
+            c_compiler: gcc
+            cpp_compiler: g++
             runner: ubuntu-latest
             libname: libopensesamenative.so
             java_home: "$JAVA_HOME_17_x64"
           - os: macos
+            c_compiler: clang
+            cpp_compiler: clang++
             runner: macos-latest
             libname: libopensesamenative.dynlib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
+            c_compiler: clang
+            cpp_compiler: clang++
             runner: windows-latest
             libname: opensesamenative.dll
             java_home: "$JAVA_HOME_17_X86"
@@ -41,18 +45,13 @@ jobs:
             compiler_package: g++-arm-linux-gnueabi
             c_compiler: arm-linux-gnueabi-gcc
             cpp_compiler: arm-linux-gnueabi-g++
-          - os: linux
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: macos
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: windows
-            c_compiler: clang
-            cpp_compiler: clang++
         exclude:
           - os: macos
             arch: i386
+          - os: macos
+            arch: arm
+          - os: windows
+            arch: arm
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
