@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 
 project(OpenSesameNatives
-    LANGUAGES CXX)
+    LANGUAGES CXX C)
 
 find_package(JNI REQUIRED)
 

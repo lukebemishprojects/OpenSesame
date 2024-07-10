@@ -45,6 +45,12 @@ jobs:
             compiler_package: g++-arm-linux-gnueabi
             c_compiler: arm-linux-gnueabi-gcc
             cpp_compiler: arm-linux-gnueabi-g++
+          - os: macos
+            arch: aarch64
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=aarch64
+          - os: macos
+            arch: x86_64
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
         exclude:
           - os: macos
             arch: i386
