@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //java:libopensesamenatives-src.jar
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: sources
           path: bazel-bin/java/libopensesamenatives-src.jar
