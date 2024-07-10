@@ -16,19 +16,19 @@ jobs:
             c_compiler: gcc
             cpp_compiler: g++
             runner: ubuntu-latest
-            libname: libopensesamenatives.so
+            libname: libopensesamenative.so
             java_home: "$JAVA_HOME_17_x64"
           - os: macos
             c_compiler: clang
             cpp_compiler: clang++
             runner: macos-latest
-            libname: libopensesamenatives.dynlib
+            libname: libopensesamenative.dynlib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
             c_compiler: clang
             cpp_compiler: clang++
             runner: windows-latest
-            libname: opensesamenatives.dll
+            libname: opensesamenative.dll
             java_home: "$JAVA_HOME_17_X64"
           - os: linux
             arch: i386
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: build/${{ matrix.libname }}
+          path: cmakebuild/${{ matrix.libname }}
   publish:
     permissions:
       packages: write

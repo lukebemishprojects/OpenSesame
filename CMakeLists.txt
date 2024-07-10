@@ -6,5 +6,5 @@ project(OpenSesameNatives
 find_package(JNI REQUIRED)
 
 include_directories(${JNI_INCLUDE_DIRS})
-add_library(opensesamenatives SHARED
-    src/cpp/opensesamenatives.cpp)
+add_library(opensesamenative SHARED
+    src/cpp/opensesamenative.cpp)

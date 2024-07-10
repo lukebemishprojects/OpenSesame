@@ -27,7 +27,9 @@ publishing {
             artifactId = 'opensesamenative'
             targets.each { os, archs ->
                 archs.each { arch ->
-                    artifact file("${os}-${arch}/${targetfinder[os]}")
+                    artifact(file("${os}-${arch}/${targetfinder[os]}")) {
+                        classifier="${os}-${arch}"
+                    }
                 }
             }
         }
