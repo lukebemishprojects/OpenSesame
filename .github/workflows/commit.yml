@@ -96,6 +96,7 @@ jobs:
           path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
   publish:
     permissions:
+      contents: read
       packages: write
     runs-on: ubuntu-latest
     needs: [build-natives]
