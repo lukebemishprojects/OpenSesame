@@ -32,7 +32,7 @@ jobs:
             runner: macos-latest
             libname: libopensesamenative.dynlib
           - os: windows
-            runner: ubuntu-latest
+            runner: windows-latest
             libname: opensesamenative.dll
         arch:
           - i386
@@ -62,8 +62,8 @@ jobs:
           key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
           restore-keys: |
             ${{ runner.os }}-bazel-
-      - name: Cache Bazel - Linux
-        if: ${{ matrix.platform.runner }} == 'ubuntu-latest'
+      - name: Cache Bazel - Linux/Windows
+        if: ${{ matrix.platform.runner }} == 'ubuntu-latest' || ${{ matrix.platform.runner }} == 'windows-latest'
         uses: actions/cache@v4
         with:
           path: |
@@ -72,6 +72,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bazel-
       - run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
+        shell: bash
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.os }}-${{ matrix.arch }}
