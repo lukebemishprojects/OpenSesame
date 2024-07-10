@@ -23,6 +23,7 @@ jobs:
           path: bazel-bin/java/libopensesamenatives-src.jar
   build-natives:
     strategy:
+      fail-fast: false
       matrix:
         platform:
           - os: linux
@@ -51,7 +52,6 @@ jobs:
               libname: libopensesamenative.dynlib
             arch: i386
     runs-on: ${{ matrix.platform.runner }}
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Cache Bazel - MacOs
