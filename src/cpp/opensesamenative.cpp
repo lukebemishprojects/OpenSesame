@@ -1,6 +1,6 @@
-#include "dev_lukebemish_opensesame_runtime_NativeImplementations.h"
+#include "dev_lukebemish_opensesame_natives_NativeImplementations.h"
 
-JNIEXPORT jobject JNICALL Java_dev_lukebemish_opensesame_runtime_NativeImplementations_nativeImplLookup
+JNIEXPORT jobject JNICALL Java_dev_lukebemish_opensesame_natives_NativeImplementations_nativeImplLookup
   (JNIEnv* env, jclass) {
     jclass cls = env->FindClass("java/lang/invoke/MethodHandles$Lookup");
     jfieldID fid = env->GetStaticFieldID(cls, "IMPL_LOOKUP", "Ljava/lang/invoke/MethodHandles$Lookup;");
