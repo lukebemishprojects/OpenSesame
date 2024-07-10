@@ -32,7 +32,7 @@ jobs:
             runner: macos-latest
             libname: libopensesamenative.dynlib
           - os: windows
-            runner: windows-latest
+            runner: ubuntu-latest
             libname: opensesamenative.dll
         arch:
           - i386
@@ -53,7 +53,17 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Bazel
+      - name: Cache Bazel - MacOs
+        if: ${{ matrix.platform.runner }} == 'macos-latest'
+        uses: actions/cache@v3
+        with:
+          path: |
+            /private/var/tmp/_bazel_runner/
+          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
+      - name: Cache Bazel - Linux
+        if: ${{ matrix.platform.runner }} == 'ubuntu-latest'
         uses: actions/cache@v3
         with:
           path: |
