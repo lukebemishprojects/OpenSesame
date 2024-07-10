@@ -51,6 +51,15 @@ jobs:
           - os: macos
             arch: x86_64
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
+          - os: windows
+            arch: x86_64
+            cmake_args: -DCMAKE_GENERATOR_PLATFORM=x64
+          - os: windows
+            arch: i386
+            cmake_args: -DCMAKE_GENERATOR_PLATFORM=Win32
+          - os: windows
+            arch: aarch64
+            cmake_args: -DCMAKE_GENERATOR_PLATFORM=ARM64
         exclude:
           - os: macos
             arch: i386
