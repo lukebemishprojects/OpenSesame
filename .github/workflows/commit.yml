@@ -4,23 +4,6 @@ on:
     branches:
       - natives
 jobs:
-  build-java:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cache Bazel
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
-          restore-keys: |
-            ${{ runner.os }}-bazel-
-      - run: bazelisk build //java:libopensesamenatives-src.jar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sources
-          path: bazel-bin/java/libopensesamenatives-src.jar
   build-natives:
     strategy:
       fail-fast: false
@@ -44,12 +27,6 @@ jobs:
             libname: opensesamenative.dll
             java_home: "$JAVA_HOME_17_X86"
           - os: linux
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: macos
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: linux
             arch: i386
             compiler_package: g++-i686-linux-gnu
             c_compiler: i686-linux-gnu-gcc
@@ -64,6 +41,15 @@ jobs:
             compiler_package: g++-arm-linux-gnueabi
             c_compiler: arm-linux-gnueabi-gcc
             cpp_compiler: arm-linux-gnueabi-g++
+          - os: linux
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: macos
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: windows
+            c_compiler: clang
+            cpp_compiler: clang++
         exclude:
           - os: macos
             arch: i386
