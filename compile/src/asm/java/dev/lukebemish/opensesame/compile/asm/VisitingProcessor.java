@@ -70,14 +70,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
     }
 
-    public static void process(Path input, Path output) throws IOException {
-        if (Files.isDirectory(input)) {
-            try (var paths = Files.walk(input)) {
+    public static void cleanup(Path output) throws IOException {
+        if (Files.isDirectory(output)) {
+            try (var paths = Files.walk(output)) {
                 paths.filter(Files::isRegularFile)
-                        .filter(file ->
-                                file.getFileName().toString().endsWith(VisitingProcessor.UNFINAL_SERVICE + ".class")
-                                        || file.getFileName().toString().endsWith(MIXIN_PROVIDER.getClassName())
-                        )
+                        .filter(VisitingProcessor::isOpenSesameGenerated)
                         .forEach(file -> {
                             try {
                                 Files.delete(file);
@@ -86,20 +83,39 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                             }
                         });
             }
+        }
+    }
+
+    private static boolean isOpenSesameGenerated(Path file) {
+        return file.getFileName().toString().endsWith(VisitingProcessor.UNFINAL_SERVICE + ".class")
+                || file.getFileName().toString().endsWith(MIXIN_PROVIDER.getClassName());
+    }
+
+    public static Set<Path> process(Path input, Path output) throws IOException {
+        if (Files.isDirectory(input)) {
+            cleanup(output);
+            Set<Path> modified = new HashSet<>();
             try (var paths = Files.walk(input)) {
-                paths.filter(Files::isRegularFile).forEach(file -> {
+                paths.filter(Files::isRegularFile).filter(f -> !isOpenSesameGenerated(f)).forEach(file -> {
                     try {
                         var relative = input.relativize(file);
                         var out = output.resolve(relative);
                         Files.createDirectories(out.getParent());
-                        processFile(file, out, output);
+                        if (processFile(file, out, output)) {
+                            modified.add(file);
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 });
             }
+            return modified;
         } else {
-            processFile(input, output, null);
+            if (processFile(input, output, null)) {
+                return Set.of(input);
+            } else {
+                return Set.of();
+            }
         }
     }
 
@@ -148,11 +164,12 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         }
     }
 
-    private static void processFile(Path file, Path out, @Nullable Path rootPath) throws IOException {
+    public static boolean processFile(Path file, Path out, @Nullable Path rootPath) throws IOException {
         if (!file.getFileName().toString().endsWith(".class")) {
             Files.copy(file, out);
-            return;
+            return false;
         }
+        boolean[] modifiedExternal = {false};
         try (var inputStream = Files.newInputStream(file)) {
             ClassReader reader = new ClassReader(inputStream);
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -208,6 +225,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                                 makeMixins(false, true, selfType, target, index, rootPath);
                                 makeMixins(false, false, selfType, target, index, rootPath);
                             }
+                            modifiedExternal[0] = true;
                         }
                         super.writeMixinProviderLines(lines, selfType);
                     }
@@ -237,6 +255,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             }
             Files.write(out, writer.toByteArray());
         }
+        return modifiedExternal[0];
     }
 
     List<String> unFinalLines = new ArrayList<>();

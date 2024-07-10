@@ -1,5 +1,6 @@
 plugins {
     id 'opensesame.conventions'
+    id 'opensesame.testing'
 }
 
 java.withSourcesJar()
@@ -41,7 +42,7 @@ tasks.named('compileTestJava', JavaCompile).configure {
     destinationDirectory.set(tempClassesDir)
 }
 
-var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
+var processTestClasses = tasks.register('processTestClasses', JavaExec) {
     dependsOn compileTestJava
     dependsOn configurations.asmRuntimeClasspath
     inputs.dir(tempClassesDir)
@@ -50,25 +51,6 @@ var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
     classpath = sourceSets.asm.runtimeClasspath
     mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
     args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath]
-
-    jacoco.applyTo(it)
-    extensions.configure(JacocoTaskExtension) {
-        it.excludes += 'dev/lukebemish/opensesame/test/target/*'
-    }
-
-    finalizedBy tasks.named('testAsmCompileCodeCoverateReport')
-}
-
-var report = tasks.register('testAsmCompileCodeCoverateReport', JacocoReport) {
-    dependsOn asmCompileTest.get()
-    executionData asmCompileTest.get()
-    sourceSets sourceSets.main
-}
-
-artifacts {
-    add('coverageDataElementsForTest', report.get().executionData.singleFile) {
-        builtBy report.get()
-    }
 }
 
 tasks.testClasses.dependsOn processTestClasses

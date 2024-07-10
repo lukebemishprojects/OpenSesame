@@ -60,69 +60,6 @@ tasks.named('compileTestJava', JavaCompile).configure {
     inputs.files(sourceSets.main.runtimeClasspath)
 }
 
-def testCompileOn(int v) {
-    var singleTest = tasks.register('testCompileOn'+v, JavaExec) {
-        javaLauncher.set javaToolchains.launcherFor {
-            languageVersion = JavaLanguageVersion.of(v)
-        }
-
-        dependsOn configurations.testRuntimeClasspath
-        dependsOn sourceSets.test.java.sourceDirectories
-        dependsOn configurations.testSource
-
-        var dirProvider = layout.buildDirectory.dir('testClasses/'+v)
-
-        outputs.dir(dirProvider)
-        inputs.files(sourceSets.test.java.sourceDirectories)
-        inputs.files(configurations.testSource)
-
-        group = "Verification"
-        description = "Compile test sources with java"
-        classpath = sourceSets.main.runtimeClasspath
-        mainClass.set 'com.sun.tools.javac.Main'
-        argumentProviders.add(
-                new CommandLineArgumentProvider() {
-                    @Override
-                    List<String> asArguments() {
-                        return [
-                                '-cp', configurations.testCompileClasspath.asPath,
-                                '-d', dirProvider.get().asFile.path,
-                                '-Xplugin:OpenSesame'
-                        ] +
-                                (sourceSets.test.java.srcDirs.collectMany { fileTree(it.path).files.collect { it.path } }) +
-                                (configurations.testSource.files.collectMany { fileTree(it.path).files.collect { it.path } })
-                    }
-                }
-        )
-
-        jacoco.applyTo(it)
-        extensions.configure(JacocoTaskExtension) {
-            it.excludes += 'dev/lukebemish/opensesame/test/target/*'
-        }
-
-        finalizedBy tasks.named('testCompileOn'+v+'CodeCoverateReport')
-    }
-
-    var report = tasks.register('testCompileOn'+v+'CodeCoverateReport', JacocoReport) {
-        dependsOn singleTest.get()
-        executionData singleTest.get()
-        sourceSets sourceSets.main
-    }
-
-    artifacts {
-        add('coverageDataElementsForTest', report.get().executionData.singleFile) {
-            builtBy report.get()
-        }
-    }
-
-    tasks.named('check').configure {
-        dependsOn singleTest
-    }
-}
-
-testCompileOn(17)
-testCompileOn(21)
-
 publishing {
     publications {
         mavenJava(MavenPublication) {

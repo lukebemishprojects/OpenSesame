@@ -1,6 +1,5 @@
 plugins {
     alias cLibs.plugins.managedversioning
-    id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
     id 'java-library'
     id 'opensesame.publishing'
@@ -20,6 +19,8 @@ managedVersioning {
             workflowDispatch = true
             gradleJob {
                 name = 'build'
+                permissions.put 'packages', 'read'
+                secret('GITHUB_TOKEN')
                 setupGitUser()
                 readOnly = false
                 gradlew 'Tag Release', 'tagRelease'
@@ -32,6 +33,8 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishCentral'
+                permissions.put 'packages', 'read'
+                secret('GITHUB_TOKEN')
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish', 'publishCentral', 'closeAndReleaseSonatypeStagingRepository'
@@ -41,6 +44,8 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishPlugins'
+                permissions.put 'packages', 'read'
+                secret('GITHUB_TOKEN')
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish Plugins', 'publishPlugins'
@@ -56,6 +61,8 @@ managedVersioning {
             onBranches.add 'main'
             gradleJob {
                 buildCache()
+                permissions.put 'packages', 'read'
+                secret('GITHUB_TOKEN')
                 name.set 'build'
                 gradlew 'Assemble', 'assemble'
                 gradlew 'Test', 'check', '--continue'
@@ -68,10 +75,6 @@ managedVersioning {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
                     with.put('retention-days', '1')
-                }
-                upload('jacoco-coverage', ['build/reports/jacoco/testCodeCoverageReport']) {
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
                 }
                 gradlew 'Publish', 'publish'
                 mavenSnapshot('github')
@@ -82,6 +85,8 @@ managedVersioning {
             pullRequest.set(true)
             gradleJob {
                 name.set 'build'
+                permissions.put 'packages', 'read'
+                secret('GITHUB_TOKEN')
                 gradlew 'Assemble', 'assemble'
                 gradlew 'Test', 'check', '--continue'
                 gradlew('Test Plugin', ['check', '--continue']) {
@@ -93,10 +98,6 @@ managedVersioning {
                     runsOnError.set true
                     requiredSteps.add 'assemble'
                     with.put('retention-days', '1')
-                }
-                upload('jacoco-coverage', ['build/reports/jacoco/testCodeCoverageReport']) {
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
                 }
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
@@ -139,6 +140,7 @@ managedVersioning {
                     with.put 'reporter', 'java-junit'
                     with.put 'fail-on-empty', 'true'
                     with.put 'list-tests', 'failed'
+                    with.put 'list-suites', 'failed'
                 }
                 step {
                     name.set 'JUnit Test Report - Java 21'
@@ -195,7 +197,6 @@ configurations {
 dependencies {
     subprojects.each { p ->
         if (p.name.startsWith('opensesame-')) {
-            jacocoAggregation p
             testReportAggregation p
         }
     }
@@ -219,12 +220,6 @@ managedVersioning.publishing.mavenCentral()
 
 reporting {
     reports {
-        testCodeCoverageReport(JacocoCoverageReport) {
-            testType = TestSuiteType.UNIT_TEST
-            reportTask.configure {
-                reports.xml.required = true
-            }
-        }
         testAggregateTestReport(AggregateTestReport) {
             testType = TestSuiteType.UNIT_TEST
         }
@@ -301,6 +296,5 @@ publishing {
 }
 
 tasks.named('check').configure {
-    dependsOn tasks.testCodeCoverageReport
     dependsOn tasks.testAggregateTestReport
 }

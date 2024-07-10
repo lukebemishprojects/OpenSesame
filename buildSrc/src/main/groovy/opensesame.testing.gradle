@@ -1,0 +1,72 @@
+plugins {
+    id 'java-library'
+    id 'opensesame.publishing'
+}
+
+configurations {
+    testModuleClasspath {
+        canBeResolved = true
+        transitive = false
+    }
+}
+
+dependencies {
+    testRuntimeOnly libs.junit.engine
+    testImplementation libs.junit.api
+
+    testImplementation project(':testtargets')
+    testModuleClasspath project(':testtargets')
+    testRuntimeOnly sourceSets.test.output
+    testRuntimeOnly libs.junit.engine
+    testRuntimeOnly libs.junit.api
+}
+
+def openSesameExtension = project.extensions.getByName('openSesameConvention')
+
+def javaVersions = [17, 21, 22]
+
+testing {
+    javaVersions.each { javaVersion ->
+        suites.create("testOn$javaVersion", JvmTestSuite) {
+            targets.configureEach {
+                testTask.configure {
+                    useJUnitPlatform()
+
+                    testLogging {
+                        showStandardStreams = true
+                        exceptionFormat = 'full'
+                        showCauses = true
+                        showStackTraces = true
+                        events = ['passed', 'failed', 'skipped']
+                    }
+
+                    if (!openSesameExtension.getTestAsModule().get()) {
+                        modularity.inferModulePath.set(false)
+                    } else {
+                        systemProperty 'modulartests', 'true'
+                        testClassesDirs.from configurations.testModuleClasspath
+                    }
+
+                    testClassesDirs.from sourceSets.test.output.classesDirs
+
+                    javaLauncher = javaToolchains.launcherFor {
+                        languageVersion = JavaLanguageVersion.of(javaVersion)
+                    }
+                }
+            }
+        }
+
+        configurations.maybeCreate("testOn${javaVersion}RuntimeClasspath").extendsFrom configurations.testRuntimeClasspath
+    }
+}
+
+javaVersions.each {
+    def resultElements = configurations.maybeCreate("testResultsElementsForTestOn$it")
+    configurations.testResultsElementsForTest.extendsFrom resultElements
+}
+
+tasks.named('check') {
+    javaVersions.each {
+        dependsOn(testing.suites."testOn$it")
+    }
+}

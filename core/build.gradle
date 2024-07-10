@@ -5,9 +5,78 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/lukebemishprojects/OpenSesame")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+        content {
+            includeModule 'dev.lukebemish', 'opensesamenative'
+        }
+    }
+}
+
+configurations {
+    natives
+}
+
+def targets = [
+        'linux': ['x86_64', 'aarch64', 'i386', 'arm'],
+        'windows': ['x86_64', 'aarch64', 'i386'],
+        'macos': ['x86_64', 'aarch64']
+]
+
+def targetfinder = [
+        'linux': 'libopensesamenative.so',
+        'windows': 'opensesamenative.dll',
+        'macos': 'libopensesamenative.dylib'
+]
+
+def nativesCommit = 'c1e12f5741c38e1348cd7ac6e2a0c274414355bf'
+
+targets.each { os, archs ->
+    archs.each { arch ->
+        def finalName = targetfinder[os]
+        def extension = finalName.split(/\./)[1]
+        dependencies.add('natives', "dev.lukebemish:opensesamenative:$nativesCommit:$os-$arch@$extension")
+    }
+}
+
+processResources {
+    from(configurations.natives) {
+        into 'dev/lukebemish/opensesame/runtime'
+        rename { String fileName ->
+            String[] parts = fileName.split(/[-.]/)
+            String os = parts[2]
+            String arch = parts[3]
+            return "$os/$arch/${targetfinder[os]}"
+        }
+    }
+}
+
 dependencies {
     implementation libs.asm.core
     implementation libs.asm.commons
+}
+
+configurations {
+    headersElements {
+        canBeConsumed = true
+    }
+    runtimeElements {
+        outgoing.variants.clear()
+    }
+    apiElements {
+        outgoing.variants.clear()
+    }
+}
+
+artifacts {
+    headersElements(tasks.compileJava.options.headerOutputDirectory) {
+        builtBy tasks.compileJava
+    }
 }
 
 publishing {

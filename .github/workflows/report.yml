@@ -31,7 +31,8 @@
                         "path": "**/test-results/testOn17/**/TEST-*.xml",
                         "reporter": "java-junit",
                         "fail-on-empty": "true",
-                        "list-tests": "failed"
+                        "list-tests": "failed",
+                        "list-suites": "failed"
                     },
                     "name": "JUnit Test Report - Java 17",
                     "uses": "dorny/test-reporter@v1"

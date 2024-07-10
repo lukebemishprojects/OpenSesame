@@ -2,6 +2,9 @@
     "jobs": {
         "build": {
             "runs-on": "ubuntu-22.04",
+            "permissions": {
+                "packages": "read"
+            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -44,6 +47,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
@@ -57,6 +61,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
@@ -70,6 +75,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
@@ -88,15 +94,6 @@
                     "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
                 },
                 {
-                    "with": {
-                        "name": "jacoco-coverage",
-                        "path": "build/reports/jacoco/testCodeCoverageReport"
-                    },
-                    "name": "Upload jacoco-coverage",
-                    "uses": "actions/upload-artifact@v4",
-                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
-                },
-                {
                     "name": "Publish",
                     "run": "./gradlew publish",
                     "id": "publish",
@@ -104,6 +101,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"

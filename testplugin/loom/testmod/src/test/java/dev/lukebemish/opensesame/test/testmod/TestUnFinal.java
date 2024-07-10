@@ -1,8 +1,10 @@
-package dev.lukebemish.opensesame.testmod.tests;
+package dev.lukebemish.opensesame.test.testmod;
 
+import dev.lukebemish.opensesame.test.target.Final;
+import dev.lukebemish.opensesame.test.target.Public;
+import dev.lukebemish.opensesame.test.target.RecordClass;
+import dev.lukebemish.opensesame.test.target.SealedClass;
 import dev.lukebemish.opensesame.testmod.TestModOpenedClasses;
-import dev.lukebemish.opensesame.testmod.TestRecord;
-import dev.lukebemish.opensesame.testmod.TestSealed;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;
 import org.junit.jupiter.api.Assertions;
@@ -48,7 +50,7 @@ public class TestUnFinal {
     @Test
     void testExtendRecord() {
         var instance = TestModOpenedClasses.RecordExtension.constructor("fieldValue", 1, 2);
-        Assertions.assertInstanceOf(TestRecord.class, instance);
+        Assertions.assertInstanceOf(RecordClass.class, instance);
         Assertions.assertEquals("TestRecord[a=1, b=2]", instance.toString());
         Assertions.assertEquals("fieldValue", instance.field());
     }
@@ -57,6 +59,32 @@ public class TestUnFinal {
     @Test
     void testExtendSealed() {
         var instance = TestModOpenedClasses.SealedClassExtension.constructor();
-        Assertions.assertInstanceOf(TestSealed.class, instance);
+        Assertions.assertInstanceOf(SealedClass.class, instance);
+    }
+
+    @Test
+    void testPrivateFinalInstanceField() {
+        Public p = new Public();
+        TestModOpenedClasses.privateFinalInstanceField(p, "test");
+        Assertions.assertEquals("test", TestModOpenedClasses.privateFinalInstanceField(p));
+    }
+
+    @Test
+    void testPrivateFinalStaticField() {
+        TestModOpenedClasses.privateFinalStaticField("test");
+        Assertions.assertEquals("test", TestModOpenedClasses.privateFinalStaticField());
+    }
+
+    @Test
+    void testPublicExtension() {
+        var instance = TestModOpenedClasses.PublicExtension.constructor();
+        Assertions.assertInstanceOf(Public.class, instance);
+        Assertions.assertEquals("not so final now!", ((Public) instance).finalMethod());
+    }
+
+    @Test
+    void testFinalExtension() {
+        var instance = TestModOpenedClasses.FinalExtension.constructor();
+        Assertions.assertInstanceOf(Final.class, instance);
     }
 }

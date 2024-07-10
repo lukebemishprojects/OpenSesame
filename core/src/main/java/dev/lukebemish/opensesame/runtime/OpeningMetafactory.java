@@ -154,11 +154,17 @@ public final class OpeningMetafactory {
         Exception LOOKUP_PROVIDER_EXCEPTION1;
         LookupProvider LOOKUP_PROVIDER1;
         try {
-            LOOKUP_PROVIDER1 = new LookupProviderUnsafe();
+            LOOKUP_PROVIDER1 = new LookupProviderNative();
             LOOKUP_PROVIDER_EXCEPTION1 = null;
-        } catch (Exception e) {
-            LOOKUP_PROVIDER_EXCEPTION1 = e;
-            LOOKUP_PROVIDER1 = new LookupProviderFallback();
+        } catch (Exception e1) {
+            LOOKUP_PROVIDER_EXCEPTION1 = e1;
+            try {
+                LOOKUP_PROVIDER1 = new LookupProviderUnsafe();
+            } catch(Exception e2){
+                e2.addSuppressed(e1);
+                LOOKUP_PROVIDER_EXCEPTION1 = e2;
+                LOOKUP_PROVIDER1 = new LookupProviderFallback();
+            }
         }
         LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
         LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1;

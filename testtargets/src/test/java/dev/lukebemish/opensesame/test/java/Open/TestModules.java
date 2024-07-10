@@ -41,6 +41,11 @@ public class TestModules {
     }
 
     private static boolean isNotModular() {
-        return !Public.class.getModule().isNamed();
+        var intendedModular = Boolean.getBoolean("modulartests");
+        var actuallyModular = Public.class.getModule().isNamed();
+        if (intendedModular && !actuallyModular) {
+            throw new RuntimeException("Module tests are enabled, but running in a non-modular environment.");
+        }
+        return !intendedModular;
     }
 }

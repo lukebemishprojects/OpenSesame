@@ -8,6 +8,10 @@ import dev.lukebemish.opensesame.annotations.extend.Field;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
 import dev.lukebemish.opensesame.annotations.mixin.Expose;
 import dev.lukebemish.opensesame.annotations.mixin.UnFinal;
+import dev.lukebemish.opensesame.test.target.Final;
+import dev.lukebemish.opensesame.test.target.Public;
+import dev.lukebemish.opensesame.test.target.RecordClass;
+import dev.lukebemish.opensesame.test.target.SealedClass;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Climate;
 
@@ -84,7 +88,7 @@ public class TestModOpenedClasses {
     }
 
     @Extend(
-            targetClass = TestRecord.class,
+            targetClass = RecordClass.class,
             unsafe = false
     )
     @UnFinal
@@ -99,7 +103,7 @@ public class TestModOpenedClasses {
     }
 
     @Extend(
-            targetClass = TestSealed.class,
+            targetClass = SealedClass.class,
             unsafe = false
     )
     @UnFinal
@@ -108,5 +112,72 @@ public class TestModOpenedClasses {
         static SealedClassExtension constructor() {
             throw new UnsupportedOperationException("Constructor not replaced");
         }
+    }
+
+    @Extend(
+            targetClass = Final.class,
+            unsafe = false
+    )
+    @UnFinal
+    public interface FinalExtension {
+        @Constructor
+        static FinalExtension constructor() {
+            throw new AssertionError("Constructor not replaced");
+        }
+    }
+
+    @Extend(
+            targetClass = Public.class,
+            unsafe = false
+    )
+    public interface PublicExtension {
+        @Constructor
+        static PublicExtension constructor() {
+            throw new AssertionError("Constructor not replaced");
+        }
+
+        @Overrides(value = "finalMethod")
+        @UnFinal
+        default String finalMethodOverride() {
+            return "not so final now!";
+        }
+    }
+
+    @Open(
+            name = "privateFinalInstanceField",
+            targetClass = Public.class,
+            type = Open.Type.SET_INSTANCE
+    )
+    @UnFinal
+    public static void privateFinalInstanceField(Public it, String value) {
+        throw new AssertionError("Method not replaced");
+    }
+
+    @Open(
+            name = "privateFinalInstanceField",
+            targetClass = Public.class,
+            type = Open.Type.GET_INSTANCE
+    )
+    public static String privateFinalInstanceField(Public it) {
+        throw new AssertionError("Method not replaced");
+    }
+
+    @Open(
+            name = "privateFinalStaticField",
+            targetClass = Public.class,
+            type = Open.Type.SET_STATIC
+    )
+    @UnFinal
+    public static void privateFinalStaticField(String value) {
+        throw new AssertionError("Method not replaced");
+    }
+
+    @Open(
+            name = "privateFinalStaticField",
+            targetClass = Public.class,
+            type = Open.Type.GET_STATIC
+    )
+    public static String privateFinalStaticField() {
+        throw new AssertionError("Method not replaced");
     }
 }

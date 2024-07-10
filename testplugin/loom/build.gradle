@@ -12,7 +12,7 @@ loom {
     runs.removeAll()
 }
 
-opensesame.apply(sourceSets.main)
+opensesame.apply(sourceSets.test)
 
 configurations {
     testSource {
@@ -37,38 +37,48 @@ dependencies {
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
         }
     }
-    implementation 'dev.lukebemish.opensesame:testtargets'
-    implementation 'dev.lukebemish.opensesame:opensesame-core'
-    implementation libs.asm.core
-    implementation libs.junit.api
     modImplementation libs.fabric.loader
-
-    testRuntimeOnly libs.junit.engine
 }
 
-tasks.named('compileJava', JavaCompile).configure {
+tasks.named('compileTestJava', JavaCompile) {
     dependsOn(configurations.testSource)
     source(configurations.testSource)
+}
+
+tasks.named('jar', Jar) {
+    from sourceSets.test.output
 }
 
 artifacts {
     testClasses tasks.remapJar
 }
 
-test {
-    useJUnitPlatform()
+testing {
+    suites {
+        test {
+            useJUnit()
 
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events = ['passed', 'failed', 'skipped']
+            targets.configureEach {
+                testTask.configure {
+                    useJUnitPlatform()
+
+                    testLogging {
+                        showStandardStreams = true
+                        exceptionFormat = 'full'
+                        showCauses = true
+                        showStackTraces = true
+                        events = ['passed', 'failed', 'skipped']
+                    }
+                }
+            }
+
+            dependencies {
+                runtimeOnly libs.junit.engine
+                implementation 'dev.lukebemish.opensesame:testtargets'
+                implementation 'dev.lukebemish.opensesame:opensesame-core'
+                implementation libs.asm.core
+                implementation libs.junit.api
+            }
+        }
     }
-
-    testClassesDirs += files(
-            sourceSets.main.output
-    )
-
-    classpath += files(
-            sourceSets.main.output
-    )
 }
