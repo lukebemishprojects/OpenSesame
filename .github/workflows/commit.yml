@@ -24,24 +24,36 @@ jobs:
   build-natives:
     strategy:
       matrix:
-        runner: [{"linux": "ubuntu-latest", "windows": "ubuntu-latest", "macos": "macos-latest"}]
-        libname: [{"linux": "libopensesamenative.so", "windows": "opensesamenative.dll", "macos": "libopensesamenative.dynlib"}]
-        os: [linux, windows, macos]
+        platform:
+          - os: linux
+            runner: ubuntu-latest
+            libname: libopensesamenative.so
+          - os: macos
+            runner: macos-latest
+            libname: libopensesamenative.dynlib
+          - os: windows
+            runner: ubuntu-latest
+            libname: opensesamenative.dll
         arch:
           - i386
           - x86_64
           - aarch64
         include:
-          - os: linux
-          - arch: arm
+          - platform:
+              os: linux
+              runner: ubuntu-latest
+              libname: libopensesamenative.so
+            arch: arm
         exclude:
           - os: macos
-          - arch: i386
-    runs-on: ${{ matrix.os }}
+              runner: macos-latest
+              libname: libopensesamenative.dynlib
+            arch: i386
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v4
       - name: Cache Bazel - MacOs
-        if: ${{ matrix.runner[matrix.os] }} == 'macos-latest'
+        if: ${{ matrix.platform.runner }} == 'macos-latest'
         uses: actions/cache@v4
         with:
           path: |
@@ -50,7 +62,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bazel-
       - name: Cache Bazel - Linux
-        if: ${{ matrix.runner[matrix.os] }} == 'ubuntu-latest'
+        if: ${{ matrix.platform.runner }} == 'ubuntu-latest'
         uses: actions/cache@v4
         with:
           path: |
@@ -58,8 +70,8 @@ jobs:
           key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
           restore-keys: |
             ${{ runner.os }}-bazel-
-      - run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.os }}_${{ matrix.arch }}
+      - run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/cpp/${{ matrix.libname[matrix.os] }}
+          name: ${{ matrix.platform.os }}-${{ matrix.arch }}
+          path: bazel-bin/cpp/${{ matrix.platform.libname }}
