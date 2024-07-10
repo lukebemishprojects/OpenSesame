@@ -25,68 +25,67 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
+        os: [linux, macos, windows]
+        arch: [i386, x86_64, aarch64]
+        build_type: [Release]
+        include:
+          - os: linux
+            arch: arm
           - os: linux
             runner: ubuntu-latest
             libname: libopensesamenative.so
+            java_home: "$JAVA_HOME_17_x64"
           - os: macos
             runner: macos-latest
             libname: libopensesamenative.dynlib
+            java_home: "$JAVA_HOME_17_arm64"
           - os: windows
             runner: windows-latest
             libname: opensesamenative.dll
-        arch:
-          - i386
-          - x86_64
-          - aarch64
-        include:
-          - platform:
-              os: linux
-              runner: ubuntu-latest
-              libname: libopensesamenative.so
-            arch: arm
-        exclude:
-          - platform:
-              os: macos
-              runner: macos-latest
-              libname: libopensesamenative.dynlib
+            java_home: "$JAVA_HOME_17_X86"
+          - os: linux
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: macos
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: linux
             arch: i386
-    runs-on: ${{ matrix.platform.runner }}
+            compiler_package: g++-i686-linux-gnu
+            c_compiler: i686-linux-gnu-gcc
+            cpp_compiler: i686-linux-gnu-g++
+          - os: linux
+            arch: aarch64
+            compiler_package: g++-aarch64-linux-gnu
+            c_compiler: aarch64-linux-gnu-gcc
+            cpp_compiler: aarch64-linux-gnu-g++
+          - os: linux
+            arch: arm
+            compiler_package: g++-arm-linux-gnueabi
+            c_compiler: arm-linux-gnueabi-gcc
+            cpp_compiler: arm-linux-gnueabi-g++
+        exclude:
+          - os: macos
+            arch: i386
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Bazel - MacOs
-        if: ${{ matrix.platform.runner == 'macos-latest' }}
-        uses: actions/cache@v4
-        with:
-          path: |
-            /private/var/tmp/_bazel_runner/
-          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
-          restore-keys: |
-            ${{ runner.os }}-bazel-
       - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'i386' }}
-        run: sudo apt install -y g++-i686-linux-gnu
-      - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'aarch64' }}
-        run: sudo apt install -y g++-aarch64-linux-gnu
-      - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'arm' }}
-        run: sudo apt install -y g++-arm-linux-gnueabi
-      - name: Cache Bazel - Linux/Windows
-        if: ${{ matrix.platform.runner == 'ubuntu-latest' || matrix.platform.runner == 'windows-latest' }}
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
-          restore-keys: |
-            ${{ runner.os }}-bazel-
-      - if: ${{ matrix.platform.runner == 'ubuntu-latest' || matrix.platform.runner == 'macos-latest' }}
-        run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
-      - if: ${{ matrix.platform.runner == 'windows-latest' }}
-        run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
-        shell: pwsh
+        if: ${{ matrix.compiler_package }}
+        run: sudo apt install -y ${{ matrix.compiler_package }}
+      - name: Setup Java
+        run: echo "JAVA_HOME=${{ matrix.java_home }}" >> $GITHUB_ENV
+      - name: Configure CMake
+        run: >
+          cmake -B build
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -D
+          -S ${{ github.workspace }}
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.os }}-${{ matrix.arch }}
-          path: bazel-bin/cpp/${{ matrix.platform.libname }}
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: build/${{ matrix.libname }}

@@ -1,7 +1,0 @@
-package(default_visibility = ["//visibility:public"])
-
-java_library(
-    name = "opensesamenatives",
-    srcs = glob(["src/**/*.java"]),
-)
-
