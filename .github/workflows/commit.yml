@@ -26,6 +26,7 @@ jobs:
       matrix:
         runner: [{"linux": "ubuntu-latest", "windows": "ubuntu-latest", "macos": "macos-latest"}]
         libname: [{"linux": "libopensesamenative.so", "windows": "opensesamenative.dll", "macos": "libopensesamenative.dynlib"}]
+        os: [linux, windows, macos]
         arch:
           - i386
           - x86_64
