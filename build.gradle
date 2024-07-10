@@ -22,7 +22,7 @@ version = findProperty('commit_sha')
 
 publishing {
     publications {
-        maven(MavenPublicatoin) {
+        maven(MavenPublication) {
             groupId = 'dev.lukebemish'
             artifactId = 'opensesamenative'
             targets.each { os, archs ->
