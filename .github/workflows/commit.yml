@@ -71,6 +71,7 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DJAVA_HOME=${{ matrix.java_home }}
+          ${{ cmake_args }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }}
