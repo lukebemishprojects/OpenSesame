@@ -80,15 +80,20 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DJAVA_HOME=${{ matrix.java_home }}
-          -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(pwd)/out
           ${{ matrix.cmake_args }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
-      - uses: actions/upload-artifact@v4
+      - if: ${{ matrix.os != 'windows' }}
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: out/${{ matrix.libname }}
+          path: cmakebuild/${{ matrix.libname }}
+      - if: ${{ matrix.os == 'windows' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
   publish:
     permissions:
       packages: write
