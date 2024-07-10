@@ -8,7 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //java:libopensesamenatives-src.jar
+      - name: Cache Bazel
+        uses: actions/cache@v3
+        with:
+        path: |
+          ~/.cache/bazel
+        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
+        restore-keys: |
+          ${{ runner.os }}-bazel-
+      - run: bazelisk build //java:libopensesamenatives-src.jar
       - uses: actions/upload-artifact@v4
         with:
           name: sources
@@ -33,15 +41,27 @@ jobs:
         include:
           - platform:
             - os: linux
+              runner: ubuntu-latest
+              libname: libopensesamenative.so
           - arch: arm
         exclude:
           - platform:
             - os: macos
+              runner: macos-latest
+              libname: libopensesamenative.dynlib
           - arch: i386
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v4
-      - run: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
+      - name: Cache Bazel
+        uses: actions/cache@v3
+        with:
+        path: |
+          ~/.cache/bazel
+        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
+        restore-keys: |
+          ${{ runner.os }}-bazel-
+      - run: bazelisk build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.os }}-${{ matrix.arch }}
