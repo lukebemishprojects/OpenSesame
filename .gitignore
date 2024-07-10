@@ -12,6 +12,7 @@ _deps
 CMakeUserPresets.json
 
 cmakebuild
+out
 
 build
 .gradle
