@@ -54,7 +54,6 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         var classLoader = OpenSesameMixinPlugin.class.getClassLoader();
         List<OpenSesameMixinProvider> providers = new ArrayList<>();
         ServiceLoader.load(OpenSesameMixinProvider.class, classLoader).forEach(providers::add);
-        collectLegacyProviders(classLoader, providers);
         final Set<String> targetClasses = new HashSet<>();
         final Set<String> deFinalClasses = new HashSet<>();
         final Map<String, List<String>> deFinalMethods = new HashMap<>();
@@ -81,11 +80,6 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             forClasses.put(target, forClass);
         }
         return mixins;
-    }
-
-    @SuppressWarnings("removal")
-    private static void collectLegacyProviders(ClassLoader classLoader, List<OpenSesameMixinProvider> providers) {
-        ServiceLoader.load(UnFinalLineProvider.class, classLoader).forEach(provider -> providers.add(provider.makeToOpen()));
     }
 
     private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> targetClasses, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields, boolean allowFields, String searchingName) {
