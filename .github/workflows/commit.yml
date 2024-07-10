@@ -64,13 +64,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bazel-
       - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' & matrix.arch == 'i386' }}
+        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'i386' }}
         run: apt install -y g++-i686-linux-gnu
       - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' & matrix.arch == 'aarch64' }}
+        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'aarch64' }}
         run: apt install -y g++-aarch64-linux-gnu
       - name: Setup GCC
-        if: ${{ matrix.platform.os == 'linux' & matrix.arch == 'arm' }}
+        if: ${{ matrix.platform.os == 'linux' && matrix.arch == 'arm' }}
         run: apt install -y g++-arm-linux-gnueabi
       - name: Cache Bazel - Linux/Windows
         if: ${{ matrix.platform.runner == 'ubuntu-latest' || matrix.platform.runner == 'windows-latest' }}
