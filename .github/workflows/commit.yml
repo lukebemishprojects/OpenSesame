@@ -1,5 +1,8 @@
 name: Build Natives
-on: [push]
+on:
+  push:
+    branches:
+      - natives
 jobs:
   build-java:
     runs-on: ubuntu-latest
