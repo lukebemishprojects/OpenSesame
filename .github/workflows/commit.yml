@@ -1,0 +1,45 @@
+name: Build Natives
+on: [push]
+jobs:
+  build-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - runs: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //java:libopensesamenatives-src.jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: sources
+          path: bazel-bin/java/libopensesamenatives-src.jar
+  build-natives:
+    strategy:
+      matrix:
+        platform:
+          - os: linux
+            runner: ubuntu-latest
+            libname: libopensesamenative.so
+          - os: macos
+            runner: macos-latest
+            libname: libopensesamenative.dynlib
+          - os: windows
+            runner: windows-latest
+            libname: opensesamenative.dll
+        arch:
+          - i386
+          - x86_64
+          - aarch64
+        include:
+          - platform:
+            - os: linux
+          - arch: arm
+        exclude:
+          - platform:
+            - os: macos
+          - arch: i386
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - runs: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.os }}-${{ matrix.arch }}
+          path: bazel-bin/cpp/${{ matrix.platform.libname }}

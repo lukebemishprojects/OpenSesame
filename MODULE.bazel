@@ -1,0 +1,1 @@
+bazel_dep(name = "rules_jni", version = "0.10.1")
