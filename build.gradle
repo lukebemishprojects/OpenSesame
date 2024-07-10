@@ -1,0 +1,46 @@
+plugins {
+    id 'maven-publish'
+}
+
+tasks.named('updateDaemonJvm') {
+    jvmVersion = JavaVersion.VERSION_21
+}
+
+def targets = [
+    'linux': ['x86_64', 'aarch64', 'i386', 'arm'],
+    'windows': ['x86_64', 'aarch64', 'i386'],
+    'macos': ['x86_64', 'aarch64']
+]
+
+def targetfinder = [
+    'linux': 'libopensesamenative.so',
+    'windows': 'opensesamenative.dll',
+    'macos': 'libopensesamenative.dynlib'
+]
+
+version = findProperty('commit_sha')
+
+publishing {
+    publications {
+        maven(MavenPublicatoin) {
+            groupId = 'dev.lukebemish'
+            artifactId = 'opensesamenative'
+            targets.each { os, archs ->
+                archs.each { arch ->
+                    artifact file("${os}-${arch}/${targetfinder[os]}")
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/lukebemishprojects/opensesame")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}

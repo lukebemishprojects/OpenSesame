@@ -16,19 +16,19 @@ jobs:
             c_compiler: gcc
             cpp_compiler: g++
             runner: ubuntu-latest
-            libname: libopensesamenative.so
+            libname: libopensesamenatives.so
             java_home: "$JAVA_HOME_17_x64"
           - os: macos
             c_compiler: clang
             cpp_compiler: clang++
             runner: macos-latest
-            libname: libopensesamenative.dynlib
+            libname: libopensesamenatives.dynlib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
             c_compiler: clang
             cpp_compiler: clang++
             runner: windows-latest
-            libname: opensesamenative.dll
+            libname: opensesamenatives.dll
             java_home: "$JAVA_HOME_17_X64"
           - os: linux
             arch: i386
@@ -75,7 +75,7 @@ jobs:
         run: sudo apt install -y ${{ matrix.compiler_package }}
       - name: Configure CMake
         run: >
-          cmake -B build
+          cmake -B cmakebuild
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -83,8 +83,18 @@ jobs:
           ${{ matrix.cmake_args }}
           -S ${{ github.workspace }}
       - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }}
+        run: cmake --build cmakebuild --config ${{ matrix.build_type }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: build/${{ matrix.libname }}
+  publish:
+    permissions:
+      packages: write
+    runs-on: ubuntu-latest
+    needs: built-natives
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - run: ./gradlew publish -Pcommit_sha=${{ github.sha }}
+
