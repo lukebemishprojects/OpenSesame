@@ -29,7 +29,7 @@ jobs:
             cpp_compiler: clang++
             runner: windows-latest
             libname: opensesamenative.dll
-            java_home: "$JAVA_HOME_17_X86"
+            java_home: "$JAVA_HOME_17_X64"
           - os: linux
             arch: i386
             compiler_package: g++-i686-linux-gnu
@@ -58,14 +58,13 @@ jobs:
       - name: Setup GCC
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
-      - name: Setup Java
-        run: echo "JAVA_HOME=${{ matrix.java_home }}" >> $GITHUB_ENV
       - name: Configure CMake
         run: >
           cmake -B build
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DJAVA_HOME=${{ matrix.java_home }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }}
