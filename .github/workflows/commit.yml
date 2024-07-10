@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - runs: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //java:libopensesamenatives-src.jar
+      - run: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //java:libopensesamenatives-src.jar
         uses: actions/upload-artifact@v4
         with:
           name: sources
@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v4
-      - runs: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
+      - run: JAVA_HOME=$JAVA_HOME_17_X64 bazel build //cpp:opensesamenatives --platforms=//platform:${{ matrix.platform.os }}_${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.os }}-${{ matrix.arch }}
