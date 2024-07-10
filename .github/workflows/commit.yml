@@ -22,7 +22,7 @@ jobs:
             c_compiler: clang
             cpp_compiler: clang++
             runner: macos-latest
-            libname: libopensesamenative.dynlib
+            libname: libopensesamenative.dylib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
             c_compiler: clang

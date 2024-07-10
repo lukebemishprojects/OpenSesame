@@ -15,7 +15,7 @@ def targets = [
 def targetfinder = [
     'linux': 'libopensesamenative.so',
     'windows': 'opensesamenative.dll',
-    'macos': 'libopensesamenative.dynlib'
+    'macos': 'libopensesamenative.dylib'
 ]
 
 version = findProperty('commit_sha')
