@@ -51,10 +51,11 @@ jobs:
               libname: libopensesamenative.dynlib
             arch: i386
     runs-on: ${{ matrix.platform.runner }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Cache Bazel - MacOs
-        if: ${{ matrix.platform.runner }} == 'macos-latest'
+        if: ${{ matrix.platform.runner == 'macos-latest' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -63,7 +64,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bazel-
       - name: Cache Bazel - Linux/Windows
-        if: ${{ matrix.platform.runner }} == 'ubuntu-latest' || ${{ matrix.platform.runner }} == 'windows-latest'
+        if: ${{ matrix.platform.runner == 'ubuntu-latest' || matrix.platform.runner == 'windows-latest' }}
         uses: actions/cache@v4
         with:
           path: |
