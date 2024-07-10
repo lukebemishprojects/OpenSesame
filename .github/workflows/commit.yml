@@ -45,7 +45,8 @@ jobs:
               libname: libopensesamenative.so
             arch: arm
         exclude:
-          - os: macos
+          - platform:
+              os: macos
               runner: macos-latest
               libname: libopensesamenative.dynlib
             arch: i386
