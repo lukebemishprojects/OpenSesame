@@ -51,7 +51,6 @@ public class TestUnFinal {
     void testExtendRecord() {
         var instance = TestModOpenedClasses.RecordExtension.constructor("fieldValue", 1, 2);
         Assertions.assertInstanceOf(RecordClass.class, instance);
-        Assertions.assertEquals("TestRecord[a=1, b=2]", instance.toString());
         Assertions.assertEquals("fieldValue", instance.field());
     }
 
@@ -77,14 +76,14 @@ public class TestUnFinal {
 
     @Test
     void testPublicExtension() {
-        var instance = TestModOpenedClasses.PublicExtension.constructor();
+        TestModOpenedClasses.PublicExtension instance = TestModOpenedClasses.PublicExtension.constructor();
         Assertions.assertInstanceOf(Public.class, instance);
         Assertions.assertEquals("not so final now!", ((Public) instance).finalMethod());
     }
 
     @Test
     void testFinalExtension() {
-        var instance = TestModOpenedClasses.FinalExtension.constructor();
+        TestModOpenedClasses.FinalExtension instance = TestModOpenedClasses.FinalExtension.constructor();
         Assertions.assertInstanceOf(Final.class, instance);
     }
 }

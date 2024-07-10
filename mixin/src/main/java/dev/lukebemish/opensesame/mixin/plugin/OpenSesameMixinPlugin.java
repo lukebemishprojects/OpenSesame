@@ -82,12 +82,32 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         return mixins;
     }
 
+    private static String remapDescriptor(String descriptor) {
+        var type = Type.getType(descriptor);
+        if (type.getSort() == Type.METHOD) {
+            var builder = new StringBuilder();
+            builder.append("(");
+            for (var argument : type.getArgumentTypes()) {
+                builder.append(remapDescriptor(argument.getDescriptor()));
+            }
+            builder.append(")");
+            builder.append(remapDescriptor(type.getReturnType().getDescriptor()));
+            return builder.toString();
+        } else if (type.getSort() == Type.ARRAY) {
+            return "[" + remapDescriptor(type.getElementType().getDescriptor());
+        } else if (type.getSort() == Type.OBJECT) {
+            return Type.getObjectType(OpeningMetafactory.remapClass(type.getInternalName().replace('/', '.'), OpenSesameMixinPlugin.class.getClassLoader()).replace('.', '/')).getDescriptor();
+        } else {
+            return descriptor;
+        }
+    }
+
     private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> targetClasses, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields, boolean allowFields, String searchingName) {
         if (line.isBlank())
             return;
         var parts = line.split("\\.");
-        var packageName = parts[0].replace("/", ".");
-        var className = parts[1].replace("/", ".");
+        var packageName = parts[0].replace('/', '.');
+        var className = parts[1].replace('/', '.');
         var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
         if (parts.length == 2) {
             classes.add(remappedClassName);
@@ -96,7 +116,7 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             var desc = parts[3];
             var type = Type.getType(desc);
             if (type.getSort() == Type.METHOD) {
-                methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader));
+                methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader)+"."+remapDescriptor(desc));
             } else if (type.getSort() == Type.OBJECT) {
                 if (!allowFields) {
                     throw new RuntimeException("Invalid " + searchingName + " line: " + line);
