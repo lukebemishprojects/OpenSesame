@@ -67,16 +67,13 @@
                     "uses": "actions/download-artifact@v4"
                 },
                 {
-                    "with": {
-                        "platforms": "${{ matrix.qemu }}"
-                    },
                     "name": "Setup QEMU",
-                    "uses": "docker/setup-qemu-action@v3",
+                    "run": "sudo apt-get -qq install -y qemu qemu-user-static\ndocker run --rm --privileged multiarch/qemu-user-static --reset -p yes --credential yes",
                     "if": "${{ matrix.qemu }}"
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm -t ${{ matrix.docker }}/amazoncorretto:17 java @args",
                     "if": "${{ matrix.docker }}"
                 },
                 {
