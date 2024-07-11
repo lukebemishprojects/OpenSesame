@@ -5,6 +5,59 @@
                 "build"
             ],
             "runs-on": "ubuntu-22.04",
+            "strategy": {
+                "fail-fast": false,
+                "matrix": {
+                    "os": [
+                        "linux",
+                        "windows",
+                        "macos"
+                    ],
+                    "arch": [
+                        "i386",
+                        "x86_64",
+                        "aarch64",
+                        "arm"
+                    ],
+                    "exclude": [
+                        {
+                            "os": "macos",
+                            "arch": "i386"
+                        },
+                        {
+                            "os": "macos",
+                            "arch": "arm"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "arm"
+                        }
+                    ],
+                    "include": [
+                        {
+                            "os": "macos",
+                            "runner": "macos-latest",
+                            "java_home": "JAVA_HOME_17_arm64"
+                        },
+                        {
+                            "os": "windows",
+                            "runner": "windows-latest",
+                            "java_home": "$JAVA_HOME_17_X64"
+                        },
+                        {
+                            "os": "linux",
+                            "runner": "ubuntu-latest",
+                            "java_home": "JAVA_HOME_17_x64"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "aarch64",
+                            "qemu": "arm64",
+                            "docker": "arm64v8"
+                        }
+                    ]
+                }
+            },
             "steps": [
                 {
                     "with": {

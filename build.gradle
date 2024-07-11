@@ -87,6 +87,7 @@ managedVersioning {
                         [os: 'linux', runner: 'ubuntu-latest', java_home: 'JAVA_HOME_17_x64'],
                         [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8']
                 ]
+                parameters.put('strategy', strategy)
                 name.set 'natives-test'
                 needs.add('build')
                 step {
