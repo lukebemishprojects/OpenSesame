@@ -89,6 +89,11 @@
                     "if": "${{ matrix.docker }}"
                 },
                 {
+                    "name": "Run",
+                    "run": "${{ matrix.java_home }}/bin/java @args.txt",
+                    "if": "${{ !matrix.qemu }}"
+                },
+                {
                     "with": {
                         "name": "natives-test-results",
                         "path": "results/TEST-*.xml"

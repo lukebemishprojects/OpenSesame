@@ -111,6 +111,11 @@ managedVersioning {
                     run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }} java @args.txt'
                 }
                 step {
+                    name.set 'Run'
+                    parameters.put('if', '${{ !matrix.qemu }}')
+                    run.set '${{ matrix.java_home }}/bin/java @args.txt'
+                }
+                step {
                     name.set 'Upload Results'
                     uses.set 'actions/upload-artifact@v4'
                     with.put 'name', 'natives-test-results'
