@@ -79,8 +79,18 @@ managedVersioning {
                 def matrix = [:]
                 strategy.matrix = matrix
                 matrix.os = ['linux', 'windows', 'macos']
-                matrix.arch = ['i386', 'x86_64', 'aarch64', 'arm']
-                matrix.exclude = [[os: 'macos', arch: 'i386'], [os: 'macos', arch: 'arm'], [os: 'windows', arch: 'arm']]
+                // We're giving up on testing on x32 systems (windows or linux) because it's too much of a hassle -- we'd probably need custom JDK builds at some point...
+                matrix.arch = ['x86_64', 'aarch64', 'arm']
+                matrix.exclude = [
+                        // No natives
+                        [os: 'macos', arch: 'i386'],
+                        [os: 'macos', arch: 'arm'],
+                        [os: 'windows', arch: 'arm'],
+
+                        // No way to test at present
+                        [os: 'windows', arch: 'aarch64'],
+                        [os: 'macos', arch: 'x86_64'],
+                ]
                 matrix.include = [
                         [os: 'macos', runner: 'macos-latest', java_home: 'JAVA_HOME_17_arm64'],
                         [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
@@ -88,7 +98,6 @@ managedVersioning {
 
                         [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8/amazoncorretto:17'],
                         [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker: 'arm32v7/eclipse-temurin:17'],
-                        [os: 'linux', arch: 'i386', qemu: 'i386', docker: 'i386/ibmjava:17'],
                 ]
                 parameters.put('strategy', strategy)
                 name.set 'natives-test'
@@ -96,6 +105,7 @@ managedVersioning {
                 runsOn.set('${{ matrix.runner }}')
                 step {
                     name.set 'Download Artifact'
+                    id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'name', 'natives-test-environment'
                 }
@@ -117,9 +127,29 @@ managedVersioning {
                 }
                 step {
                     name.set 'Upload Results'
+                    runsOnError.set true
+                    requiredSteps.add 'download'
                     uses.set 'actions/upload-artifact@v4'
-                    with.put 'name', 'natives-test-results'
+                    with.put 'name', 'junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}'
                     with.put 'path', 'results/TEST-*.xml'
+                }
+            }
+            action.job {
+                name.set 'aggregate-test-results'
+                runsOn.set 'ubuntu-latest'
+                needs.add('natives-test')
+                needs.add('build')
+                step {
+                    name.set 'Download Artifact'
+                    id.set 'download'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'pattern', 'junit-test-results-*'
+                }
+                step {
+                    name.set 'Upload Results'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'junit-test-results'
+                    with.put 'path', '**/TEST-*.xml'
                 }
             }
         }

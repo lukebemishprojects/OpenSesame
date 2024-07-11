@@ -14,7 +14,6 @@
                         "macos"
                     ],
                     "arch": [
-                        "i386",
                         "x86_64",
                         "aarch64",
                         "arm"
@@ -31,6 +30,14 @@
                         {
                             "os": "windows",
                             "arch": "arm"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64"
+                        },
+                        {
+                            "os": "macos",
+                            "arch": "x86_64"
                         }
                     ],
                     "include": [
@@ -60,12 +67,6 @@
                             "arch": "arm",
                             "qemu": "arm/v7",
                             "docker": "arm32v7/eclipse-temurin:17"
-                        },
-                        {
-                            "os": "linux",
-                            "arch": "i386",
-                            "qemu": "i386",
-                            "docker": "i386/ibmjava:17"
                         }
                     ]
                 }
@@ -76,7 +77,8 @@
                         "name": "natives-test-environment"
                     },
                     "name": "Download Artifact",
-                    "uses": "actions/download-artifact@v4"
+                    "uses": "actions/download-artifact@v4",
+                    "id": "download"
                 },
                 {
                     "name": "Setup QEMU",
@@ -95,8 +97,34 @@
                 },
                 {
                     "with": {
-                        "name": "natives-test-results",
+                        "name": "junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}",
                         "path": "results/TEST-*.xml"
+                    },
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.download.outcome == 'success'"
+                }
+            ]
+        },
+        "aggregate-test-results": {
+            "needs": [
+                "natives-test",
+                "build"
+            ],
+            "runs-on": "ubuntu-latest",
+            "steps": [
+                {
+                    "with": {
+                        "pattern": "junit-test-results-*"
+                    },
+                    "name": "Download Artifact",
+                    "uses": "actions/download-artifact@v4",
+                    "id": "download"
+                },
+                {
+                    "with": {
+                        "name": "junit-test-results",
+                        "path": "**/TEST-*.xml"
                     },
                     "name": "Upload Results",
                     "uses": "actions/upload-artifact@v4"
