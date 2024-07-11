@@ -20,6 +20,9 @@ configurations {
     testSource {
         canBeResolved = true
     }
+    testBundle {
+        canBeResolved = true
+    }
 }
 
 dependencies {
@@ -78,7 +81,7 @@ publishing {
         mavenJava(MavenPublication) {
             pom {
                 openSesameConvention.pomShared(it, 'Compile')
-                description = 'Compile-time abstractions for OpenSesame, a tool for typesafe access to normally inacessible members'
+                description = 'Compile-time abstractions for OpenSesame, a tool for typesafe access to normally inaccessible members'
             }
         }
     }

@@ -30,7 +30,7 @@ publishing {
 
             pom {
                 openSesameConvention.pomShared(it, 'Groovy Transform')
-                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for typesafe access to normally inacessible members'
+                description = 'Compile-time groovy ASTT used for OpenSesame, a tool for typesafe access to normally inaccessible members'
             }
         }
     }

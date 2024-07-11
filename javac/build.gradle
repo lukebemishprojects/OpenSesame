@@ -65,7 +65,7 @@ publishing {
         mavenJava(MavenPublication) {
             pom {
                 openSesameConvention.pomShared(it, 'Javac Compiler Plugin')
-                description = 'javac compiler plugin for OpenSesame, a tool for typesafe access to normally inacessible members'
+                description = 'javac compiler plugin for OpenSesame, a tool for typesafe access to normally inaccessible members'
             }
         }
     }

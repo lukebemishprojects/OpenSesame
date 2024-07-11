@@ -1,5 +1,5 @@
 plugins {
-    alias cLibs.plugins.managedversioning
+    alias libs.plugins.managedversioning
     id 'test-report-aggregation'
     id 'java-library'
     id 'opensesame.publishing'
@@ -26,10 +26,8 @@ managedVersioning {
                 gradlew 'Tag Release', 'tagRelease'
                 gradlew 'Build', 'build'
                 push()
-                dependencySubmission {
-                    projects(allprojects.findAll { it.name != 'testtargets' })
-                }
                 recordVersion 'Record Version', 'version'
+                dependencySubmission()
             }
             gradleJob {
                 name.set 'publishCentral'
@@ -55,6 +53,67 @@ managedVersioning {
             }
         }
 
+        def testOnBuild = { dev.lukebemish.managedversioning.actions.GradleJob job ->
+            job.gradlew 'Assemble', 'assemble', ':opensesame-natives:setupTestEnvironment'
+            job.upload('natives-test-environment', ['natives/build/testEnvironment/*']) {
+                requiredSteps.add 'assemble'
+                with.put('retention-days', '1')
+            }
+            job.gradlew 'Test', 'check', '--continue'
+            job.gradlew('Test Plugin', ['check', '--continue']) {
+                workingDirectory.set './testplugin'
+                runsOnError.set true
+                requiredSteps.add 'assemble'
+            }
+            job.upload('junit-test-results-gradle', ['**/build/test-results/*/TEST-*.xml']) {
+                runsOnError.set true
+                requiredSteps.add 'assemble'
+                with.put('retention-days', '1')
+            }
+        }
+
+        def nativeTest = { dev.lukebemish.managedversioning.actions.GitHubAction action ->
+            action.job {
+                def strategy = [:]
+                strategy['fail-fast'] = false
+                def matrix = [:]
+                strategy.matrix = matrix
+                matrix.os = ['linux', 'windows', 'macos']
+                matrix.arch = ['i386', 'x86_64', 'aarch64', 'arm']
+                matrix.exclude = [[os: 'macos', arch: 'i386'], [os: 'macos', arch: 'arm'], [os: 'windows', arch: 'arm']]
+                matrix.include = [
+                        [os: 'macos', runner: 'macos-latest', java_home: 'JAVA_HOME_17_arm64'],
+                        [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
+                        [os: 'linux', runner: 'ubuntu-latest', java_home: 'JAVA_HOME_17_x64'],
+                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8']
+                ]
+                name.set 'natives-test'
+                needs.add('build')
+                step {
+                    name.set 'Download Artifact'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'name', 'natives-test-environment'
+                }
+                step {
+                    name.set 'Setup QEMU'
+                    getIf().set '${{ matrix.qemu }}'
+                    uses.set 'docker/setup-qemu-action@v3'
+                    with.put 'platforms', '${{ matrix.qemu }}'
+                }
+                step {
+                    name.set 'Run with Docker'
+                    getIf().set '${{ matrix.docker }}'
+                    run.set 'docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args'
+                }
+                step {
+                    name.set 'Upload Results'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'natives-test-results'
+                    with.put 'path', 'results/TEST-*.xml'
+                }
+            }
+        }
+
         snapshot {
             prettyName.set 'Snapshot'
             workflowDispatch.set(true)
@@ -64,21 +123,11 @@ managedVersioning {
                 permissions.put 'packages', 'read'
                 secret('GITHUB_TOKEN')
                 name.set 'build'
-                gradlew 'Assemble', 'assemble'
-                gradlew 'Test', 'check', '--continue'
-                gradlew('Test Plugin', ['check', '--continue']) {
-                    workingDirectory.set './testplugin'
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
-                }
-                upload('junit-test-results', ['**/build/test-results/*/TEST-*.xml']) {
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
-                    with.put('retention-days', '1')
-                }
+                testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 mavenSnapshot('github')
             }
+            nativeTest.call(it)
         }
         build_pr {
             prettyName.set 'Build PR'
@@ -102,6 +151,7 @@ managedVersioning {
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
             }
+            nativeTest.call(it)
         }
         publish_pr {
             prettyName.set 'Publish PR'
@@ -132,24 +182,17 @@ managedVersioning {
                     with.put 'github-token', '${{ github.token }}'
                     with.put 'run-id', '${{ github.event.workflow_run.id }}'
                 }
-                step {
-                    name.set 'JUnit Test Report - Java 17'
-                    uses.set 'dorny/test-reporter@v1'
-                    with.put 'name', 'Test Results - Java 17'
-                    with.put 'path', '**/test-results/testOn17/**/TEST-*.xml'
-                    with.put 'reporter', 'java-junit'
-                    with.put 'fail-on-empty', 'true'
-                    with.put 'list-tests', 'failed'
-                    with.put 'list-suites', 'failed'
-                }
-                step {
-                    name.set 'JUnit Test Report - Java 21'
-                    uses.set 'dorny/test-reporter@v1'
-                    with.put 'name', 'Test Results - Java 21'
-                    with.put 'path', '**/test-results/testOn21/**/TEST-*.xml'
-                    with.put 'reporter', 'java-junit'
-                    with.put 'fail-on-empty', 'true'
-                    with.put 'list-tests', 'failed'
+                [17, 21, 22].each { int javaVersion ->
+                    step {
+                        name.set 'JUnit Test Report - Java '+javaVersion
+                        uses.set 'dorny/test-reporter@v1'
+                        with.put 'name', 'Test Results - Java '+javaVersion
+                        with.put 'path', '**/test-results/testOn'+javaVersion+'/**/TEST-*.xml'
+                        with.put 'reporter', 'java-junit'
+                        with.put 'fail-on-empty', 'true'
+                        with.put 'list-tests', 'failed'
+                        with.put 'list-suites', 'failed'
+                    }
                 }
                 step {
                     name.set 'JUnit Test Report - Misc'

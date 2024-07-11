@@ -1,0 +1,163 @@
+import javax.inject.Inject
+
+plugins {
+    id 'opensesame.conventions'
+}
+
+java.withSourcesJar()
+java.withJavadocJar()
+
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/lukebemishprojects/OpenSesame")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+        content {
+            includeModule 'dev.lukebemish', 'opensesamenative'
+        }
+    }
+}
+
+configurations {
+    natives
+}
+
+def targets = [
+        'linux': ['x86_64', 'aarch64', 'i386', 'arm'],
+        'windows': ['x86_64', 'aarch64', 'i386'],
+        'macos': ['x86_64', 'aarch64']
+]
+
+def targetfinder = [
+        'linux': 'libopensesamenative.so',
+        'windows': 'opensesamenative.dll',
+        'macos': 'libopensesamenative.dylib'
+]
+
+def nativesCommit = 'b3e4c585a38a748803484f0aae56f20c08f188d7'
+
+targets.each { os, archs ->
+    archs.each { arch ->
+        def finalName = targetfinder[os]
+        def extension = finalName.split(/\./)[1]
+        dependencies.add('natives', "dev.lukebemish:opensesamenative:$nativesCommit:$os-$arch@$extension")
+    }
+}
+
+processResources {
+    from(configurations.natives) {
+        into 'dev/lukebemish/opensesame/natives'
+        rename { String fileName ->
+            String[] parts = fileName.split(/[-.]/)
+            String os = parts[2]
+            String arch = parts[3]
+            return "$os/$arch/${targetfinder[os]}"
+        }
+    }
+}
+
+configurations {
+    runtimeElements {
+        outgoing.variants.clear()
+    }
+    apiElements {
+        outgoing.variants.clear()
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                openSesameConvention.pomShared(it, 'Core')
+                description = 'Native code for OpenSesame, a tool for typesafe access to normally inaccessible members'
+            }
+        }
+    }
+}
+
+sourceSets {
+    testnatives {}
+}
+
+configurations {
+    testBundle {
+        canBeResolved = true
+    }
+    testnativesImplementation.extendsFrom testBundle
+}
+
+dependencies {
+    testBundle libs.junit.api
+    testBundle libs.junit.engine
+    testBundle libs.junit.console
+    testBundle libs.junit.junit
+    testBundle project(':opensesame-natives')
+}
+
+tasks.register('testClassesJar', Jar) {
+    archiveClassifier.set('testclasses')
+    from(sourceSets.testnatives.output)
+}
+
+abstract class SetupJunitEnvironment extends DefaultTask {
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract ConfigurableFileCollection getClasspath()
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract ConfigurableFileCollection getTestClasses()
+
+    @Inject
+    SetupJunitEnvironment() {}
+
+    @Inject
+    abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void run() {
+        getOutputDirectory().get().asFile.deleteDir()
+        getOutputDirectory().get().asFile.mkdirs()
+        for (File file : classpath.files) {
+            fileSystemOperations.copy {
+                from file
+                into getOutputDirectory().get()
+            }
+        }
+        for (File file : testClasses.files) {
+            fileSystemOperations.copy {
+                from file
+                into getOutputDirectory().get()
+            }
+        }
+        def argfile = getOutputDirectory().get().file('args.txt')
+        def args = []
+        def filenames = classpath.files.collect { it.name }
+        filenames.addAll(testClasses.files.collect { it.name })
+        args.add('-cp')
+        args.add(filenames.join(':'))
+        args.add('org.junit.platform.console.ConsoleLauncher')
+        args.add('execute')
+        args.add('--fail-if-no-tests')
+        args.add('--scan-classpath')
+        testClasses.files.each {
+            args.add('--class-path=' + it.name)
+        }
+        args.add('--reports-dir=results')
+        argfile.getAsFile().text = args.join(' ')
+    }
+}
+
+tasks.register('setupTestEnvironment', SetupJunitEnvironment) {
+    dependsOn tasks.testClassesJar
+    outputDirectory.set(layout.buildDirectory.dir('testEnvironment'))
+    classpath.from configurations.testBundle
+    testClasses.from tasks.testClassesJar.archiveFile
+}
+

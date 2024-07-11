@@ -1,5 +1,40 @@
 {
     "jobs": {
+        "natives-test": {
+            "needs": [
+                "build"
+            ],
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "with": {
+                        "name": "natives-test-environment"
+                    },
+                    "name": "Download Artifact",
+                    "uses": "actions/download-artifact@v4"
+                },
+                {
+                    "with": {
+                        "platforms": "${{ matrix.qemu }}"
+                    },
+                    "name": "Setup QEMU",
+                    "uses": "docker/setup-qemu-action@v3"
+                },
+                {
+                    "name": "Run with Docker",
+                    "run": "docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args"
+                },
+                {
+                    "with": {
+                        "name": "natives-test-results",
+                        "path": "results/TEST-*.xml"
+                    },
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4"
+                }
+            ],
+            "if": "${{ matrix.docker }}"
+        },
         "build": {
             "runs-on": "ubuntu-22.04",
             "permissions": {
@@ -41,7 +76,7 @@
                 },
                 {
                     "name": "Assemble",
-                    "run": "./gradlew assemble",
+                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
                     "id": "assemble",
                     "env": {
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
@@ -52,6 +87,15 @@
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
                     }
+                },
+                {
+                    "with": {
+                        "name": "natives-test-environment",
+                        "path": "natives/build/testEnvironment/*",
+                        "retention-days": "1"
+                    },
+                    "name": "Upload natives-test-environment",
+                    "uses": "actions/upload-artifact@v4"
                 },
                 {
                     "name": "Test",
@@ -85,11 +129,11 @@
                 },
                 {
                     "with": {
-                        "name": "junit-test-results",
+                        "name": "junit-test-results-gradle",
                         "path": "**/build/test-results/*/TEST-*.xml",
                         "retention-days": "1"
                     },
-                    "name": "Upload junit-test-results",
+                    "name": "Upload junit-test-results-gradle",
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
                 },

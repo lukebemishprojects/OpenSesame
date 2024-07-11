@@ -47,7 +47,7 @@ gradlePlugin {
             id = 'dev.lukebemish.opensesame.loom'
             implementationClass = 'dev.lukebemish.opensesame.plugin.loom.OpenSesamePluginLoom'
             displayName = 'OpenSesame Loom - Gradle Plugin'
-            description = 'Gradle plugin adding fabric-loom support to OpenSesame, a tool for typesafe access to normally inacessible members'
+            description = 'Gradle plugin adding fabric-loom support to OpenSesame, a tool for typesafe access to normally inaccessible members'
             tags.addAll(['java', 'mapping'])
         }
     }

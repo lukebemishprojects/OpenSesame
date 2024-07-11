@@ -61,7 +61,7 @@ publishing {
         mavenJava(MavenPublication) {
             pom {
                 openSesameConvention.pomShared(it, 'Fabric')
-                description = 'Fabric compatibility for OpenSesame, a tool for typesafe access to normally inacessible members'
+                description = 'Fabric compatibility for OpenSesame, a tool for typesafe access to normally inaccessible members'
             }
         }
     }

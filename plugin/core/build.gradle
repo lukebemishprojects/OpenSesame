@@ -38,7 +38,7 @@ gradlePlugin {
             id = 'dev.lukebemish.opensesame'
             implementationClass = 'dev.lukebemish.opensesame.plugin.OpenSesamePlugin'
             displayName = 'OpenSesame - Gradle Plugin'
-            description = 'Gradle plugin for OpenSesame, a tool for typesafe access to normally inacessible members'
+            description = 'Gradle plugin for OpenSesame, a tool for typesafe access to normally inaccessible members'
             tags.addAll(['java', 'mapping'])
         }
     }

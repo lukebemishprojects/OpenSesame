@@ -1,5 +1,40 @@
 {
     "jobs": {
+        "natives-test": {
+            "needs": [
+                "build"
+            ],
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "with": {
+                        "name": "natives-test-environment"
+                    },
+                    "name": "Download Artifact",
+                    "uses": "actions/download-artifact@v4"
+                },
+                {
+                    "with": {
+                        "platforms": "${{ matrix.qemu }}"
+                    },
+                    "name": "Setup QEMU",
+                    "uses": "docker/setup-qemu-action@v3"
+                },
+                {
+                    "name": "Run with Docker",
+                    "run": "docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args"
+                },
+                {
+                    "with": {
+                        "name": "natives-test-results",
+                        "path": "results/TEST-*.xml"
+                    },
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4"
+                }
+            ],
+            "if": "${{ matrix.docker }}"
+        },
         "build": {
             "runs-on": "ubuntu-22.04",
             "permissions": {

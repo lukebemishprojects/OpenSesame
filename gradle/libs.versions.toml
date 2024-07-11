@@ -1,6 +1,8 @@
 [versions]
 
-junit = "5.8.1"
+junitjupiter = "5.8.1"
+junitplatform = "1.10.3"
+junit = "4.13.2"
 jetbrains_annotations = "24.0.1"
 autoservice = "1.0.1"
 
@@ -14,10 +16,14 @@ tinyremapper = "0.10.0"
 
 mixin = "0.8.5"
 
+managedversioning = "1.2.21"
+
 [libraries]
 
-junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
-junit_engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitjupiter" }
+junit_engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitjupiter" }
+junit_console = { module = "org.junit.platform:junit-platform-console", version.ref = "junitplatform" }
+junit_junit = { module = "junit:junit", version.ref = "junit" }
 
 jetbrains_annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains_annotations" }
 autoservice = { module = "com.google.auto.service:auto-service", version.ref = "autoservice" }
@@ -34,3 +40,7 @@ fabric_loader_junit = { module = "net.fabricmc:fabric-loader-junit", version.ref
 fabric_tinyremapper = { module = "net.fabricmc:tiny-remapper", version.ref = "tinyremapper" }
 
 mixin = { module = "org.spongepowered:mixin", version.ref = "mixin" }
+
+[plugins]
+
+managedversioning = { id = "dev.lukebemish.managedversioning", version.ref = "managedversioning" }
