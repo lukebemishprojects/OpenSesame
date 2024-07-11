@@ -73,7 +73,7 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm -t ${{ matrix.docker }}/amazoncorretto:17 java @args",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }}/amazoncorretto:17 java @args",
                     "if": "${{ matrix.docker }}"
                 },
                 {

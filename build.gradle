@@ -105,7 +105,7 @@ managedVersioning {
                 step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm -t ${{ matrix.docker }}/amazoncorretto:17 java @args'
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }}/amazoncorretto:17 java @args'
                 }
                 step {
                     name.set 'Upload Results'
