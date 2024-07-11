@@ -92,9 +92,9 @@ managedVersioning {
                         [os: 'macos', arch: 'x86_64'],
                 ]
                 matrix.include = [
-                        [os: 'macos', runner: 'macos-latest', java_home: 'JAVA_HOME_17_arm64'],
+                        [os: 'macos', runner: 'macos-latest', java_home: '$JAVA_HOME_17_arm64'],
                         [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
-                        [os: 'linux', runner: 'ubuntu-latest', java_home: 'JAVA_HOME_17_x64'],
+                        [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_x64'],
 
                         [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8/amazoncorretto:17'],
                         [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker: 'arm32v7/eclipse-temurin:17'],
@@ -123,6 +123,7 @@ managedVersioning {
                 step {
                     name.set 'Run'
                     parameters.put('if', '${{ !matrix.qemu }}')
+                    parameters.put('shell', 'bash')
                     run.set '${{ matrix.java_home }}/bin/java @args.txt'
                 }
                 step {
@@ -139,6 +140,7 @@ managedVersioning {
                 runsOn.set 'ubuntu-latest'
                 needs.add('natives-test')
                 needs.add('build')
+                getIf().set('always()')
                 step {
                     name.set 'Download Artifact'
                     id.set 'download'
