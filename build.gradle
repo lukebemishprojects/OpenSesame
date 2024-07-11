@@ -96,8 +96,8 @@ managedVersioning {
                         [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
                         [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_x64'],
 
-                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8/amazoncorretto:17'],
-                        [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker: 'arm32v7/eclipse-temurin:17'],
+                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'eclipse-temurin:17-alpine'],
+                        [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker: 'eclipse-temurin:17-alpine'],
                 ]
                 parameters.put('strategy', strategy)
                 name.set 'natives-test'
@@ -229,7 +229,7 @@ managedVersioning {
                     name.set 'JUnit Test Report - Misc'
                     uses.set 'dorny/test-reporter@v1'
                     with.put 'name', 'Test Results - Misc'
-                    with.put 'path', '**/test-results/test/**/TEST-*.xml'
+                    with.put 'path', '**/test-results/test/**/TEST-*.xml\njunit-test-results-native-*/**/TEST-*.xml'
                     with.put 'reporter', 'java-junit'
                     with.put 'fail-on-empty', 'true'
                     with.put 'list-tests', 'failed'
