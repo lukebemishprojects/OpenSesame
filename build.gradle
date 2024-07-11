@@ -138,18 +138,7 @@ managedVersioning {
                 name.set 'build'
                 permissions.put 'packages', 'read'
                 secret('GITHUB_TOKEN')
-                gradlew 'Assemble', 'assemble'
-                gradlew 'Test', 'check', '--continue'
-                gradlew('Test Plugin', ['check', '--continue']) {
-                    workingDirectory.set './testplugin'
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
-                }
-                upload('junit-test-results', ['**/build/test-results/*/TEST-*.xml']) {
-                    runsOnError.set true
-                    requiredSteps.add 'assemble'
-                    with.put('retention-days', '1')
-                }
+                testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
             }

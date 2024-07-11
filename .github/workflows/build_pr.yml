@@ -130,12 +130,21 @@
                 },
                 {
                     "name": "Assemble",
-                    "run": "./gradlew assemble",
+                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
                     "id": "assemble",
                     "env": {
                         "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "PR_NUMBER": "${{ github.event.pull_request.number }}"
                     }
+                },
+                {
+                    "with": {
+                        "name": "natives-test-environment",
+                        "path": "natives/build/testEnvironment/*",
+                        "retention-days": "1"
+                    },
+                    "name": "Upload natives-test-environment",
+                    "uses": "actions/upload-artifact@v4"
                 },
                 {
                     "name": "Test",
@@ -159,11 +168,11 @@
                 },
                 {
                     "with": {
-                        "name": "junit-test-results",
+                        "name": "junit-test-results-gradle",
                         "path": "**/build/test-results/*/TEST-*.xml",
                         "retention-days": "1"
                     },
-                    "name": "Upload junit-test-results",
+                    "name": "Upload junit-test-results-gradle",
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
                 },
