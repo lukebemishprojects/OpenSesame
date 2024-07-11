@@ -85,7 +85,10 @@ managedVersioning {
                         [os: 'macos', runner: 'macos-latest', java_home: 'JAVA_HOME_17_arm64'],
                         [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
                         [os: 'linux', runner: 'ubuntu-latest', java_home: 'JAVA_HOME_17_x64'],
-                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8']
+
+                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker: 'arm64v8/amazoncorretto:17'],
+                        [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker: 'arm32v7/eclipse-temurin:17'],
+                        [os: 'linux', arch: 'i386', qemu: 'i386', docker: 'i386/ibmjava:17'],
                 ]
                 parameters.put('strategy', strategy)
                 name.set 'natives-test'
@@ -105,7 +108,7 @@ managedVersioning {
                 step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }}/amazoncorretto:17 java @args'
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }} java @args.txt'
                 }
                 step {
                     name.set 'Upload Results'

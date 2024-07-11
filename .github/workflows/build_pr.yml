@@ -53,7 +53,19 @@
                             "os": "linux",
                             "arch": "aarch64",
                             "qemu": "arm64",
-                            "docker": "arm64v8"
+                            "docker": "arm64v8/amazoncorretto:17"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "arm",
+                            "qemu": "arm/v7",
+                            "docker": "arm32v7/eclipse-temurin:17"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "i386",
+                            "qemu": "i386",
+                            "docker": "i386/ibmjava:17"
                         }
                     ]
                 }
@@ -73,7 +85,7 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }}/amazoncorretto:17 java @args",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }} java @args.txt",
                     "if": "${{ matrix.docker }}"
                 },
                 {
