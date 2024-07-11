@@ -90,6 +90,7 @@ managedVersioning {
                 parameters.put('strategy', strategy)
                 name.set 'natives-test'
                 needs.add('build')
+                runsOn.set('${{ matrix.runner }}')
                 step {
                     name.set 'Download Artifact'
                     uses.set 'actions/download-artifact@v4'
@@ -97,13 +98,13 @@ managedVersioning {
                 }
                 step {
                     name.set 'Setup QEMU'
-                    getIf().set '${{ matrix.qemu }}'
+                    parameters.put('if', '${{ matrix.qemu }}')
                     uses.set 'docker/setup-qemu-action@v3'
                     with.put 'platforms', '${{ matrix.qemu }}'
                 }
                 step {
                     name.set 'Run with Docker'
-                    getIf().set '${{ matrix.docker }}'
+                    parameters.put('if', '${{ matrix.docker }}')
                     run.set 'docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args'
                 }
                 step {

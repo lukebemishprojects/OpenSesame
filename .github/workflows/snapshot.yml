@@ -4,7 +4,7 @@
             "needs": [
                 "build"
             ],
-            "runs-on": "ubuntu-22.04",
+            "runs-on": "${{ matrix.runner }}",
             "strategy": {
                 "fail-fast": false,
                 "matrix": {
@@ -71,11 +71,13 @@
                         "platforms": "${{ matrix.qemu }}"
                     },
                     "name": "Setup QEMU",
-                    "uses": "docker/setup-qemu-action@v3"
+                    "uses": "docker/setup-qemu-action@v3",
+                    "if": "${{ matrix.qemu }}"
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args"
+                    "run": "docker run --volume ./:/home/test --rm -t ${{ matrix.docker }}/amazoncorretto:17 cd /home/test && java @args",
+                    "if": "${{ matrix.docker }}"
                 },
                 {
                     "with": {
@@ -85,8 +87,7 @@
                     "name": "Upload Results",
                     "uses": "actions/upload-artifact@v4"
                 }
-            ],
-            "if": "${{ matrix.docker }}"
+            ]
         },
         "build": {
             "runs-on": "ubuntu-22.04",
