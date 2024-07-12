@@ -36,7 +36,7 @@ def targetfinder = [
         'macos': 'libopensesamenative.dylib'
 ]
 
-def nativesCommit = 'fa6a8669c441605d16993acd3c7ec067efa5a579'
+def nativesCommit = 'eb51082fb156c389209d8c9148437444f6a8d9c0'
 
 targets.each { os, archs ->
     archs.each { arch ->

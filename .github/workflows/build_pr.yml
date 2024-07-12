@@ -60,7 +60,7 @@
                             "os": "linux",
                             "arch": "x86_64",
                             "docker_arch": "amd64",
-                            "docker": "eclipse-temurin:17"
+                            "docker": "eclipse-temurin:17-alpine"
                         },
                         {
                             "os": "linux",
