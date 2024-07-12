@@ -138,8 +138,8 @@ abstract class SetupJunitEnvironment extends DefaultTask {
         }
         def argfile = getOutputDirectory().get().file('args.txt')
         def args = []
-        def filenames = classpath.files.collect { it.name }
-        filenames.addAll(testClasses.files.collect { it.name })
+        def filenames = classpath.files.collect { './'+it.name }
+        filenames.addAll(testClasses.files.collect { './'+it.name })
         args.add('-cp')
         args.add(filenames.join(':'))
         args.add('org.junit.platform.console.ConsoleLauncher')
@@ -147,7 +147,7 @@ abstract class SetupJunitEnvironment extends DefaultTask {
         args.add('--fail-if-no-tests')
         args.add('--scan-classpath')
         testClasses.files.each {
-            args.add('--class-path=' + it.name)
+            args.add('--class-path=' + './'+it.name)
         }
         args.add('--reports-dir=results')
         argfile.getAsFile().text = args.join(' ')
