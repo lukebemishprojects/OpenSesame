@@ -35,16 +35,19 @@ jobs:
             compiler_package: g++-i686-linux-gnu
             c_compiler: i686-linux-gnu-gcc
             cpp_compiler: i686-linux-gnu-g++
+            cmake_args: -DCMAKE_C_FLAGS="-march=i686"
           - os: linux
             arch: aarch64
             compiler_package: g++-aarch64-linux-gnu
             c_compiler: aarch64-linux-gnu-gcc
             cpp_compiler: aarch64-linux-gnu-g++
+            cmake_args: -DCMAKE_C_FLAGS="-march=aarch64"
           - os: linux
             arch: arm
             compiler_package: g++-arm-linux-gnueabi
             c_compiler: arm-linux-gnueabi-gcc
             cpp_compiler: arm-linux-gnueabi-g++
+            cmake_args: -DCMAKE_C_FLAGS="-march=armv7-a"
           - os: macos
             arch: aarch64
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
