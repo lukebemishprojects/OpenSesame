@@ -119,7 +119,7 @@ managedVersioning {
                 step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --privileged --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}s:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt'
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}s:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Run'
