@@ -136,18 +136,22 @@ abstract class SetupJunitEnvironment extends DefaultTask {
                 into getOutputDirectory().get()
             }
         }
-        def argfile = getOutputDirectory().get().file('args.txt')
+        def unixargfile = getOutputDirectory().get().file('args-linux.txt')
+        def macosargfile= getOutputDirectory().get().file('args-macos.txt')
+        def winargfile = getOutputDirectory().get().file('args-windows.txt')
         def args = []
-        def filenames = classpath.files.collect { './'+it.name }
-        filenames.addAll(testClasses.files.collect { './'+it.name })
+        def filenames = classpath.files.collect { it.name }
+        filenames.addAll(testClasses.files.collect { it.name })
         args.add('-cp')
         args.add(filenames.join(':'))
         args.add('org.junit.platform.console.ConsoleLauncher')
         args.add('execute')
         args.add('--fail-if-no-tests')
-        args.add('--select-package=dev.lukebemish.opensesame.test.natives)
+        args.add('--select-package=dev.lukebemish.opensesame.test.natives')
         args.add('--reports-dir=results')
-        argfile.getAsFile().text = args.join(' ')
+        unixargfile.getAsFile().text = args.join(' ')
+        macosargfile.getAsFile().text = args.join(' ')
+        winargfile.getAsFile().text = args.join(' ').replace(':', ';')
     }
 }
 

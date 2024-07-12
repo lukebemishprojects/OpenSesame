@@ -118,13 +118,13 @@ managedVersioning {
                 step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }} java @args.txt'
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" --rm --platform linux/${{ matrix.qemu }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Run'
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
-                    run.set '${{ matrix.java_home }}/bin/java @args.txt'
+                    run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Upload Results'
