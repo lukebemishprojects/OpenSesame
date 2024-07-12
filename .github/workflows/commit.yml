@@ -41,7 +41,7 @@ jobs:
             compiler_package: g++-aarch64-linux-gnu
             c_compiler: aarch64-linux-gnu-gcc
             cpp_compiler: aarch64-linux-gnu-g++
-            cmake_args: -DCMAKE_C_FLAGS="-march=aarch64"
+            cmake_args: -DCMAKE_C_FLAGS="-march=armv8-a"
           - os: linux
             arch: arm
             compiler_package: g++-arm-linux-gnueabi
