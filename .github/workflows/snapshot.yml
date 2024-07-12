@@ -95,7 +95,7 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt",
+                    "run": "docker run --privileged --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}s:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt",
                     "if": "${{ matrix.docker }}"
                 },
                 {
