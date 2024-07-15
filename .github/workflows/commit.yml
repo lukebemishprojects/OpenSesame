@@ -15,15 +15,12 @@ jobs:
           - os: linux
             runner: ubuntu-latest
             libname: libopensesamenative.so
-            java_home: "$JAVA_HOME_17_X64"
           - os: macos
             runner: macos-latest
             libname: libopensesamenative.dylib
-            java_home: "$JAVA_HOME_17_arm64"
           - os: windows
-            runner: windows-latest
+            runner: ubuntu-latest
             libname: opensesamenative.dll
-            java_home: "$JAVA_HOME_17_X64"
           - os: linux
             arch: i386
             compiler_package: g++-i686-linux-gnu
@@ -33,6 +30,16 @@ jobs:
           - os: linux
             arch: arm
             compiler_package: g++-arm-linux-gnueabi
+          - os: windows
+            arch: x86_64
+            compiler_package: g++-mingw-w64-x86-64
+          - os: windows
+            arch: i386
+            compiler_package: g++-mingw-w64-i686
+          - os: windows
+            arch: aarch64
+            msys: CLANGARM64
+            runner: windows-latest
         exclude:
           - os: macos
             arch: i386
@@ -46,25 +53,23 @@ jobs:
       - name: Setup GCC
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
+      - name: Setup MSYS2
+        if: ${{ matrix.msys }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msys }}
       - name: Configure CMake
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DJAVA_HOME=${{ matrix.java_home }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
-      - if: ${{ matrix.os != 'windows' }}
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: cmakebuild/${{ matrix.libname }}
-      - if: ${{ matrix.os == 'windows' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
   publish:
     permissions:
       contents: read

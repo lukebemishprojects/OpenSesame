@@ -1,4 +1,5 @@
 set(CMAKE_SYSTEM_NAME  Windows)
-set(CMAKE_C_COMPILER   cl)
-set(CMAKE_CXX_COMPILER cl)
-set(CMAKE_GENERATOR_PLATFORM "Win32")
+set(CMAKE_C_COMPILER   mingw-w64-i686-gcc)
+set(CMAKE_CXX_COMPILER mingw-w64-i686-g++)
+set(CMAKE_C_FLAGS      "-m32 -march=i386")
+set(CMAKE_CXX_FLAGS    "-m32 -march=i386")

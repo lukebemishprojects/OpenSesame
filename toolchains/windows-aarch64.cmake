@@ -1,4 +1,5 @@
 set(CMAKE_SYSTEM_NAME  Windows)
-set(CMAKE_C_COMPILER   cl)
-set(CMAKE_CXX_COMPILER cl)
-set(CMAKE_GENERATOR_PLATFORM "ARM64")
+set(CMAKE_C_COMPILER   clang)
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_C_FLAGS      "-march=armv8-a")
+set(CMAKE_CXX_FLAGS    "-march=armv8-a")
