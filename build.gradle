@@ -108,6 +108,7 @@ managedVersioning {
                     id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'name', 'natives-test-environment'
+                    with.put 'path', '$GITHUB_WORKSPACE/testEnvironment'
                 }
                 step {
                     name.set 'Setup QEMU'
@@ -118,12 +119,13 @@ managedVersioning {
                 step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt'
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}/testEnvironment" -v "${GITHUB_WORKSPACE}/testEnvironment:${GITHUB_WORKSPACE}/testEnvironment:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Run'
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
+                    workingDirectory.set 'testEnvironment'
                     run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
                 }
                 step {

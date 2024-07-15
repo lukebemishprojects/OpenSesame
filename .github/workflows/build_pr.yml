@@ -76,7 +76,8 @@
             "steps": [
                 {
                     "with": {
-                        "name": "natives-test-environment"
+                        "name": "natives-test-environment",
+                        "path": "$GITHUB_WORKSPACE/testEnvironment"
                     },
                     "name": "Download Artifact",
                     "uses": "actions/download-artifact@v4",
@@ -89,13 +90,14 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}/testEnvironment\" -v \"${GITHUB_WORKSPACE}/testEnvironment:${GITHUB_WORKSPACE}/testEnvironment:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} java @args-${{ matrix.os }}.txt",
                     "if": "${{ matrix.docker }}"
                 },
                 {
                     "shell": "bash",
                     "name": "Run",
                     "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
+                    "working-directory": "testEnvironment",
                     "if": "${{ !matrix.qemu }}"
                 },
                 {
