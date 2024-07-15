@@ -89,7 +89,7 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \"mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?;cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return\"",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \"mkdir ../working; cp -r ./ ../working/; cd ../working; for i in {1..1} ; do (java @args-${{ matrix.os }}.txt) ; done ; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return\"",
                     "if": "${{ matrix.docker }}"
                 },
                 {
