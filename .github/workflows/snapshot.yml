@@ -58,12 +58,6 @@
                         },
                         {
                             "os": "linux",
-                            "arch": "x86_64",
-                            "docker_arch": "amd64",
-                            "docker": "eclipse-temurin:17-alpine"
-                        },
-                        {
-                            "os": "linux",
                             "arch": "aarch64",
                             "qemu": "arm64",
                             "docker_arch": "arm64",

@@ -147,7 +147,7 @@ abstract class SetupJunitEnvironment extends DefaultTask {
         args.add('org.junit.platform.console.ConsoleLauncher')
         args.add('execute')
         args.add('--fail-if-no-tests')
-        args.add('--select-package=dev.lukebemish.opensesame.test.natives')
+        args.add('--scan-classpath='+testClasses.files.collect { it.name }.join(':'))
         args.add('--reports-dir=results')
         unixargfile.getAsFile().text = args.join(' ')
         macosargfile.getAsFile().text = args.join(' ')
