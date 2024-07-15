@@ -97,11 +97,6 @@ dependencies {
     testBundle project(':opensesame-natives')
 }
 
-tasks.register('testClassesJar', Jar) {
-    archiveClassifier.set('testclasses')
-    from(sourceSets.testnatives.output)
-}
-
 abstract class SetupJunitEnvironment extends DefaultTask {
     @OutputDirectory
     abstract DirectoryProperty getOutputDirectory()
@@ -111,7 +106,7 @@ abstract class SetupJunitEnvironment extends DefaultTask {
     abstract ConfigurableFileCollection getClasspath()
 
     @InputFiles
-    @PathSensitive(PathSensitivity.NAME_ONLY)
+    @PathSensitive(PathSensitivity.RELATIVE)
     abstract ConfigurableFileCollection getTestClasses()
 
     @Inject
@@ -124,30 +119,26 @@ abstract class SetupJunitEnvironment extends DefaultTask {
     void run() {
         getOutputDirectory().get().asFile.deleteDir()
         getOutputDirectory().get().asFile.mkdirs()
-        for (File file : classpath.files) {
-            fileSystemOperations.copy {
-                from file
-                into getOutputDirectory().get()
-            }
+        fileSystemOperations.copy {
+            from classpath
+            into getOutputDirectory().get()
         }
-        for (File file : testClasses.files) {
-            fileSystemOperations.copy {
-                from file
-                into getOutputDirectory().get()
-            }
+        fileSystemOperations.copy {
+            from testClasses
+            into getOutputDirectory().get().dir('testclasses')
         }
         def unixargfile = getOutputDirectory().get().file('args-linux.txt')
         def macosargfile= getOutputDirectory().get().file('args-macos.txt')
         def winargfile = getOutputDirectory().get().file('args-windows.txt')
         def args = []
         def filenames = classpath.files.collect { it.name }
-        filenames.addAll(testClasses.files.collect { it.name })
         args.add('-cp')
         args.add(filenames.join(':'))
         args.add('org.junit.platform.console.ConsoleLauncher')
         args.add('execute')
         args.add('--fail-if-no-tests')
-        args.add('--scan-classpath='+testClasses.files.collect { it.name }.join(':'))
+        args.add('--class-path=testclasses')
+        args.add('--scan-class-path')
         args.add('--reports-dir=results')
         unixargfile.getAsFile().text = args.join(' ')
         macosargfile.getAsFile().text = args.join(' ')
@@ -156,9 +147,9 @@ abstract class SetupJunitEnvironment extends DefaultTask {
 }
 
 tasks.register('setupTestEnvironment', SetupJunitEnvironment) {
-    dependsOn tasks.testClassesJar
+    dependsOn tasks.testnativesClasses
     outputDirectory.set(layout.buildDirectory.dir('testEnvironment'))
     classpath.from configurations.testBundle
-    testClasses.from tasks.testClassesJar.archiveFile
+    testClasses.from sourceSets.testnatives.output.classesDirs
 }
 
