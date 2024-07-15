@@ -1,5 +1,5 @@
 set(CMAKE_SYSTEM_NAME  Windows)
-set(CMAKE_C_COMPILER   mingw-w64-x86-64-gcc)
-set(CMAKE_CXX_COMPILER mingw-w64-x86-64-g++)
+set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc-win32)
+set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++-win32)
 set(CMAKE_C_FLAGS      "-m64")
 set(CMAKE_CXX_FLAGS    "-m64")
