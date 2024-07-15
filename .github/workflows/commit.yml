@@ -55,16 +55,11 @@ jobs:
         run: sudo apt install -y ${{ matrix.compiler_package }}
       - name: Setup MSYS2
         if: ${{ matrix.msys }}
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msys }}
-          install: >-
-            git
-            make
-          pacboy: >-
-            toolchain:p
-            cmake:p
-            ninja:p
+        shell: msys2bash.cmd
+        run: |
+          C:\msys64\clangarm64.exe
+          pacman -Suy
+          pacman -S mingw-w64-clang-aarch64-clang
       - name: Configure CMake
         if: ${{ !matrix.msys }}
         shell: bash
@@ -75,7 +70,7 @@ jobs:
           -S ${{ github.workspace }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
-        shell: msys2 {0}
+        shell: msys2bash.cmd
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
