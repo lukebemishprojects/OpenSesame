@@ -94,7 +94,7 @@ managedVersioning {
                 matrix.include = [
                         [os: 'macos', runner: 'macos-latest', java_home: '$JAVA_HOME_17_arm64'],
                         [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
-                        [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_x64'],
+                        [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_X64'],
 
                         [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:17'],
                         [os: 'linux', arch: 'arm', qemu: 'arm/v7', docker_arch: 'arm/v7', docker: 'arm32v7/eclipse-temurin:17'],
@@ -126,7 +126,7 @@ managedVersioning {
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
                     workingDirectory.set 'testEnvironment'
-                    run.set 'JAVA_HOME=${{ matrix.java_home }} ${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
+                    run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Upload Results'
