@@ -13,56 +13,26 @@ jobs:
         build_type: [Release]
         include:
           - os: linux
-            c_compiler: gcc
-            cpp_compiler: g++
             runner: ubuntu-latest
             libname: libopensesamenative.so
             java_home: "$JAVA_HOME_17_X64"
           - os: macos
-            c_compiler: clang
-            cpp_compiler: clang++
             runner: macos-latest
             libname: libopensesamenative.dylib
             java_home: "$JAVA_HOME_17_arm64"
           - os: windows
-            c_compiler: cl
-            cpp_compiler: cl
             runner: windows-latest
             libname: opensesamenative.dll
             java_home: "$JAVA_HOME_17_X64"
           - os: linux
             arch: i386
             compiler_package: g++-i686-linux-gnu
-            c_compiler: i686-linux-gnu-gcc
-            cpp_compiler: i686-linux-gnu-g++
-            cmake_args: -DCMAKE_C_FLAGS="-march=i686" -DCMAKE_CXX_FLAGS="-march=i686"
           - os: linux
             arch: aarch64
             compiler_package: g++-aarch64-linux-gnu
-            c_compiler: aarch64-linux-gnu-gcc
-            cpp_compiler: aarch64-linux-gnu-g++
-            cmake_args: -DCMAKE_C_FLAGS="-march=armv8-a" -DCMAKE_CXX_FLAGS="-march=armv8-a"
           - os: linux
             arch: arm
             compiler_package: g++-arm-linux-gnueabi
-            c_compiler: arm-linux-gnueabi-gcc
-            cpp_compiler: arm-linux-gnueabi-g++
-            cmake_args: -DCMAKE_C_FLAGS="-march=armv7-a" -DCMAKE_CXX_FLAGS="-march=armv7-a"
-          - os: macos
-            arch: aarch64
-            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
-          - os: macos
-            arch: x86_64
-            cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
-          - os: windows
-            arch: x86_64
-            cmake_args: -DCMAKE_GENERATOR_PLATFORM=x64
-          - os: windows
-            arch: i386
-            cmake_args: -DCMAKE_GENERATOR_PLATFORM=Win32
-          - os: windows
-            arch: aarch64
-            cmake_args: -DCMAKE_GENERATOR_PLATFORM=ARM64
         exclude:
           - os: macos
             arch: i386
@@ -79,11 +49,9 @@ jobs:
       - name: Configure CMake
         run: >
           cmake -B cmakebuild
-          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_TOOLCHAIN_FILE=toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DJAVA_HOME=${{ matrix.java_home }}
-          ${{ matrix.cmake_args }}
           -S ${{ github.workspace }}
       - name: Build
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}

@@ -1,0 +1,5 @@
+set(CMAKE_SYSTEM_NAME  Linux)
+set(CMAKE_C_COMPILER   arm-linux-gnueabi-gcc)
+set(CMAKE_CXX_COMPILER arm-linux-gnueabi-g++)
+set(CMAKE_C_FLAGS      "-m32 -march=armv7-a")
+set(CMAKE_CXX_FLAGS    "-m32 -march=armv7-a")
