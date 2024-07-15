@@ -58,6 +58,13 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msys }}
+          install: >-
+            git
+            make
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
       - name: Configure CMake
         if: ${{ !matrix.msys }}
         shell: bash
