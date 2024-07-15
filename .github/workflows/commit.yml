@@ -38,7 +38,7 @@ jobs:
             compiler_package: g++-mingw-w64-i686
           - os: windows
             arch: aarch64
-            msys: CLANGARM64
+            msys: clangarm64
             runner: windows-latest
         exclude:
           - os: macos
@@ -54,11 +54,9 @@ jobs:
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
       - name: Setup MSYS2
-        if: ${{ matrix.msys }}
-        shell: msys2bash.cmd
+        if: ${{ matrix.msys == "clangarm64" }}
+        shell: C:\msys64\clangarm64.exe
         run: |
-          C:\msys64\clangarm64.exe
-          pacman -Suy
           pacman -S mingw-w64-clang-aarch64-clang
       - name: Configure CMake
         if: ${{ !matrix.msys }}
