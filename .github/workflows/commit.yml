@@ -17,7 +17,7 @@ jobs:
             cpp_compiler: g++
             runner: ubuntu-latest
             libname: libopensesamenative.so
-            java_home: "$JAVA_HOME_17_x64"
+            java_home: "$JAVA_HOME_17_X64"
           - os: macos
             c_compiler: clang
             cpp_compiler: clang++
