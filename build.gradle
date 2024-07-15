@@ -120,8 +120,8 @@ managedVersioning {
                     parameters.put('if', '${{ matrix.docker }}')
                     run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c "' +
                             'mkdir ../working; cp -r ./ ../working/; cd ../working; ' +
-                            'java @args-${{ matrix.os }}.txt; ' +
-                            'cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}"'
+                            'java @args-${{ matrix.os }}.txt; return=$?;' +
+                            'cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return"'
                 }
                 step {
                     name.set 'Run'
