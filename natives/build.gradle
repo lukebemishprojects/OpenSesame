@@ -138,13 +138,7 @@ abstract class SetupJunitEnvironment extends DefaultTask {
         args.add('execute')
         args.add('--fail-if-no-tests')
         args.add('--class-path=testclasses')
-        testClasses.files.each { outer ->
-            outer.eachFileRecurse(groovy.io.FileType.FILES) { classFile ->
-                def className = outer.relativePath(classFile)
-                className = className.substring(0, className.lastIndexOf('.')).replace('/', '.').replace('\\', '.')
-                args.add('--select-class='+className)
-            }
-        }
+        args.add('--scan-class-path')
         args.add('--reports-dir=results')
         unixargfile.getAsFile().text = args.join(' ')
         macosargfile.getAsFile().text = args.join(' ')

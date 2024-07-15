@@ -96,7 +96,7 @@
                 {
                     "shell": "bash",
                     "name": "Run",
-                    "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
+                    "run": "JAVA_HOME=${{ matrix.java_home }} ${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
                     "working-directory": "testEnvironment",
                     "if": "${{ !matrix.qemu }}"
                 },

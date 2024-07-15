@@ -126,7 +126,7 @@ managedVersioning {
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
                     workingDirectory.set 'testEnvironment'
-                    run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
+                    run.set 'JAVA_HOME=${{ matrix.java_home }} ${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Upload Results'
