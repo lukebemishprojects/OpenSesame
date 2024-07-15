@@ -36,12 +36,10 @@ jobs:
           - os: windows
             arch: i386
             compiler_package: g++-mingw-w64-i686
-          - shell: bash
           - os: windows
             arch: aarch64
             msys: CLANGARM64
             runner: windows-latest
-            shell: msys2 {0}
         exclude:
           - os: macos
             arch: i386
@@ -61,7 +59,16 @@ jobs:
         with:
           msystem: ${{ matrix.msys }}
       - name: Configure CMake
-        shell: ${{ matrix.shell }}
+        if: ${{ !matrix.msys }}
+        shell: bash
+        run: >
+          cmake -B cmakebuild
+          -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -S ${{ github.workspace }}
+      - name: Configure CMake
+        if: ${{ matrix.msys }}
+        shell: msys2 {0}
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
