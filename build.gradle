@@ -108,7 +108,6 @@ managedVersioning {
                     id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'name', 'natives-test-environment'
-                    with.put 'path', 'testEnvironment'
                 }
                 step {
                     name.set 'Setup QEMU'
@@ -125,7 +124,6 @@ managedVersioning {
                     name.set 'Run'
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
-                    workingDirectory.set 'testEnvironment'
                     run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
                 }
                 step {

@@ -76,8 +76,7 @@
             "steps": [
                 {
                     "with": {
-                        "name": "natives-test-environment",
-                        "path": "testEnvironment"
+                        "name": "natives-test-environment"
                     },
                     "name": "Download Artifact",
                     "uses": "actions/download-artifact@v4",
@@ -97,7 +96,6 @@
                     "shell": "bash",
                     "name": "Run",
                     "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
-                    "working-directory": "testEnvironment",
                     "if": "${{ !matrix.qemu }}"
                 },
                 {
