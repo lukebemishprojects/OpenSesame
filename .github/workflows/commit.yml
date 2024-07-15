@@ -59,6 +59,7 @@ jobs:
         with:
           msystem: ${{ matrix.msys }}
       - name: Configure CMake
+        shell: bash
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
