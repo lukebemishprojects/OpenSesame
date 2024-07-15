@@ -83,8 +83,9 @@ public class NativeImplementations {
             throw new IOException("Could not find native library in opensesame jar, at path "+nativePath);
         }
         try (var lib = resource.openStream()) {
-            Files.copy(lib, path);
+            Files.copy(lib, path.toAbsolutePath());
         }
+        assert Files.exists(path);
         System.load(path.toAbsolutePath().toString());
         SETUP = true;
     }
