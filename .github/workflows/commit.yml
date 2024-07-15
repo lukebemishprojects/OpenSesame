@@ -49,7 +49,7 @@ jobs:
       - name: Configure CMake
         run: >
           cmake -B cmakebuild
-          -DCMAKE_TOOLCHAIN_FILE=toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake
+          -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DJAVA_HOME=${{ matrix.java_home }}
           -S ${{ github.workspace }}
