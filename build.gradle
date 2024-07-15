@@ -108,7 +108,7 @@ managedVersioning {
                     id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'name', 'natives-test-environment'
-                    with.put 'path', '$GITHUB_WORKSPACE/testEnvironment'
+                    with.put 'path', 'testEnvironment'
                 }
                 step {
                     name.set 'Setup QEMU'
