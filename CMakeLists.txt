@@ -4,9 +4,9 @@ project(OpenSesameNatives
     LANGUAGES CXX C)
 
 add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/share/native/include"
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/unix/native/include"
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/windows/native/include"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/share/native/include/"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/unix/native/include/"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/windows/native/include/"
     COMMAND bash -c "mkdir -p \"${CMAKE_CURRENT_BINARY_DIR}/jni_headers\""
     COMMAND bash -c "git -C \"${CMAKE_CURRENT_BINARY_DIR}/jni_headers\" init"
     COMMAND bash -c "git -C \"${CMAKE_CURRENT_BINARY_DIR}/jni_headers\" remote add origin https://github.com/openjdk/jdk.git"
@@ -36,4 +36,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_include_directories(opensesamenative PUBLIC
         "${CMAKE_CURRENT_BINARY_DIR}/jni_headers/src/java.base/windows/native/include")
+    
+    set(CMAKE_SHARED_LIBRARY_PREFIX "")
+    set(CMAKE_SHARED_MODULE_PREFIX "")
+    set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif()

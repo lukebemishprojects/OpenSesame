@@ -64,14 +64,14 @@ jobs:
         shell: bash
         run: >
           cmake -B cmakebuild
-          -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
+          --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
         shell: msys2 {0}
         run: >
           cmake -B cmakebuild
-          -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
+          --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
         if: ${{ !matrix.msys }}
