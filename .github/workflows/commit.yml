@@ -63,14 +63,14 @@ jobs:
         if: ${{ !matrix.msys }}
         shell: bash
         run: >
-          cmake -B cmakebuild
+          cmake -B cmakebuild -G Ninja
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
         shell: msys2 {0}
         run: >
-          cmake -B cmakebuild
+          cmake -B cmakebuild -G Ninja
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
