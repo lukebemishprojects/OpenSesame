@@ -6,7 +6,8 @@
             },
             "runs-on": "ubuntu-22.04",
             "permissions": {
-                "contents": "write"
+                "contents": "write",
+                "packages": "read"
             },
             "steps": [
                 {
@@ -46,35 +47,41 @@
                 {
                     "name": "Tag Release",
                     "run": "./gradlew tagRelease",
-                    "id": "tag_release"
+                    "id": "tag_release",
+                    "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                    }
                 },
                 {
                     "name": "Build",
                     "run": "./gradlew build",
-                    "id": "build"
+                    "id": "build",
+                    "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                    }
                 },
                 {
                     "run": "git push && git push --tags"
                 },
                 {
-                    "with": {
-                        "gradle-build-module": ":\n:opensesame-compile\n:opensesame-core\n:opensesame-fabric\n:opensesame-groovy\n:opensesame-javac\n:opensesame-mixin\n:opensesame-plugin-core\n:opensesame-plugin-loom",
-                        "gradle-build-configuration": "compileClasspath",
-                        "sub-module-mode": "INDIVIDUAL_DEEP",
-                        "include-build-environment": true
-                    },
-                    "name": "Submit Dependencies",
-                    "uses": "mikepenz/gradle-dependency-submission@v0.9.0"
-                },
-                {
                     "name": "Record Version",
                     "run": "./gradlew recordVersion",
-                    "id": "record_version"
+                    "id": "record_version",
+                    "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                    }
                 },
                 {
                     "name": "Capture Recorded Version",
                     "run": "echo version=$(cat build/recordVersion.txt) >> \"$GITHUB_OUTPUT\"",
                     "id": "record_version_capture_version"
+                },
+                {
+                    "name": "Submit Dependencies",
+                    "uses": "gradle/actions/dependency-submission@v3",
+                    "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                    }
                 }
             ]
         },
@@ -83,6 +90,9 @@
                 "build"
             ],
             "runs-on": "ubuntu-22.04",
+            "permissions": {
+                "packages": "read"
+            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -123,6 +133,7 @@
                     "run": "./gradlew publishCentral closeAndReleaseSonatypeStagingRepository",
                     "id": "publish",
                     "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
@@ -139,6 +150,9 @@
                 "build"
             ],
             "runs-on": "ubuntu-22.04",
+            "permissions": {
+                "packages": "read"
+            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -179,6 +193,7 @@
                     "run": "./gradlew publishPlugins",
                     "id": "publish_plugins",
                     "env": {
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",

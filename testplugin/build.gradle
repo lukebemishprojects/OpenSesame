@@ -13,7 +13,7 @@ configurations {
     testSource {
         canBeResolved = true
     }
-    testModuleClasspath {
+    testModulePath {
         canBeResolved = true
     }
 }
@@ -28,12 +28,7 @@ dependencies {
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
         }
     }
-    testImplementation 'dev.lukebemish.opensesame:testtargets'
-    testModuleClasspath 'dev.lukebemish.opensesame:testtargets'
-    testImplementation 'dev.lukebemish.opensesame:opensesame-core'
-    testImplementation libs.asm.core
-    testImplementation libs.junit.api
-    testRuntimeOnly libs.junit.engine
+    testModulePath 'dev.lukebemish.opensesame:testtargets'
 }
 
 opensesame.apply(sourceSets.test)
@@ -43,19 +38,35 @@ tasks.named('compileTestJava', JavaCompile).configure {
     source(configurations.testSource)
 }
 
-test {
-    useJUnitPlatform()
+testing {
+    suites {
+        test {
+            useJUnit()
 
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        showCauses = true
-        showStackTraces = true
-        events = ['passed', 'failed', 'skipped']
+            targets.configureEach {
+                testTask.configure {
+                    useJUnitPlatform()
+
+                    testLogging {
+                        showStandardStreams = true
+                        exceptionFormat = 'full'
+                        showCauses = true
+                        showStackTraces = true
+                        events = ['passed', 'failed', 'skipped']
+                    }
+
+                    testClassesDirs.from configurations.testModulePath
+                    systemProperty 'modulartests', 'true'
+                }
+            }
+
+            dependencies {
+                runtimeOnly libs.junit.engine
+                implementation 'dev.lukebemish.opensesame:opensesame-core'
+                implementation 'dev.lukebemish.opensesame:testtargets'
+                implementation libs.asm.core
+                implementation libs.junit.api
+            }
+        }
     }
-
-    testClassesDirs += files(
-            sourceSets.test.output,
-            configurations.testModuleClasspath
-    )
 }

@@ -15,6 +15,7 @@ rootProject.name = 'opensesame'
 
 def subprojects = [
         'core',
+        'natives',
         'compile',
         'groovy',
         'javac',
@@ -28,8 +29,8 @@ include subprojects
 
 subprojects.each {
     def p = project(":$it")
-    p.projectDir = file(it.replace('-', '/'))
-    p.name = "opensesame-$it"
+    p.projectDir = file(it.replace('-', '/').replace(':', '/'))
+    p.name = "opensesame-$it".split(':')[-1]
 }
 
 include 'testtargets'

@@ -6,6 +6,7 @@ module dev.lukebemish.opensesame.core {
 
     exports dev.lukebemish.opensesame.runtime;
     exports dev.lukebemish.opensesame.annotations;
+    exports dev.lukebemish.opensesame.annotations.extend;
 
     uses dev.lukebemish.opensesame.runtime.RuntimeRemapper;
 }

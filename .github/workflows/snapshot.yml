@@ -1,7 +1,149 @@
 {
     "jobs": {
+        "natives-test": {
+            "needs": [
+                "build"
+            ],
+            "runs-on": "${{ matrix.runner }}",
+            "strategy": {
+                "fail-fast": false,
+                "matrix": {
+                    "os": [
+                        "linux",
+                        "windows",
+                        "macos"
+                    ],
+                    "arch": [
+                        "x86_64",
+                        "aarch64",
+                        "arm"
+                    ],
+                    "exclude": [
+                        {
+                            "os": "macos",
+                            "arch": "i386"
+                        },
+                        {
+                            "os": "macos",
+                            "arch": "arm"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "arm"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64"
+                        },
+                        {
+                            "os": "macos",
+                            "arch": "x86_64"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "arm"
+                        }
+                    ],
+                    "include": [
+                        {
+                            "os": "macos",
+                            "runner": "macos-latest",
+                            "java_home": "$JAVA_HOME_17_arm64"
+                        },
+                        {
+                            "os": "windows",
+                            "runner": "windows-latest",
+                            "java_home": "$JAVA_HOME_17_X64"
+                        },
+                        {
+                            "os": "linux",
+                            "runner": "ubuntu-latest",
+                            "java_home": "$JAVA_HOME_17_X64"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "aarch64",
+                            "qemu": "arm64",
+                            "docker_arch": "arm64",
+                            "docker": "arm64v8/eclipse-temurin:17"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "arm",
+                            "qemu": "arm/v7",
+                            "docker_arch": "arm/v7",
+                            "docker": "arm32v7/eclipse-temurin:17"
+                        }
+                    ]
+                }
+            },
+            "steps": [
+                {
+                    "with": {
+                        "name": "natives-test-environment"
+                    },
+                    "name": "Download Artifact",
+                    "uses": "actions/download-artifact@v4",
+                    "id": "download"
+                },
+                {
+                    "name": "Setup QEMU",
+                    "run": "sudo apt-get -qq install -y qemu qemu-user-static\ndocker run --rm --privileged multiarch/qemu-user-static --reset -p yes --credential yes",
+                    "if": "${{ matrix.qemu }}"
+                },
+                {
+                    "name": "Run with Docker",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
+                    "if": "${{ matrix.docker }}"
+                },
+                {
+                    "shell": "bash",
+                    "name": "Run",
+                    "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
+                    "if": "${{ !matrix.qemu }}"
+                },
+                {
+                    "with": {
+                        "name": "junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}",
+                        "path": "results/TEST-*.xml"
+                    },
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.download.outcome == 'success'"
+                }
+            ]
+        },
+        "aggregate-test-results": {
+            "needs": [
+                "natives-test",
+                "build"
+            ],
+            "runs-on": "ubuntu-latest",
+            "steps": [
+                {
+                    "with": {
+                        "pattern": "junit-test-results-*"
+                    },
+                    "name": "Download Artifact",
+                    "uses": "actions/download-artifact@v4",
+                    "id": "download"
+                },
+                {
+                    "with": {
+                        "name": "junit-test-results",
+                        "path": "**/TEST-*.xml"
+                    },
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4"
+                }
+            ],
+            "if": "always()"
+        },
         "build": {
             "runs-on": "ubuntu-22.04",
+            "permissions": {
+                "packages": "read"
+            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -38,16 +180,26 @@
                 },
                 {
                     "name": "Assemble",
-                    "run": "./gradlew assemble",
+                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
                     "id": "assemble",
                     "env": {
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
                     }
+                },
+                {
+                    "with": {
+                        "name": "natives-test-environment",
+                        "path": "natives/build/testEnvironment/*",
+                        "retention-days": "1"
+                    },
+                    "name": "Upload natives-test-environment",
+                    "uses": "actions/upload-artifact@v4"
                 },
                 {
                     "name": "Test",
@@ -57,6 +209,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
@@ -70,6 +223,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
@@ -79,20 +233,11 @@
                 },
                 {
                     "with": {
-                        "name": "junit-test-results",
+                        "name": "junit-test-results-gradle",
                         "path": "**/build/test-results/*/TEST-*.xml",
                         "retention-days": "1"
                     },
-                    "name": "Upload junit-test-results",
-                    "uses": "actions/upload-artifact@v4",
-                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
-                },
-                {
-                    "with": {
-                        "name": "jacoco-coverage",
-                        "path": "build/reports/jacoco/testCodeCoverageReport"
-                    },
-                    "name": "Upload jacoco-coverage",
+                    "name": "Upload junit-test-results-gradle",
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
                 },
@@ -104,6 +249,7 @@
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
                         "SNAPSHOT_MAVEN_USER": "github",
                         "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"

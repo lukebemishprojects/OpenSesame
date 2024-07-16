@@ -34,14 +34,7 @@ dependencies {
 
     testClasses project(path: ':loom', configuration: 'testClasses')
 
-    implementation 'dev.lukebemish.opensesame:testtargets'
-    implementation 'dev.lukebemish.opensesame:opensesame-core'
-    implementation libs.asm.core
-    implementation libs.junit.api
-
-    testRuntimeOnly libs.junit.engine
     modImplementation libs.fabric.loader
-    testRuntimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
 }
 
 tasks.register('remapTestClasses', RemapJarTask).configure {
@@ -58,22 +51,35 @@ tasks.register('unpackRemappedJar', Copy).configure {
     into layout.buildDirectory.dir('unpacked')
 }
 
-test {
-    useJUnitPlatform()
+testing {
+    suites.test {
+        targets.configureEach {
+            testTask.configure {
+                test {
+                    useJUnitPlatform()
 
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        showCauses = true
-        showStackTraces = true
-        events = ['passed', 'failed', 'skipped']
+                    testLogging {
+                        showStandardStreams = true
+                        exceptionFormat = 'full'
+                        showCauses = true
+                        showStackTraces = true
+                        events = ['passed', 'failed', 'skipped']
+                    }
+
+                    testClassesDirs.from tasks.unpackRemappedJar.outputs
+                    classpath.from tasks.unpackRemappedJar.outputs
+                }
+            }
+        }
+
+        dependencies {
+            implementation 'dev.lukebemish.opensesame:testtargets'
+            implementation 'dev.lukebemish.opensesame:opensesame-core'
+            implementation libs.asm.core
+            implementation libs.junit.api
+
+            runtimeOnly libs.junit.engine
+            runtimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
+        }
     }
-
-    testClassesDirs += files(
-            tasks.unpackRemappedJar.outputs
-    )
-
-    classpath += files(
-            tasks.unpackRemappedJar.outputs
-    )
 }

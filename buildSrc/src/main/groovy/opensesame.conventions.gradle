@@ -2,8 +2,8 @@ plugins {
     id 'java-library'
     id 'signing'
     id 'maven-publish'
-    id 'jacoco'
     id 'opensesame.publishing'
+    id 'opensesame.testing'
 }
 
 java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
@@ -15,96 +15,10 @@ repositories {
     mavenCentral()
 }
 
-configurations {
-    testModuleClasspath {
-        canBeResolved = true
-    }
-}
-
 dependencies {
     compileOnly libs.jetbrains.annotations
     annotationProcessor(libs.autoservice)
     compileOnly(libs.autoservice)
-
-    testRuntimeOnly libs.junit.engine
-    testImplementation libs.junit.api
-
-    testImplementation project(':testtargets')
-    testModuleClasspath project(':testtargets')
-}
-
-def openSesameExtension = project.extensions.getByName('openSesameConvention')
-
-testing {
-    suites.create('testOn21', JvmTestSuite) {
-        targets.configureEach {
-            testTask.configure {
-                javaLauncher = javaToolchains.launcherFor {
-                    languageVersion = JavaLanguageVersion.of(21)
-                }
-            }
-        }
-    }
-
-    suites.create('testOn17', JvmTestSuite) {
-        targets.configureEach {
-            testTask.configure {
-                javaLauncher = javaToolchains.launcherFor {
-                    languageVersion = JavaLanguageVersion.of(17)
-                }
-            }
-        }
-    }
-
-    suites.configureEach {
-        if (it.name == 'test') {
-            return
-        }
-
-        dependencies {
-            implementation sourceSets.test.output
-        }
-
-        targets.configureEach {
-            testTask.configure {
-                useJUnitPlatform()
-
-                testLogging {
-                    showStandardStreams = true
-                    exceptionFormat = 'full'
-                    showCauses = true
-                    showStackTraces = true
-                    events = ['passed', 'failed', 'skipped']
-                }
-
-                if (!openSesameExtension.getTestAsModule().get()) {
-                    modularity.inferModulePath.set(false)
-                }
-
-                testClassesDirs += files(
-                        sourceSets.test.output,
-                        configurations.testModuleClasspath
-                )
-
-                jacoco {
-                    excludes += 'dev/lukebemish/opensesame/test/target/*'
-                }
-            }
-        }
-    }
-}
-
-configurations {
-    testOn17RuntimeClasspath.extendsFrom testRuntimeClasspath
-    testOn21RuntimeClasspath.extendsFrom testRuntimeClasspath
-
-    testResultsElementsForTest.extendsFrom testResultsElementsForTestOn17
-    testResultsElementsForTest.extendsFrom testResultsElementsForTestOn21
-}
-
-tasks.named('check') {
-    dependsOn(testing.suites.testOn21)
-    dependsOn(testing.suites.testOn17)
 }
 
 processResources {

@@ -29,10 +29,12 @@ dependencies {
     modImplementation libs.fabric.loader
 
     implementation 'dev.lukebemish.opensesame:opensesame-fabric'
+    implementation 'dev.lukebemish.opensesame:testtargets'
 
     testImplementation libs.junit.api
     testImplementation libs.fabric.loader.junit
     testRuntimeOnly libs.junit.engine
+    testImplementation 'dev.lukebemish.opensesame:testtargets'
 }
 
 opensesame.apply(sourceSets.main)
@@ -44,5 +46,13 @@ test {
     workingDir(runDir)
     doFirst {
         runDir.mkdirs()
+    }
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+        events = ['passed', 'failed', 'skipped']
     }
 }

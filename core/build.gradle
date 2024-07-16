@@ -15,7 +15,7 @@ publishing {
         mavenJava(MavenPublication) {
             pom {
                 openSesameConvention.pomShared(it, 'Core')
-                description = 'Core annotations and runtime metafactory used for OpenSesame, a tool for typesafe access to normally inacessible members'
+                description = 'Core annotations and runtime metafactory used for OpenSesame, a tool for typesafe access to normally inaccessible members'
             }
         }
     }

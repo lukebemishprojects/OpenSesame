@@ -29,30 +29,6 @@ dependencies {
     asmRuntimeClasspath project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')
 }
 
-// process test classes with ASM processor
-def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileTestJava")
-var asmCompileTest = tasks.register('processTestClasses', JavaExec) {
-    dependsOn compileTestJava
-    dependsOn configurations.asmRuntimeClasspath
-    inputs.dir(tempClassesDir)
-    inputs.files(configurations.asmRuntimeClasspath)
-    outputs.dir(sourceSets.test.output.classesDirs)
-    doFirst {
-        sourceSets.test.output.classesDirs.singleFile.deleteDir()
-    }
-    classpath = configurations.asmRuntimeClasspath
-    mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
-    args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath]
-}
-
-tasks.named('compileTestJava', JavaCompile).configure {
-    destinationDirectory.set(tempClassesDir)
-}
-
-tasks.named('testClasses').configure {
-    dependsOn asmCompileTest
-}
-
 jar {
     manifest {
         attributes.put('FMLModType', 'MOD')
