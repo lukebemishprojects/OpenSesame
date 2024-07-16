@@ -38,7 +38,6 @@ jobs:
             compiler_package: g++-mingw-w64-i686
           - os: windows
             arch: aarch64
-            msys: aarch64
             runner: windows-latest
         exclude:
           - os: macos
@@ -53,48 +52,37 @@ jobs:
       - name: Setup GCC
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
-      - name: '${{ matrix.icon }} Setup MSYS2'
-        if: ${{ matrix.msys }}
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: >-
-            mingw-w64-clang-${{ matrix.msys }}-clang
-            git
-            make
-          pacboy: >-
-            toolchain:p
-            cmake:p
-            ninja:p
       - name: Configure CMake
-        if: ${{ !matrix.msys }}
+        if: ${{ matrix.runner != 'windows-latest' }}
         shell: bash
         run: >
           cmake -B cmakebuild
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -S ${{ github.workspace }}
       - name: Configure CMake
-        if: ${{ matrix.msys }}
-        shell: msys2 {0}
+        if: ${{ matrix.runner == 'windows-latest' }}
+        shell: pwsh
         run: >
           cmake -B cmakebuild
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -S ${{ github.workspace }}
       - name: Build
-        if: ${{ !matrix.msys }}
+        if: ${{ matrix.runner != 'windows-latest' }}
         shell: bash
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
       - name: Build
-        if: ${{ matrix.msys }}
-        shell: msys2 {0}
+        if: ${{ matrix.runner == 'windows-latest' }}
+        shell: pwsh
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
       - uses: actions/upload-artifact@v4
-        if: ${{ matrix.msys }}
+        if: ${{ matrix.runner == 'windows-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
       - uses: actions/upload-artifact@v4
-        if: ${{ !matrix.msys }}
+        if: ${{ matrix.runner != 'windows-latest' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: cmakebuild/${{ matrix.libname }}
