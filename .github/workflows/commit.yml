@@ -74,6 +74,12 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
+        if: ${{ !matrix.msys }}
+        shell: bash
+        run: cmake --build cmakebuild --config ${{ matrix.build_type }}
+      - name: Build
+        if: ${{ matrix.msys }}
+        shell: msys2 {0}
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.os == 'windows' }}
