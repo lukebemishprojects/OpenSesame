@@ -66,13 +66,6 @@
                             "qemu": "arm64",
                             "docker_arch": "arm64",
                             "docker": "arm64v8/eclipse-temurin:17"
-                        },
-                        {
-                            "os": "linux",
-                            "arch": "arm",
-                            "qemu": "arm/v7",
-                            "docker_arch": "arm/v7",
-                            "docker": "arm32v7/eclipse-temurin:17"
                         }
                     ]
                 }
