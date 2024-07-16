@@ -38,7 +38,7 @@ jobs:
             compiler_package: g++-mingw-w64-i686
           - os: windows
             arch: aarch64
-            msys: clangarm64
+            msys: aarch64
             runner: windows-latest
         exclude:
           - os: macos
@@ -57,9 +57,9 @@ jobs:
         if: ${{ matrix.msys }}
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msys }}
           update: true
           install: >-
+            mingw-w64-clang-${{ matrix.msys }}-clang
             git
             make
           pacboy: >-
