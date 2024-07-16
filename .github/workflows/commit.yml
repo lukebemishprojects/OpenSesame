@@ -69,7 +69,7 @@ jobs:
           -S ${{ github.workspace }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
-        shell: msys
+        shell: msys2 {0}
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
