@@ -1,6 +1,6 @@
 set(CMAKE_SYSTEM_NAME  Windows)
 set(CMAKE_C_COMPILER   clang)
 set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_STATIC_LIBRARY_PREFIX "")
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_C_FLAGS      "-march=armv8-a")
 set(CMAKE_CXX_FLAGS    "-march=armv8-a")
