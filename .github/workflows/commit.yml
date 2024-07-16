@@ -76,12 +76,12 @@ jobs:
       - name: Build
         run: cmake --build cmakebuild --config ${{ matrix.build_type }}
       - uses: actions/upload-artifact@v4
-        if: ${{ matrix.os == "windows" }}
+        if: ${{ matrix.os == 'windows' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
       - uses: actions/upload-artifact@v4
-        if: ${{ matrix.os != "windows" }}
+        if: ${{ matrix.os != 'windows' }}
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
           path: cmakebuild/${{ matrix.libname }}
