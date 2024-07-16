@@ -53,11 +53,12 @@ jobs:
       - name: Setup GCC
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
-      - name: Setup MSYS2
-        if: ${{ matrix.msys == "clangarm64" }}
-        shell: C:\msys64\clangarm64.exe
-        run: |
-          pacman -S mingw-w64-clang-aarch64-clang
+      - name: Setup MSYS
+        if: ${{ matrix.msys }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msys }}
+          path-type: inherit
       - name: Configure CMake
         if: ${{ !matrix.msys }}
         shell: bash
@@ -68,7 +69,7 @@ jobs:
           -S ${{ github.workspace }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
-        shell: msys2bash.cmd
+        shell: msys
         run: >
           cmake -B cmakebuild
           -DCMAKE_TOOLCHAIN_FILE="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
