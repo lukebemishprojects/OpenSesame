@@ -53,24 +53,31 @@ jobs:
       - name: Setup GCC
         if: ${{ matrix.compiler_package }}
         run: sudo apt install -y ${{ matrix.compiler_package }}
-      - name: Setup MSYS
+      - name: '${{ matrix.icon }} Setup MSYS2'
         if: ${{ matrix.msys }}
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msys }}
-          path-type: inherit
+          update: true
+          install: >-
+            git
+            make
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
       - name: Configure CMake
         if: ${{ !matrix.msys }}
         shell: bash
         run: >
-          cmake -B cmakebuild -G Ninja
+          cmake -B cmakebuild
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Configure CMake
         if: ${{ matrix.msys }}
         shell: msys2 {0}
         run: >
-          cmake -B cmakebuild -G Ninja
+          cmake -B cmakebuild
           --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
