@@ -90,6 +90,7 @@ managedVersioning {
                         // No way to test at present
                         [os: 'windows', arch: 'aarch64'],
                         [os: 'macos', arch: 'x86_64'],
+                        [os: 'linux', arch: 'arm']
                 ]
                 matrix.include = [
                         [os: 'macos', runner: 'macos-latest', java_home: '$JAVA_HOME_17_arm64'],
