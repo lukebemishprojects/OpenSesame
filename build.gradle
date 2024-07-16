@@ -232,7 +232,7 @@ managedVersioning {
                     name.set 'JUnit Test Report - Misc'
                     uses.set 'dorny/test-reporter@v1'
                     with.put 'name', 'Test Results - Misc'
-                    with.put 'path', '**/test-results/test/**/TEST-*.xml\njunit-test-results-native-*/**/TEST-*.xml'
+                    with.put 'path', '**/test-results/test/**/TEST-*.xml,junit-test-results-native-*/**/TEST-*.xml'
                     with.put 'reporter', 'java-junit'
                     with.put 'fail-on-empty', 'true'
                     with.put 'list-tests', 'failed'
