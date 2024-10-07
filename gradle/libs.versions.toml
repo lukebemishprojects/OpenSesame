@@ -9,7 +9,7 @@ autoservice = "1.0.1"
 groovy = "4.0.18"
 asm = "9.6"
 
-fabric_loom = "1.5.6"
+fabric_loom = "1.8.6"
 fabric_loader = "0.15.4"
 
 tinyremapper = "0.10.0"
