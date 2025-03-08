@@ -22,6 +22,7 @@ version = findProperty('commit_sha')
 
 def zig = tasks.register('zig', Exec) {
     commandLine 'zig', 'build', '--summary', 'all'
+    outputs.upToDateWhen { false }
 }
 
 configurations {
