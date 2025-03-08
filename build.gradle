@@ -20,17 +20,32 @@ def targetfinder = [
 
 version = findProperty('commit_sha')
 
+def zig = tasks.register('zig', Exec) {
+    commandLine 'zig', 'build', '--summary', 'all'
+}
+
+configurations {
+    consumable('natives')
+}
+
+artifacts {
+    targets.each { os, archs ->
+        archs.each { arch ->
+            add('natives', file("zig-out/${os}-${arch}/${targetfinder[os]}")) {
+                classifier="${os}-${arch}"
+                builtBy zig
+            }
+        }
+    }
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
             groupId = 'dev.lukebemish'
             artifactId = 'opensesamenative'
-            targets.each { os, archs ->
-                archs.each { arch ->
-                    artifact(file("${os}-${arch}/${targetfinder[os]}")) {
-                        classifier="${os}-${arch}"
-                    }
-                }
+            configurations.natives.artifacts.each {
+                artifact(it)
             }
         }
     }

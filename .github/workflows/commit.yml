@@ -4,72 +4,6 @@ on:
     branches:
       - natives
 jobs:
-  build-natives:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [linux, macos, windows]
-        arch: [i386, x86_64, aarch64, arm]
-        build_type: [Release]
-        include:
-          - os: linux
-            runner: ubuntu-latest
-            libname: libopensesamenative.so
-          - os: macos
-            runner: macos-latest
-            libname: libopensesamenative.dylib
-          - os: windows
-            runner: ubuntu-latest
-            libname: opensesamenative.dll
-          - os: linux
-            arch: i386
-            compiler_package: g++-i686-linux-gnu
-          - os: linux
-            arch: aarch64
-            compiler_package: g++-aarch64-linux-gnu
-          - os: linux
-            arch: arm
-            compiler_package: g++-arm-linux-gnueabi
-          - os: windows
-            arch: x86_64
-            compiler_package: g++-mingw-w64-x86-64
-          - os: windows
-            arch: i386
-            compiler_package: g++-mingw-w64-i686
-          - os: windows
-            arch: aarch64
-            runner: windows-latest
-        exclude:
-          - os: macos
-            arch: i386
-          - os: macos
-            arch: arm
-          - os: windows
-            arch: arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup GCC
-        if: ${{ matrix.compiler_package }}
-        run: sudo apt install -y ${{ matrix.compiler_package }}
-      - name: Configure CMake
-        run: >
-          cmake -B cmakebuild
-          --toolchain="toolchains/${{ matrix.os }}-${{ matrix.arch }}.cmake"
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -S ${{ github.workspace }}
-      - name: Build
-        run: cmake --build cmakebuild --config ${{ matrix.build_type }}
-      - uses: actions/upload-artifact@v4
-        if: ${{ matrix.runner == 'windows-latest' }}
-        with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: cmakebuild/${{ matrix.build_type }}/${{ matrix.libname }}
-      - uses: actions/upload-artifact@v4
-        if: ${{ matrix.runner != 'windows-latest' }}
-        with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: cmakebuild/${{ matrix.libname }}
   publish:
     permissions:
       contents: read
@@ -78,7 +12,7 @@ jobs:
     needs: [build-natives]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: mlugg/setup-zig@v1
       - run: ./gradlew publish -Pcommit_sha=${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
