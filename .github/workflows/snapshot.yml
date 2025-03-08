@@ -81,7 +81,8 @@
                 },
                 {
                     "name": "Setup QEMU",
-                    "uses": "docker/setup-qemu-action@v3"
+                    "uses": "docker/setup-qemu-action@v3",
+                    "if": "${{ matrix.qemu }}"
                 },
                 {
                     "name": "Run with Docker",

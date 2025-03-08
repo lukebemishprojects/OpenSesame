@@ -112,6 +112,7 @@ managedVersioning {
                 step {
                     name.set 'Setup QEMU'
                     uses.set 'docker/setup-qemu-action@v3'
+                    parameters.put('if', '${{ matrix.qemu }}')
                 }
                 step {
                     name.set 'Run with Docker'
