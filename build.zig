@@ -56,11 +56,11 @@ pub fn build(b: *std.Build) void {
             },
         });
         lib.link_gc_sections = true;
-        lib.addIncludePath(b.path("build//jni_headers/src/java.base/share/native/include"));
+        lib.addIncludePath(b.path("jni_headers/src/java.base/share/native/include"));
         if (target.os_tag == std.Target.Os.Tag.linux or target.os_tag == std.Target.Os.Tag.macos) {
-            lib.addIncludePath(b.path("build/jni_headers/src/java.base/unix/native/include"));
+            lib.addIncludePath(b.path("jni_headers/src/java.base/unix/native/include"));
         } else if (target.os_tag == .windows) {
-            lib.addIncludePath(b.path("build/jni_headers/src/java.base/windows/native/include"));
+            lib.addIncludePath(b.path("jni_headers/src/java.base/windows/native/include"));
         }
 
         b.getInstallStep().dependOn(&b.addInstallArtifact(lib, .{
