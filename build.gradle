@@ -1,6 +1,5 @@
 plugins {
     alias libs.plugins.managedversioning
-    id 'test-report-aggregation'
     id 'java-library'
     id 'opensesame.publishing'
 }
@@ -271,12 +270,6 @@ configurations {
 }
 
 dependencies {
-    subprojects.each { p ->
-        if (p.name.startsWith('opensesame-')) {
-            testReportAggregation p
-        }
-    }
-
     [
             'mixin',
             'core',
@@ -293,14 +286,6 @@ dependencies {
 println "Building: ${rootProject.version}"
 
 managedVersioning.publishing.mavenCentral()
-
-reporting {
-    reports {
-        testAggregateTestReport(AggregateTestReport) {
-            testType = TestSuiteType.UNIT_TEST
-        }
-    }
-}
 
 tasks.register('unpackJavadocSources') {
     dependsOn configurations.javadocSources
@@ -369,8 +354,4 @@ publishing {
             }
         }
     }
-}
-
-tasks.named('check').configure {
-    dependsOn tasks.testAggregateTestReport
 }
