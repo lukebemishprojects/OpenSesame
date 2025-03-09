@@ -16,7 +16,7 @@ tinyremapper = "0.10.0"
 
 mixin = "0.8.5"
 
-managedversioning = "1.2.21"
+managedversioning = "1.2.26"
 
 [libraries]
 
