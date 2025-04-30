@@ -134,9 +134,6 @@
         },
         "build": {
             "runs-on": "ubuntu-22.04",
-            "permissions": {
-                "packages": "read"
-            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -176,7 +173,6 @@
                     "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
                     "id": "assemble",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "PR_NUMBER": "${{ github.event.pull_request.number }}"
                     }
                 },
@@ -194,7 +190,6 @@
                     "run": "./gradlew check --continue",
                     "id": "test",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "PR_NUMBER": "${{ github.event.pull_request.number }}"
                     }
                 },
@@ -203,7 +198,6 @@
                     "run": "./gradlew check --continue",
                     "id": "test_plugin",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "PR_NUMBER": "${{ github.event.pull_request.number }}"
                     },
                     "working-directory": "./testplugin",
@@ -224,7 +218,6 @@
                     "run": "./gradlew publish",
                     "id": "publish",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "PR_NUMBER": "${{ github.event.pull_request.number }}"
                     }
                 },

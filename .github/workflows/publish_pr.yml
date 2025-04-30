@@ -46,11 +46,11 @@
     "concurrency": "ci-${{ github.ref }}",
     "on": {
         "workflow_run": {
-            "workflows": [
-                "Build PR"
-            ],
             "types": [
                 "completed"
+            ],
+            "workflows": [
+                "Build PR"
             ]
         }
     }

@@ -1,28 +1,17 @@
+import dev.lukebemish.ziggradle.toolchain.ZigVersion
+import dev.lukebemish.ziggradle.ZigCompileTask
+import dev.lukebemish.ziggradle.ZigArchitectureTarget
+import dev.lukebemish.ziggradle.ZigOperatingSystemTarget
+import dev.lukebemish.ziggradle.ZigArtifactType
 import javax.inject.Inject
 
 plugins {
     id 'opensesame.conventions'
+    id 'dev.lukebemish.zig-gradle'
 }
 
 java.withSourcesJar()
 java.withJavadocJar()
-
-repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/lukebemishprojects/OpenSesame")
-        credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
-        }
-        content {
-            includeModule 'dev.lukebemish', 'opensesamenative'
-        }
-    }
-}
-
-configurations {
-    natives
-}
 
 def targets = [
         'linux': ['x86_64', 'aarch64', 'i386', 'arm'],
@@ -36,24 +25,69 @@ def targetfinder = [
         'macos': 'libopensesamenative.dylib'
 ]
 
-def nativesCommit = '6635a64cbd4e56e290b389d6d5ca094d06527a3e'
+zig {
+    toolchain {
+        version = ZigVersion.of('0.14.0')
+    }
+}
+
+tasks.named('compileJava', JavaCompile) {
+    options.headerOutputDirectory.set(project.layout.buildDirectory.dir("headers/main"))
+}
+
+def registerZigCompile(String os, String arch, String finalName) {
+    def archmap = [
+            'x86_64': ZigArchitectureTarget.X86_64,
+            'aarch64': ZigArchitectureTarget.AARCH64,
+            'i386': ZigArchitectureTarget.X86,
+            'arm': objects.named(ZigArchitectureTarget, 'arm')
+    ]
+
+    def jniHeaders = [
+            'linux': zig.jniHeadersUnixOpenJDK("tags/jdk-17+35"),
+            'windows': zig.jniHeadersWindowsOpenJDK("tags/jdk-17+35"),
+            'macos': zig.jniHeadersUnixOpenJDK("tags/jdk-17+35")
+    ]
+
+    return project.tasks.register('zigCompile-'+os+'-'+arch, ZigCompileTask) {
+        zigCompiler = zig.compilerFor {}
+        options {
+            artifactType = ZigArtifactType.LIBRARY
+            compilerArgs.addAll([
+                    "--gc-sections",
+                    "-lc",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                    "-cflags",
+                    "-nostdlib",
+                    "-nobuiltininc",
+                    "--",
+                    "-O",
+                    "ReleaseSmall"
+            ])
+            targetOperatingSystem = objects.named(ZigOperatingSystemTarget, os)
+            targetArchitecture = archmap[arch]
+            dynamic = true
+        }
+        baseArtifactName = "opensesamenative"
+        headers.from(tasks.named('compileJava').flatMap { it.options.headerOutputDirectory })
+        headers.from(jniHeaders[os])
+        sourceFiles.from('src/natives/opensesamenative.c')
+        outputDirectory = project.layout.buildDirectory.dir("natives/"+os+'-'+arch)
+    }
+}
 
 targets.each { os, archs ->
     archs.each { arch ->
         def finalName = targetfinder[os]
         def extension = finalName.split(/\./)[1]
-        dependencies.add('natives', "dev.lukebemish:opensesamenative:$nativesCommit:$os-$arch@$extension")
-    }
-}
-
-processResources {
-    from(configurations.natives) {
-        into 'dev/lukebemish/opensesame/natives'
-        rename { String fileName ->
-            String[] parts = fileName.split(/[-.]/)
-            String os = parts[2]
-            String arch = parts[3]
-            return "$os/$arch/${targetfinder[os]}"
+        var task = registerZigCompile(os, arch, finalName)
+        ConfigurableFileCollection files = project.objects.fileCollection()
+        processResources {
+            from(task.flatMap { it.outputDirectory }.map { it.file(finalName) }) {
+                into "dev/lukebemish/opensesame/natives/$os/$arch"
+            }
+            dependsOn task
         }
     }
 }

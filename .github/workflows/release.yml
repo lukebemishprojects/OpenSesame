@@ -6,8 +6,7 @@
             },
             "runs-on": "ubuntu-22.04",
             "permissions": {
-                "contents": "write",
-                "packages": "read"
+                "contents": "write"
             },
             "steps": [
                 {
@@ -47,18 +46,12 @@
                 {
                     "name": "Tag Release",
                     "run": "./gradlew tagRelease",
-                    "id": "tag_release",
-                    "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-                    }
+                    "id": "tag_release"
                 },
                 {
                     "name": "Build",
                     "run": "./gradlew build",
-                    "id": "build",
-                    "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-                    }
+                    "id": "build"
                 },
                 {
                     "run": "git push && git push --tags"
@@ -66,10 +59,7 @@
                 {
                     "name": "Record Version",
                     "run": "./gradlew recordVersion",
-                    "id": "record_version",
-                    "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-                    }
+                    "id": "record_version"
                 },
                 {
                     "name": "Capture Recorded Version",
@@ -78,10 +68,7 @@
                 },
                 {
                     "name": "Submit Dependencies",
-                    "uses": "gradle/actions/dependency-submission@v4",
-                    "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
-                    }
+                    "uses": "gradle/actions/dependency-submission@v4"
                 }
             ]
         },
@@ -90,9 +77,6 @@
                 "build"
             ],
             "runs-on": "ubuntu-22.04",
-            "permissions": {
-                "packages": "read"
-            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -133,7 +117,6 @@
                     "run": "./gradlew publishCentral closeAndReleaseSonatypeStagingRepository",
                     "id": "publish",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
@@ -150,9 +133,6 @@
                 "build"
             ],
             "runs-on": "ubuntu-22.04",
-            "permissions": {
-                "packages": "read"
-            },
             "steps": [
                 {
                     "name": "Setup Java",
@@ -193,7 +173,6 @@
                     "run": "./gradlew publishPlugins",
                     "id": "publish_plugins",
                     "env": {
-                        "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
                         "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",

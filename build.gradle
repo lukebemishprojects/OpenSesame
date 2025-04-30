@@ -18,8 +18,6 @@ managedVersioning {
             workflowDispatch = true
             gradleJob {
                 name = 'build'
-                permissions.put 'packages', 'read'
-                secret('GITHUB_TOKEN')
                 setupGitUser()
                 readOnly = false
                 gradlew 'Tag Release', 'tagRelease'
@@ -30,8 +28,6 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishCentral'
-                permissions.put 'packages', 'read'
-                secret('GITHUB_TOKEN')
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish', 'publishCentral', 'closeAndReleaseSonatypeStagingRepository'
@@ -41,8 +37,6 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishPlugins'
-                permissions.put 'packages', 'read'
-                secret('GITHUB_TOKEN')
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish Plugins', 'publishPlugins'
@@ -163,8 +157,6 @@ managedVersioning {
             onBranches.add 'main'
             gradleJob {
                 buildCache()
-                permissions.put 'packages', 'read'
-                secret('GITHUB_TOKEN')
                 name.set 'build'
                 testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
@@ -177,8 +169,6 @@ managedVersioning {
             pullRequest.set(true)
             gradleJob {
                 name.set 'build'
-                permissions.put 'packages', 'read'
-                secret('GITHUB_TOKEN')
                 testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
