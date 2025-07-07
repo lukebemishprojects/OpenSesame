@@ -9,12 +9,17 @@ registries:
   fabricmc:
     type: maven-repository
     url: https://maven.fabricmc.net/
+  spongepowered:
+    type: maven-repository
+    url: https://repo.spongepowered.org/maven
 updates:
   - package-ecosystem: "gradle"
     directory: "/"
     registries:
       - maven-central
       - lukebemish
+      - fabricmc
+      - spongepowered
     schedule:
       interval: "weekly"
   - package-ecosystem: "github-actions"
