@@ -63,10 +63,10 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         final Map<String, List<String>> exposeToOverrideFields = new HashMap<>();
         for (var provider : providers) {
             for (var line : provider.unFinal()) {
-                extractActions(line, classLoader, mixins, targetClasses, deFinalClasses, deFinalMethods, deFinalFields, true, "unFinal");
+                extractActions(line, mixins, targetClasses, deFinalClasses, deFinalMethods, deFinalFields, true, "unFinal");
             }
             for (var line : provider.exposeToOverride()) {
-                extractActions(line, classLoader, mixins, targetClasses, exposeClasses, exposeToOverrideMethods, exposeToOverrideFields, false, "exposeToOverride");
+                extractActions(line, mixins, targetClasses, exposeClasses, exposeToOverrideMethods, exposeToOverrideFields, false, "exposeToOverride");
             }
         }
         for (var target : targetClasses) {
@@ -96,19 +96,19 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
         } else if (type.getSort() == Type.ARRAY) {
             return "[" + remapDescriptor(type.getElementType().getDescriptor());
         } else if (type.getSort() == Type.OBJECT) {
-            return Type.getObjectType(OpeningMetafactory.remapClass(type.getInternalName().replace('/', '.'), OpenSesameMixinPlugin.class.getClassLoader()).replace('.', '/')).getDescriptor();
+            return Type.getObjectType(OpeningMetafactory.remapClass(type.getInternalName().replace('/', '.'), OpenSesameMixinPlugin.class).replace('.', '/')).getDescriptor();
         } else {
             return descriptor;
         }
     }
 
-    private static void extractActions(String line, ClassLoader classLoader, List<String> mixins, Set<String> targetClasses, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields, boolean allowFields, String searchingName) {
+    private static void extractActions(String line, List<String> mixins, Set<String> targetClasses, Set<String> classes, Map<String, List<String>> methods, Map<String, List<String>> fields, boolean allowFields, String searchingName) {
         if (line.isBlank())
             return;
         var parts = line.split("\\.");
         var packageName = parts[0].replace('/', '.');
         var className = parts[1].replace('/', '.');
-        var remappedClassName = OpeningMetafactory.remapClass(className, classLoader);
+        var remappedClassName = OpeningMetafactory.remapClass(className, OpenSesameMixinPlugin.class);
         if (parts.length == 2) {
             classes.add(remappedClassName);
         } else if (parts.length == 4) {
@@ -116,12 +116,12 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             var desc = parts[3];
             var type = Type.getType(desc);
             if (type.getSort() == Type.METHOD) {
-                methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, classLoader)+"."+remapDescriptor(desc));
+                methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, OpenSesameMixinPlugin.class)+"."+remapDescriptor(desc));
             } else if (type.getSort() == Type.OBJECT) {
                 if (!allowFields) {
                     throw new RuntimeException("Invalid " + searchingName + " line: " + line);
                 }
-                fields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, classLoader));
+                fields.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapField(name, desc, className, OpenSesameMixinPlugin.class));
             }
         } else {
             throw new RuntimeException("Invalid " + searchingName + " line: " + line);
