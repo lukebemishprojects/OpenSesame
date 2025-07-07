@@ -36,9 +36,7 @@ dependencies {
     javadocClasspath libs.groovy.core
 }
 
-println "Building: ${rootProject.version}"
-
-managedVersioning.mavenCentralUseBundle()
+println "Building: ${version}"
 
 tasks.register('unpackJavadocSources') {
     dependsOn configurations.javadocSources
