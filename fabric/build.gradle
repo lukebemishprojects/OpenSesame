@@ -5,17 +5,6 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
-repositories {
-    maven {
-        name = 'FabricMC'
-        url = 'https://maven.fabricmc.net/'
-    }
-    maven {
-        name = 'SpongePowered'
-        url = 'https://repo.spongepowered.org/maven'
-    }
-}
-
 configurations {
     bundle
 }

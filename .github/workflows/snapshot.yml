@@ -1,10 +1,168 @@
 {
+    "name": "Snapshot",
+    "concurrency": "ci-${{ github.ref }}",
+    "on": {
+        "push": {
+            "branches": [
+                "main"
+            ]
+        },
+        "workflow_dispatch": {
+            
+        }
+    },
     "jobs": {
+        "build": {
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4",
+                    "with": {
+                        "fetch-depth": "0",
+                        "persist-credentials": "false"
+                    }
+                },
+                {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v4"
+                },
+                {
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4",
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    }
+                },
+                {
+                    "name": "Setup Gradle",
+                    "uses": "gradle/actions/setup-gradle@v4",
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    }
+                },
+                {
+                    "name": "Assemble",
+                    "id": "assemble",
+                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
+                        "SNAPSHOT_MAVEN_USER": "github",
+                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
+                    }
+                },
+                {
+                    "name": "Upload natives-test-environment",
+                    "uses": "actions/upload-artifact@v4",
+                    "with": {
+                        "name": "natives-test-environment",
+                        "path": "natives/build/testEnvironment/*",
+                        "retention-days": "1"
+                    }
+                },
+                {
+                    "name": "Test",
+                    "id": "test",
+                    "run": "./gradlew check --continue",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
+                        "SNAPSHOT_MAVEN_USER": "github",
+                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
+                    }
+                },
+                {
+                    "name": "Test Plugin",
+                    "id": "test_plugin",
+                    "run": "./gradlew check --continue",
+                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
+                        "SNAPSHOT_MAVEN_USER": "github",
+                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
+                    },
+                    "working-directory": "./testplugin"
+                },
+                {
+                    "name": "Upload junit-test-results-gradle",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'",
+                    "with": {
+                        "name": "junit-test-results-gradle",
+                        "path": "**/build/test-results/*/TEST-*.xml",
+                        "retention-days": "1"
+                    }
+                },
+                {
+                    "name": "Publish",
+                    "id": "publish",
+                    "run": "./gradlew publish",
+                    "env": {
+                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
+                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
+                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
+                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
+                        "SNAPSHOT_MAVEN_USER": "github",
+                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
+                    }
+                }
+            ]
+        },
         "natives-test": {
+            "runs-on": "${{ matrix.runner }}",
+            "steps": [
+                {
+                    "name": "Download Artifact",
+                    "id": "download",
+                    "uses": "actions/download-artifact@v4",
+                    "with": {
+                        "name": "natives-test-environment"
+                    }
+                },
+                {
+                    "name": "Setup QEMU",
+                    "uses": "docker/setup-qemu-action@v3",
+                    "if": "${{ matrix.qemu }}"
+                },
+                {
+                    "name": "Run with Docker",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
+                    "if": "${{ matrix.docker }}"
+                },
+                {
+                    "name": "Run",
+                    "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
+                    "if": "${{ !matrix.qemu }}",
+                    "shell": "bash"
+                },
+                {
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.download.outcome == 'success'",
+                    "with": {
+                        "name": "junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}",
+                        "path": "results/TEST-*.xml"
+                    }
+                }
+            ],
             "needs": [
                 "build"
             ],
-            "runs-on": "${{ matrix.runner }}",
             "strategy": {
                 "fail-fast": false,
                 "matrix": {
@@ -69,190 +227,32 @@
                         }
                     ]
                 }
-            },
-            "steps": [
-                {
-                    "with": {
-                        "name": "natives-test-environment"
-                    },
-                    "name": "Download Artifact",
-                    "uses": "actions/download-artifact@v4",
-                    "id": "download"
-                },
-                {
-                    "name": "Setup QEMU",
-                    "uses": "docker/setup-qemu-action@v3",
-                    "if": "${{ matrix.qemu }}"
-                },
-                {
-                    "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
-                    "if": "${{ matrix.docker }}"
-                },
-                {
-                    "shell": "bash",
-                    "name": "Run",
-                    "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
-                    "if": "${{ !matrix.qemu }}"
-                },
-                {
-                    "with": {
-                        "name": "junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}",
-                        "path": "results/TEST-*.xml"
-                    },
-                    "name": "Upload Results",
-                    "uses": "actions/upload-artifact@v4",
-                    "if": "(success() || failure()) && steps.download.outcome == 'success'"
-                }
-            ]
+            }
         },
         "aggregate-test-results": {
-            "needs": [
-                "natives-test",
-                "build"
-            ],
             "runs-on": "ubuntu-latest",
             "steps": [
                 {
+                    "name": "Download Artifact",
+                    "id": "download",
+                    "uses": "actions/download-artifact@v4",
                     "with": {
                         "pattern": "junit-test-results-*"
-                    },
-                    "name": "Download Artifact",
-                    "uses": "actions/download-artifact@v4",
-                    "id": "download"
+                    }
                 },
                 {
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
                     "with": {
                         "name": "junit-test-results",
                         "path": "**/TEST-*.xml"
-                    },
-                    "name": "Upload Results",
-                    "uses": "actions/upload-artifact@v4"
+                    }
                 }
             ],
-            "if": "always()"
-        },
-        "build": {
-            "runs-on": "ubuntu-22.04",
-            "steps": [
-                {
-                    "name": "Setup Java",
-                    "run": "echo \"JAVA_HOME=$JAVA_HOME_17_X64\" >> \"$GITHUB_ENV\""
-                },
-                {
-                    "with": {
-                        "fetch-depth": "0",
-                        "persist-credentials": "false"
-                    },
-                    "name": "Checkout",
-                    "uses": "actions/checkout@v4"
-                },
-                {
-                    "name": "Validate Gradle Wrapper",
-                    "uses": "gradle/actions/wrapper-validation@v4"
-                },
-                {
-                    "with": {
-                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
-                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
-                        "restore-keys": "${{ runner.os }}-gradle-"
-                    },
-                    "name": "Cache",
-                    "uses": "actions/cache/restore@v4"
-                },
-                {
-                    "with": {
-                        "cache-read-only": true,
-                        "gradle-home-cache-cleanup": true
-                    },
-                    "name": "Setup Gradle",
-                    "uses": "gradle/actions/setup-gradle@v4"
-                },
-                {
-                    "name": "Assemble",
-                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
-                    "id": "assemble",
-                    "env": {
-                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
-                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
-                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
-                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
-                        "SNAPSHOT_MAVEN_USER": "github",
-                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
-                    }
-                },
-                {
-                    "with": {
-                        "name": "natives-test-environment",
-                        "path": "natives/build/testEnvironment/*",
-                        "retention-days": "1"
-                    },
-                    "name": "Upload natives-test-environment",
-                    "uses": "actions/upload-artifact@v4"
-                },
-                {
-                    "name": "Test",
-                    "run": "./gradlew check --continue",
-                    "id": "test",
-                    "env": {
-                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
-                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
-                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
-                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
-                        "SNAPSHOT_MAVEN_USER": "github",
-                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
-                    }
-                },
-                {
-                    "name": "Test Plugin",
-                    "run": "./gradlew check --continue",
-                    "id": "test_plugin",
-                    "env": {
-                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
-                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
-                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
-                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
-                        "SNAPSHOT_MAVEN_USER": "github",
-                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
-                    },
-                    "working-directory": "./testplugin",
-                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
-                },
-                {
-                    "with": {
-                        "name": "junit-test-results-gradle",
-                        "path": "**/build/test-results/*/TEST-*.xml",
-                        "retention-days": "1"
-                    },
-                    "name": "Upload junit-test-results-gradle",
-                    "uses": "actions/upload-artifact@v4",
-                    "if": "(success() || failure()) && steps.assemble.outcome == 'success'"
-                },
-                {
-                    "name": "Publish",
-                    "run": "./gradlew publish",
-                    "id": "publish",
-                    "env": {
-                        "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
-                        "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
-                        "BUILD_CACHE_URL": "${{ secrets.BUILD_CACHE_URL }}",
-                        "SNAPSHOT_MAVEN_PASSWORD": "${{ secrets.SNAPSHOT_MAVEN_PASSWORD }}",
-                        "SNAPSHOT_MAVEN_USER": "github",
-                        "SNAPSHOT_MAVEN_URL": "https://maven.lukebemish.dev/snapshots/"
-                    }
-                }
-            ]
-        }
-    },
-    "name": "Snapshot",
-    "concurrency": "ci-${{ github.ref }}",
-    "on": {
-        "workflow_dispatch": {
-            
-        },
-        "push": {
-            "branches": [
-                "main"
+            "if": "always()",
+            "needs": [
+                "natives-test",
+                "build"
             ]
         }
     }

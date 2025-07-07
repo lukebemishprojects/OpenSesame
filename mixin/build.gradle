@@ -5,13 +5,6 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
-repositories {
-    maven {
-        name = 'SpongePowered'
-        url = 'https://repo.spongepowered.org/maven'
-    }
-}
-
 openSesameConvention.testAsModule.set false
 
 configurations {

@@ -4,16 +4,10 @@ plugins {
     id 'maven-publish'
     id 'opensesame.publishing'
     id 'opensesame.testing'
+    id 'opensesame.base'
 }
 
 java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
-
-group = rootProject.group
-version = rootProject.version
-
-repositories {
-    mavenCentral()
-}
 
 dependencies {
     compileOnly libs.jetbrains.annotations
@@ -22,7 +16,7 @@ dependencies {
 }
 
 processResources {
-    from(rootProject.file('LICENSE')) {
+    from(rootProject.isolated.projectDirectory.file('LICENSE')) {
         into 'META-INF'
     }
 }
@@ -30,7 +24,8 @@ processResources {
 jar {
     manifest {
         attributes([
-                'Specification-Version'   : rootProject.version,
+                'Implementation-Version'   : (version as String),
+                'Specification-Version'   : (version as String).split("-")[0],
                 'Implementation-Commit-Time': managedVersioning.timestamp.get(),
                 'Implementation-Commit': managedVersioning.hash.get(),
                 'Automatic-Module-Name'   : "dev.lukebemish.opensesame.${project.name.replace("opensesame-", "")}".toString(),

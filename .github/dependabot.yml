@@ -6,6 +6,9 @@ registries:
   lukebemish:
     type: maven-repository
     url: https://maven.lukebemish.dev/
+  fabricmc:
+    type: maven-repository
+    url: https://maven.fabricmc.net/
 updates:
   - package-ecosystem: "gradle"
     directory: "/"

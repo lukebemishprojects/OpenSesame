@@ -59,7 +59,7 @@ var processTestClasses = tasks.register('processTestClasses', JavaExec) {
 tasks.testClasses.dependsOn processTestClasses
 
 processAsmResources {
-    from(rootProject.file('LICENSE')) {
+    from(rootProject.isolated.projectDirectory.file('LICENSE')) {
         into 'META-INF'
     }
 }
@@ -67,7 +67,8 @@ processAsmResources {
 asmJar {
     manifest {
         attributes([
-                'Specification-Version'   : rootProject.version,
+                'Implementation-Version'   : (version as String),
+                'Specification-Version'   : (version as String).split("-")[0],
                 'Implementation-Commit-Time': managedVersioning.timestamp.get(),
                 'Implementation-Commit': managedVersioning.hash.get(),
                 'Automatic-Module-Name'   : 'dev.lukebemish.opensesame.compile.asm',

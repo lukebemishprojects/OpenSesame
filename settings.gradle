@@ -5,11 +5,273 @@ pluginManagement {
             url "https://maven.lukebemish.dev/releases/"
         }
     }
+    includeBuild 'build-logic'
 }
 
 plugins {
-    id 'dev.lukebemish.conventions' version '0.1.11'
+    id 'dev.lukebemish.managedversioning' version '2.0.0-beta.5'
+    id 'dev.lukebemish.conventions' version '0.2.0-beta.2'
     id 'dev.lukebemish.zig-gradle' version '0.1.0'
+}
+
+managedVersioning {
+    versionFile.set file('version.properties')
+    versionPRs()
+    versionSnapshots()
+
+    publishing {
+        mavenStaging()
+        mavenSnapshot()
+        mavenPullRequest()
+        mavenCentralMakeBundle()
+    }
+
+    gitHubActions {
+        release {
+            prettyName = 'Release'
+            workflowDispatch = true
+            gradleJob {
+                name = 'build'
+                setupGitUser()
+                readOnly = false
+                gradlew 'Tag Release', 'tagRelease'
+                gradlew 'Build', 'build'
+                push()
+                recordVersion 'Record Version', 'version'
+                dependencySubmission()
+            }
+            gradleJob {
+                name.set 'publishCentral'
+                buildCache()
+                needs.add('build')
+                gradlew 'Publish', 'publish'
+                tag.set('${{needs.build.outputs.version}}')
+                sign()
+                mavenCentral()
+            }
+            gradleJob {
+                name.set 'publishPlugins'
+                buildCache()
+                needs.add('build')
+                gradlew 'Publish Plugins', 'publishPlugins'
+                tag.set('${{needs.build.outputs.version}}')
+                sign()
+                pluginPortal()
+            }
+        }
+
+        def testOnBuild = { dev.lukebemish.managedversioning.actions.GradleJob job ->
+            job.gradlew 'Assemble', 'assemble', ':opensesame-natives:setupTestEnvironment'
+            job.upload('natives-test-environment', ['natives/build/testEnvironment/*']) {
+                requiredSteps.add 'assemble'
+                with.put('retention-days', '1')
+            }
+            job.gradlew 'Test', 'check', '--continue'
+            job.gradlew('Test Plugin', ['check', '--continue']) {
+                workingDirectory.set './testplugin'
+                runsOnError.set true
+                requiredSteps.add 'assemble'
+            }
+            job.upload('junit-test-results-gradle', ['**/build/test-results/*/TEST-*.xml']) {
+                runsOnError.set true
+                requiredSteps.add 'assemble'
+                with.put('retention-days', '1')
+            }
+        }
+
+        def nativeTest = { dev.lukebemish.managedversioning.actions.GitHubAction action ->
+            action.job {
+                def strategy = [:]
+                strategy['fail-fast'] = false
+                def matrix = [:]
+                strategy.matrix = matrix
+                matrix.os = ['linux', 'windows', 'macos']
+                // We're giving up on testing on x32 systems (windows or linux) because it's too much of a hassle -- we'd probably need custom JDK builds at some point...
+                matrix.arch = ['x86_64', 'aarch64', 'arm']
+                matrix.exclude = [
+                        // No natives
+                        [os: 'macos', arch: 'i386'],
+                        [os: 'macos', arch: 'arm'],
+                        [os: 'windows', arch: 'arm'],
+
+                        // No way to test at present
+                        [os: 'windows', arch: 'aarch64'],
+                        [os: 'macos', arch: 'x86_64'],
+                        [os: 'linux', arch: 'arm']
+                ]
+                matrix.include = [
+                        [os: 'macos', runner: 'macos-latest', java_home: '$JAVA_HOME_17_arm64'],
+                        [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
+                        [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_X64'],
+
+                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:17'],
+                ]
+                parameters.put('strategy', strategy)
+                name.set 'natives-test'
+                needs.add('build')
+                runsOn.set('${{ matrix.runner }}')
+                step {
+                    name.set 'Download Artifact'
+                    id.set 'download'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'name', 'natives-test-environment'
+                }
+                step {
+                    name.set 'Setup QEMU'
+                    uses.set 'docker/setup-qemu-action@v3'
+                    parameters.put('if', '${{ matrix.qemu }}')
+                }
+                step {
+                    name.set 'Run with Docker'
+                    parameters.put('if', '${{ matrix.docker }}')
+                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \'' +
+                            'mkdir ../working; cp -r ./ ../working/; cd ../working; ' +
+                            'java @args-${{ matrix.os }}.txt; return=$?; ' +
+                            'cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return\''
+                }
+                step {
+                    name.set 'Run'
+                    parameters.put('if', '${{ !matrix.qemu }}')
+                    parameters.put('shell', 'bash')
+                    run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
+                }
+                step {
+                    name.set 'Upload Results'
+                    runsOnError.set true
+                    requiredSteps.add 'download'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}'
+                    with.put 'path', 'results/TEST-*.xml'
+                }
+            }
+            action.job {
+                name.set 'aggregate-test-results'
+                runsOn.set 'ubuntu-latest'
+                needs.add('natives-test')
+                needs.add('build')
+                getIf().set('always()')
+                step {
+                    name.set 'Download Artifact'
+                    id.set 'download'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'pattern', 'junit-test-results-*'
+                }
+                step {
+                    name.set 'Upload Results'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'junit-test-results'
+                    with.put 'path', '**/TEST-*.xml'
+                }
+            }
+        }
+
+        snapshot {
+            prettyName.set 'Snapshot'
+            workflowDispatch.set(true)
+            onBranches.add 'main'
+            gradleJob {
+                buildCache()
+                name.set 'build'
+                testOnBuild.call(it)
+                gradlew 'Publish', 'publish'
+                mavenSnapshot('github')
+            }
+            nativeTest.call(it)
+        }
+        build_pr {
+            prettyName.set 'Build PR'
+            pullRequest.set(true)
+            gradleJob {
+                name.set 'build'
+                testOnBuild.call(it)
+                gradlew 'Publish', 'publish'
+                pullRequestArtifact()
+            }
+            nativeTest.call(it)
+        }
+        publish_pr {
+            prettyName.set 'Publish PR'
+            publishPullRequestAction(
+                    'github',
+                    "dev/lukebemish/opensesame/opensesame-*",
+                    'Build PR'
+            )
+        }
+        report {
+            prettyName.set 'Report Test Results'
+            completedWorkflows.set(['Build PR', 'Snapshot'])
+            job {
+                name.set 'checks'
+                permissions.put('contents', 'read')
+                permissions.put('actions', 'read')
+                permissions.put('checks', 'write')
+                step {
+                    name.set 'Checkout'
+                    uses.set 'actions/checkout@v4'
+                    with.put 'ref', '${{ github.event.workflow_run.head_commit.id }}'
+                    with.put 'repository', '${{ github.event.workflow_run.head_repository.full_name }}'
+                }
+                step {
+                    name.set 'Download Test Report'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'name', 'junit-test-results'
+                    with.put 'github-token', '${{ github.token }}'
+                    with.put 'run-id', '${{ github.event.workflow_run.id }}'
+                }
+                [17, 21, 22].each { int javaVersion ->
+                    step {
+                        name.set 'JUnit Test Report - Java '+javaVersion
+                        uses.set 'dorny/test-reporter@v1'
+                        with.put 'name', 'Test Results - Java '+javaVersion
+                        with.put 'path', '**/test-results/testOn'+javaVersion+'/**/TEST-*.xml'
+                        with.put 'reporter', 'java-junit'
+                        with.put 'fail-on-empty', 'true'
+                        with.put 'list-tests', 'failed'
+                        with.put 'list-suites', 'failed'
+                    }
+                }
+                step {
+                    name.set 'JUnit Test Report - Misc'
+                    uses.set 'dorny/test-reporter@v1'
+                    with.put 'name', 'Test Results - Misc'
+                    with.put 'path', '**/test-results/test/**/TEST-*.xml,junit-test-results-native-*/**/TEST-*.xml'
+                    with.put 'reporter', 'java-junit'
+                    with.put 'fail-on-empty', 'true'
+                    with.put 'list-tests', 'failed'
+                }
+            }
+        }
+    }
+}
+
+gradle.lifecycle.beforeProject {
+    tasks.withType(Sign).configureEach {
+        // Gradle broke something in 8.8 here, and now you can't publish plugins to other mavens if signing is disabled...
+        enabled System.getenv('GPG_KEY') !== null
+    }
+    
+    pluginManager.withPlugin('publishing') {
+        publishing {
+            publications.configureEach {
+                managedVersioning.sign(signing, it)
+            }
+        }
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven {
+            name = 'FabricMC'
+            url = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'SpongePowered'
+            url = 'https://repo.spongepowered.org/maven'
+        }
+    }
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
 }
 
 rootProject.name = 'opensesame'

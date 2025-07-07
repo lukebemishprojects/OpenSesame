@@ -1,80 +1,4 @@
 {
-    "jobs": {
-        "checks": {
-            "runs-on": "ubuntu-22.04",
-            "permissions": {
-                "contents": "read",
-                "actions": "read",
-                "checks": "write"
-            },
-            "steps": [
-                {
-                    "with": {
-                        "ref": "${{ github.event.workflow_run.head_commit.id }}",
-                        "repository": "${{ github.event.workflow_run.head_repository.full_name }}"
-                    },
-                    "name": "Checkout",
-                    "uses": "actions/checkout@v4"
-                },
-                {
-                    "with": {
-                        "name": "junit-test-results",
-                        "github-token": "${{ github.token }}",
-                        "run-id": "${{ github.event.workflow_run.id }}"
-                    },
-                    "name": "Download Test Report",
-                    "uses": "actions/download-artifact@v4"
-                },
-                {
-                    "with": {
-                        "name": "Test Results - Java 17",
-                        "path": "**/test-results/testOn17/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
-                    },
-                    "name": "JUnit Test Report - Java 17",
-                    "uses": "dorny/test-reporter@v1"
-                },
-                {
-                    "with": {
-                        "name": "Test Results - Java 21",
-                        "path": "**/test-results/testOn21/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
-                    },
-                    "name": "JUnit Test Report - Java 21",
-                    "uses": "dorny/test-reporter@v1"
-                },
-                {
-                    "with": {
-                        "name": "Test Results - Java 22",
-                        "path": "**/test-results/testOn22/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
-                    },
-                    "name": "JUnit Test Report - Java 22",
-                    "uses": "dorny/test-reporter@v1"
-                },
-                {
-                    "with": {
-                        "name": "Test Results - Misc",
-                        "path": "**/test-results/test/**/TEST-*.xml,junit-test-results-native-*/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed"
-                    },
-                    "name": "JUnit Test Report - Misc",
-                    "uses": "dorny/test-reporter@v1"
-                }
-            ]
-        }
-    },
     "name": "Report Test Results",
     "concurrency": "ci-${{ github.ref }}",
     "on": {
@@ -86,6 +10,82 @@
                 "Build PR",
                 "Snapshot"
             ]
+        }
+    },
+    "jobs": {
+        "checks": {
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4",
+                    "with": {
+                        "ref": "${{ github.event.workflow_run.head_commit.id }}",
+                        "repository": "${{ github.event.workflow_run.head_repository.full_name }}"
+                    }
+                },
+                {
+                    "name": "Download Test Report",
+                    "uses": "actions/download-artifact@v4",
+                    "with": {
+                        "name": "junit-test-results",
+                        "github-token": "${{ github.token }}",
+                        "run-id": "${{ github.event.workflow_run.id }}"
+                    }
+                },
+                {
+                    "name": "JUnit Test Report - Java 17",
+                    "uses": "dorny/test-reporter@v1",
+                    "with": {
+                        "name": "Test Results - Java 17",
+                        "path": "**/test-results/testOn17/**/TEST-*.xml",
+                        "reporter": "java-junit",
+                        "fail-on-empty": "true",
+                        "list-tests": "failed",
+                        "list-suites": "failed"
+                    }
+                },
+                {
+                    "name": "JUnit Test Report - Java 21",
+                    "uses": "dorny/test-reporter@v1",
+                    "with": {
+                        "name": "Test Results - Java 21",
+                        "path": "**/test-results/testOn21/**/TEST-*.xml",
+                        "reporter": "java-junit",
+                        "fail-on-empty": "true",
+                        "list-tests": "failed",
+                        "list-suites": "failed"
+                    }
+                },
+                {
+                    "name": "JUnit Test Report - Java 22",
+                    "uses": "dorny/test-reporter@v1",
+                    "with": {
+                        "name": "Test Results - Java 22",
+                        "path": "**/test-results/testOn22/**/TEST-*.xml",
+                        "reporter": "java-junit",
+                        "fail-on-empty": "true",
+                        "list-tests": "failed",
+                        "list-suites": "failed"
+                    }
+                },
+                {
+                    "name": "JUnit Test Report - Misc",
+                    "uses": "dorny/test-reporter@v1",
+                    "with": {
+                        "name": "Test Results - Misc",
+                        "path": "**/test-results/test/**/TEST-*.xml,junit-test-results-native-*/**/TEST-*.xml",
+                        "reporter": "java-junit",
+                        "fail-on-empty": "true",
+                        "list-tests": "failed"
+                    }
+                }
+            ],
+            "permissions": {
+                "contents": "read",
+                "actions": "read",
+                "checks": "write"
+            }
         }
     }
 }

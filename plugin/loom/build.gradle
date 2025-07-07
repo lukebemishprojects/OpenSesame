@@ -1,22 +1,13 @@
 plugins {
     id 'java-gradle-plugin'
+    id 'opensesame.base'
     alias cLibs.plugins.gradlepublish
 }
 
 java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
 
-group = rootProject.group
-version = rootProject.version
-
-repositories {
-    mavenCentral()
-    maven {
-        name = 'FabricMC'
-        url = 'https://maven.fabricmc.net/'
-    }
-}
-
 java.withSourcesJar()
+java.withJavadocJar()
 
 dependencies {
     compileOnly libs.jetbrains.annotations
@@ -54,8 +45,7 @@ gradlePlugin {
 }
 
 processResources {
-    from rootProject.file('LICENSE')
+    from(rootProject.isolated.projectDirectory.file('LICENSE')) {
+        into 'META-INF'
+    }
 }
-
-managedVersioning.publishing.mavenPullRequest(publishing)
-managedVersioning.publishing.mavenSnapshot(publishing)

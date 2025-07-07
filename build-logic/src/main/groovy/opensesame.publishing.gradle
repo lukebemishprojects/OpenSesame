@@ -1,7 +1,6 @@
 plugins {
     id 'signing'
     id 'maven-publish'
-    id 'dev.lukebemish.managedversioning'
 }
 
 abstract class OpenSesameConventionExtension {
@@ -41,18 +40,13 @@ abstract class OpenSesameConventionExtension {
 
 project.extensions.add('openSesameConvention', OpenSesameConventionExtension)
 
-managedVersioning.publishing.mavenPullRequest(publishing)
-managedVersioning.publishing.mavenSnapshot(publishing)
+managedVersioning.mavenCentralUseBundle()
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            managedVersioning.publishing.sign(signing, it)
         }
     }
 }
 
-tasks.register('publishCentral') {
-    dependsOn('publish')
-}
