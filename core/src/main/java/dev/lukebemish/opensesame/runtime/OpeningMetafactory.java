@@ -166,13 +166,13 @@ public final class OpeningMetafactory {
                 LOOKUP_PROVIDER1 = supplier.get();
                 break;
             } catch (Exception e) {
-                //noinspection ConstantValue
                 if (LOOKUP_PROVIDER_EXCEPTION1 != null) {
                     e.addSuppressed(LOOKUP_PROVIDER_EXCEPTION1);
-                    LOOKUP_PROVIDER_EXCEPTION1 = e;
                 }
+                LOOKUP_PROVIDER_EXCEPTION1 = e;
             }
         }
+
         LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1 == null ? new LookupProviderFallback() : LOOKUP_PROVIDER1;
         LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
     }

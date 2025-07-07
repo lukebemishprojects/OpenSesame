@@ -1,9 +1,6 @@
 package dev.lukebemish.opensesame.runtime;
 
 import org.jetbrains.annotations.ApiStatus;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -16,84 +13,76 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
+import java.util.List;
 
 @ApiStatus.Internal
 @SuppressWarnings("unused")
 class LookupProviderFFI implements LookupProvider {
     private final MethodHandles.Lookup lookup;
+    
+    @SuppressWarnings("unused")
+    private static MethodHandles.Lookup LOOKUP;
 
     @SuppressWarnings("unused")
     LookupProviderFFI() {
         this.lookup = retrieveLookup();
-    }   
-    
-    // Hopefully, a unique ID... and yes, making a dummy class is slightly cursed
-    private static final String GENERATED_CLASS_NAME = "java/lang/"+LookupProviderFFI.class.getName().replace('.', '$')+"$IMPL_LOOKUP$"+new Object().hashCode();
-    private static final String TEMP_FIELD_NAME = "IMPL_LOOKUP_TEMP";
-
-    private static byte[] generateClassBytes() {
-        var writer = new ClassWriter(0);
-        writer.visit(Opcodes.V22, Opcodes.ACC_PUBLIC, GENERATED_CLASS_NAME, null, Type.getInternalName(Object.class), new String[] {});
-        writer.visitField(Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC, TEMP_FIELD_NAME, Type.getDescriptor(MethodHandles.Lookup.class), null, null)
-                .visitEnd();
-        writer.visitEnd();
-        return writer.toByteArray();
     }
-    
+
     private synchronized static MethodHandles.Lookup retrieveLookup() {
+        var contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            return findValueFromGenerated();
-        } catch (ClassNotFoundException ignored) {} catch (Throwable e) {
-            throw new RuntimeException("Failed to retrieve IMPL_LOOKUP from generated class", e);
-        }
-        try (Arena arena = Arena.ofConfined()) {
-            var env = new Env(arena);
-            
-            var lookupClass = env.newGlobalRef(env.getJniClass(MethodHandles.Lookup.class));
-            
-            var implLookupFieldId = env.getStaticFieldId(lookupClass, "IMPL_LOOKUP", MethodHandles.Lookup.class);
-            var implLookupValue = env.newGlobalRef(env.getStaticObjectField(lookupClass, implLookupFieldId));
-            
-            var objectClass = env.newGlobalRef(env.getJniClass(Object.class));
-            var inMethodId = env.getMethodId(lookupClass, "in", MethodType.methodType(MethodHandles.Lookup.class, Class.class));
-            var implLookupInObjectValue = env.newGlobalRef(env.callObjectMethod(implLookupValue, inMethodId, objectClass));
-            
-            var defineClassMethodId = env.getMethodId(lookupClass, "defineClass", MethodType.methodType(Class.class, byte[].class));
-            var bytes = env.makeByteArray(generateClassBytes());
-            var definedClass = env.newGlobalRef(env.callObjectMethod(implLookupInObjectValue, defineClassMethodId, bytes));
-            
-            var tempFieldId = env.getStaticFieldId(definedClass, TEMP_FIELD_NAME, MethodHandles.Lookup.class);
-            env.putStaticObjectField(definedClass, tempFieldId, implLookupValue);
-            
-            env.deleteGlobalRef(lookupClass);
-            env.deleteGlobalRef(objectClass);
-            env.deleteGlobalRef(definedClass);
-            env.deleteGlobalRef(bytes);
-            env.deleteGlobalRef(implLookupValue);
-            env.deleteGlobalRef(implLookupInObjectValue);
-            
-            return findValueFromGenerated();
-        } catch (Throwable t) {
-            if (t instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            } else {
-                throw new RuntimeException(t);
+            Thread.currentThread().setContextClassLoader(LookupProviderFFI.class.getClassLoader());
+            try (Arena arena = Arena.ofConfined()) {
+                try (var env = new Env(arena)) {
+                    var lookupClass = env.newGlobalRef(env.getJniClass(MethodHandles.Lookup.class));
+
+                    var implLookupFieldId = env.getStaticFieldId(lookupClass, "IMPL_LOOKUP", MethodHandles.Lookup.class);
+                    var implLookupValue = env.newGlobalRef(env.getStaticObjectField(lookupClass, implLookupFieldId));
+                    
+                    var threadClass = env.newGlobalRef(env.getJniClass(Thread.class));
+                    var currentThreadMethodId = env.getStaticMethodId(threadClass, "currentThread", MethodType.methodType(Thread.class));
+                    var currentThreadValue = env.newGlobalRef(env.callStaticMethod(threadClass, currentThreadMethodId));
+                    var getContextClassLoaderMethodId = env.getMethodId(threadClass, "getContextClassLoader", MethodType.methodType(ClassLoader.class));
+                    var contextClassLoaderValue = env.newGlobalRef(env.callObjectMethod(currentThreadValue, getContextClassLoaderMethodId));
+                    
+                    var classClass = env.newGlobalRef(env.getJniClass(Class.class));
+                    
+                    var forNameMethodId = env.getStaticMethodId(classClass, "forName", MethodType.methodType(Class.class, String.class, boolean.class, ClassLoader.class));
+                    
+                    var selfClassName = env.newGlobalRef(env.newString(LookupProviderFFI.class.getName()));
+                    var selfClass = env.newGlobalRef(env.callObjectMethod(
+                            classClass,
+                            forNameMethodId,
+                            selfClassName,
+                            arena.allocateFrom(ValueLayout.JAVA_BYTE, (byte) 1),
+                            contextClassLoaderValue
+                    ));
+                    
+                    var lookupFieldId = env.getStaticFieldId(selfClass, "LOOKUP", MethodHandles.Lookup.class);
+                    env.putStaticObjectField(selfClass, lookupFieldId, implLookupValue);
+
+                    var lookup = LOOKUP;
+                    if (lookup == null) {
+                        throw new RuntimeException("Failed to capture IMPL_LOOKUP; FFI code successfully invoked, but callback field is empty");
+                    }
+                    return lookup;
+                }
+            } catch (Throwable t) {
+                if (t instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                } else {
+                    throw new RuntimeException(t);
+                }
             }
+        } finally {
+            Thread.currentThread().setContextClassLoader(contextClassLoader);
         }
     }
 
-    private static MethodHandles.Lookup findValueFromGenerated() throws Throwable {
-        var clazz = Class.forName(GENERATED_CLASS_NAME.replace('/', '.'));
-        var getter = MethodHandles.lookup().findStaticGetter(clazz, TEMP_FIELD_NAME, MethodHandles.Lookup.class);
-        var setter = MethodHandles.lookup().findStaticSetter(clazz, TEMP_FIELD_NAME, MethodHandles.Lookup.class);
-        var value = (MethodHandles.Lookup) getter.invokeExact();
-        setter.invokeExact((MethodHandles.Lookup) null);
-        return value;
-    }
-
-    private static class Env {
+    private static class Env implements AutoCloseable {
         private final Arena arena;
         private final MemorySegment env;
+        private final List<MemorySegment> globalRefs = new ArrayList<>();
 
         private Env(Arena arena) throws Throwable {
             this.arena = arena;
@@ -138,14 +127,9 @@ class LookupProviderFFI implements LookupProvider {
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
                     )
             );
-            this.NewByteArray = Linker.nativeLinker().downcallHandle(
-                    getFunction(env, 176), FunctionDescriptor.of(
-                            ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    )
-            );
-            this.ReleaseByteArrayElements = Linker.nativeLinker().downcallHandle(
-                    getFunction(env, 192), FunctionDescriptor.ofVoid(
-                            ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
+            this.GetStaticMethodID = Linker.nativeLinker().downcallHandle(
+                    getFunction(env, 113), FunctionDescriptor.of(
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
                     )
             );
             this.NewGlobalRef = Linker.nativeLinker().downcallHandle(
@@ -158,6 +142,11 @@ class LookupProviderFFI implements LookupProvider {
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS
                     )
             );
+            this.NewString = Linker.nativeLinker().downcallHandle(
+                    getFunction(env, 163), FunctionDescriptor.of(
+                            ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
+                    )
+            );
         }
         
         private final MethodHandle JNI_GetCreatedJavaVMs; // JavaVM **vmBuf, jsize bufLen, jsize *nVMs -> jint
@@ -167,12 +156,11 @@ class LookupProviderFFI implements LookupProvider {
         private final MethodHandle GetStaticObjectField; // JNIEnv *env, jclass clazz, jfieldID fieldID -> jobject
         private final MethodHandle SetStaticObjectField; // JNIEnv *env, jclass clazz, jfieldID fieldID, jobject value -> void
         private final MethodHandle GetMethodID; // JNIEnv *env, jclass clazz, const char *name, const char *sig -> jmethodID
-        private final MethodHandle NewByteArray; // JNIEnv *env, jsize length -> jbyteArray
-        private final MethodHandle ReleaseByteArrayElements; // JNIEnv *env, jbyteArray array, jbyte *elems, jint mode -> void
+        private final MethodHandle GetStaticMethodID; // JNIEnv *env, jclass clazz, const char *name, const char *sig -> jmethodID
         private final MethodHandle NewGlobalRef; // JNIEnv *env, jobject obj -> jobject
         private final MethodHandle DeleteGlobalRef; // JNIEnv *env, jobject obj -> void
-        
-        private static final int JNI_COMMIT = 1;
+        private final MethodHandle NewString; // JNIEnv *env, const jchar *unicodeChars, jsize len -> jstring
+
         private static final long PTR_SIZE = ValueLayout.ADDRESS.byteSize();
         private static final int JNI_VERSION_21 = 0x00150000;
 
@@ -205,41 +193,32 @@ class LookupProviderFFI implements LookupProvider {
         }
         
         private MemorySegment newGlobalRef(MemorySegment obj) throws Throwable {
-            return (MemorySegment) NewGlobalRef.invoke(env, obj);
+            var ref = (MemorySegment) NewGlobalRef.invoke(env, obj);
+            globalRefs.add(ref);
+            return ref;
+        }
+
+        private MemorySegment newString(String str) throws Throwable {
+            MemorySegment chars = arena.allocateFrom(ValueLayout.JAVA_CHAR, str.toCharArray());
+            return (MemorySegment) NewString.invoke(env, chars, str.length());
         }
         
         private void deleteGlobalRef(MemorySegment obj) throws Throwable {
             DeleteGlobalRef.invoke(env, obj);
         }
-        
-        private MemorySegment makeByteArray(byte[] bytes) throws Throwable {
-            var layout = MemoryLayout.sequenceLayout(bytes.length, ValueLayout.JAVA_BYTE);
-            // JNIEnv *env, jbyteArray array, jboolean *isCopy -> jbyte *
-            var GetByteArrayElements = Linker.nativeLinker().downcallHandle(
-                    getFunction(env, 184), FunctionDescriptor.of(
-                            ValueLayout.ADDRESS.withTargetLayout(layout), ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    )
-            );
-            
-            MemorySegment from = MemorySegment.ofArray(bytes);
-            MemorySegment array = newGlobalRef((MemorySegment) NewByteArray.invoke(env, bytes.length));
-            MemorySegment elements = (MemorySegment) GetByteArrayElements.invoke(env, array, MemorySegment.NULL);
-            
-            elements.copyFrom(from);
-            ReleaseByteArrayElements.invoke(env, array, elements, JNI_COMMIT);
-            
-            return array;
-        }
-        
+
         private void putStaticObjectField(MemorySegment clazz, MemorySegment fieldId, MemorySegment value) throws Throwable {
             SetStaticObjectField.invoke(env, clazz, fieldId, value);
         }
-        
+
         private MemorySegment getMethodId(MemorySegment clazz, @SuppressWarnings("SameParameterValue") String name, MethodType type) throws Throwable {
             return (MemorySegment) GetMethodID.invoke(env, clazz, arena.allocateFrom(name), arena.allocateFrom(type.descriptorString()));
         }
+
+        private MemorySegment getStaticMethodId(MemorySegment clazz, String name, MethodType type) throws Throwable {
+            return (MemorySegment) GetStaticMethodID.invoke(env, clazz, arena.allocateFrom(name), arena.allocateFrom(type.descriptorString()));
+        }
         
-        @SuppressWarnings("UnusedReturnValue")
         private MemorySegment callObjectMethod(MemorySegment obj, MemorySegment methodId, MemorySegment... args) throws Throwable {
             // JNIEnv *env, jobject obj, jmethodID methodID, ... -> jobject
             var argsLayout = new ArrayList<MemoryLayout>();
@@ -254,6 +233,20 @@ class LookupProviderFFI implements LookupProvider {
             return (MemorySegment) CallObjectMethod.invoke(env, obj, methodId, args);
         }
 
+        private MemorySegment callStaticMethod(MemorySegment clazz, MemorySegment methodId, MemorySegment... args) throws Throwable {
+            // JNIEnv *env, jclass clazz, jmethodID methodID, ... -> jobject
+            var argsLayout = new ArrayList<MemoryLayout>();
+            for (int i = 0; i < args.length + 3; i++) {
+                argsLayout.add(ValueLayout.ADDRESS);
+            }
+            var CallObjectMethod = Linker.nativeLinker().downcallHandle(
+                    getFunction(env, 114), FunctionDescriptor.of(
+                            ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
+                    )
+            ).asSpreader(MemorySegment[].class, args.length);
+            return (MemorySegment) CallObjectMethod.invoke(env, clazz, methodId, args);
+        }
+
         private static MemorySegment getFunction(MemorySegment obj, int function) {
             return obj.reinterpret(PTR_SIZE)
                     .get(ValueLayout.ADDRESS, 0)
@@ -265,6 +258,23 @@ class LookupProviderFFI implements LookupProvider {
             if (err != 0) {
                 throw new RuntimeException("Error with JNI: "+err);
             }
+        }
+
+        @Override
+        public void close() {
+            try {
+                for (MemorySegment ref : globalRefs) {
+                    deleteGlobalRef(ref);
+                }
+                globalRefs.clear();
+            } catch (Throwable t) {
+                throwUnchecked(t);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <T, X extends Throwable> void throwUnchecked(T throwable) throws X {
+            throw (X) throwable;
         }
     }
     
