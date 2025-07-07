@@ -6,7 +6,7 @@ import org.junit.jupiter.api.condition.DisabledIf;
 
 import java.lang.invoke.MethodHandles;
 
-@DisabledIf("isFFIProviderAvailable")
+@DisabledIf("wrongJavaVersion")
 public class TestLookupProviderFFI {
     @Open(
             name = "openingLookup",
@@ -37,7 +37,7 @@ public class TestLookupProviderFFI {
         getter.invoke();
     }
 
-    private static boolean isFFIProviderAvailable() {
-        return Runtime.version().feature() >= 22;
+    private static boolean wrongJavaVersion() {
+        return Runtime.version().feature() < 22;
     }
 }
