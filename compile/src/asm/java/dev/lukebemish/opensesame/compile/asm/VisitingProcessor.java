@@ -165,7 +165,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     public static boolean processFile(Path file, Path out, @Nullable Path rootPath) throws IOException {
-        if (!file.getFileName().toString().endsWith(".class")) {
+        if (!file.getFileName().toString().endsWith(".class") && !Files.exists(out)) {
             Files.copy(file, out);
             return false;
         }
