@@ -34,29 +34,29 @@ class LookupProviderFFI implements LookupProvider {
             Thread.currentThread().setContextClassLoader(LookupProviderFFI.class.getClassLoader());
             try (Arena arena = Arena.ofConfined()) {
                 try (var env = new Env(arena)) {
-                    var lookupClass = env.newGlobalRef(env.getJniClass(MethodHandles.Lookup.class));
+                    var lookupClass = env.getJniClass(MethodHandles.Lookup.class);
 
                     var implLookupFieldId = env.getStaticFieldId(lookupClass, "IMPL_LOOKUP", MethodHandles.Lookup.class);
-                    var implLookupValue = env.newGlobalRef(env.getStaticObjectField(lookupClass, implLookupFieldId));
+                    var implLookupValue = env.getStaticObjectField(lookupClass, implLookupFieldId);
                     
-                    var threadClass = env.newGlobalRef(env.getJniClass(Thread.class));
+                    var threadClass = env.getJniClass(Thread.class);
                     var currentThreadMethodId = env.getStaticMethodId(threadClass, "currentThread", MethodType.methodType(Thread.class));
-                    var currentThreadValue = env.newGlobalRef(env.callStaticMethod(threadClass, currentThreadMethodId));
+                    var currentThreadValue = env.callStaticMethod(threadClass, currentThreadMethodId);
                     var getContextClassLoaderMethodId = env.getMethodId(threadClass, "getContextClassLoader", MethodType.methodType(ClassLoader.class));
-                    var contextClassLoaderValue = env.newGlobalRef(env.callObjectMethod(currentThreadValue, getContextClassLoaderMethodId));
+                    var contextClassLoaderValue = env.callObjectMethod(currentThreadValue, getContextClassLoaderMethodId);
                     
-                    var classClass = env.newGlobalRef(env.getJniClass(Class.class));
+                    var classClass = env.getJniClass(Class.class);
                     
                     var forNameMethodId = env.getStaticMethodId(classClass, "forName", MethodType.methodType(Class.class, String.class, boolean.class, ClassLoader.class));
                     
-                    var selfClassName = env.newGlobalRef(env.newString(LookupProviderFFI.class.getName()));
-                    var selfClass = env.newGlobalRef(env.callObjectMethod(
+                    var selfClassName = env.newString(LookupProviderFFI.class.getName());
+                    var selfClass = env.callObjectMethod(
                             classClass,
                             forNameMethodId,
                             selfClassName,
                             arena.allocateFrom(ValueLayout.JAVA_BYTE, (byte) 1),
                             contextClassLoaderValue
-                    ));
+                    );
                     
                     var lookupFieldId = env.getStaticFieldId(selfClass, "LOOKUP", MethodHandles.Lookup.class);
                     env.putStaticObjectField(selfClass, lookupFieldId, implLookupValue);
@@ -181,7 +181,7 @@ class LookupProviderFFI implements LookupProvider {
         }
 
         private MemorySegment getJniClass(Class<?> clazz) throws Throwable {
-            return (MemorySegment) FindClass.invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
+            return (MemorySegment) withGlobalRef(FindClass).invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
         }
         
         private MemorySegment getStaticFieldId(MemorySegment clazz, String name, @SuppressWarnings("SameParameterValue") Class<?> type) throws Throwable {
@@ -189,18 +189,16 @@ class LookupProviderFFI implements LookupProvider {
         }
         
         private MemorySegment getStaticObjectField(MemorySegment clazz, MemorySegment fieldId) throws Throwable {
-            return (MemorySegment) GetStaticObjectField.invoke(env, clazz, fieldId);
+            return (MemorySegment) withGlobalRef(GetStaticObjectField).invoke(env, clazz, fieldId);
         }
         
-        private MemorySegment newGlobalRef(MemorySegment obj) throws Throwable {
-            var ref = (MemorySegment) NewGlobalRef.invoke(env, obj);
-            globalRefs.add(ref);
-            return ref;
+        private MethodHandle withGlobalRef(MethodHandle handle) {
+            return MethodHandles.filterReturnValue(handle, NewGlobalRef);
         }
 
         private MemorySegment newString(String str) throws Throwable {
             MemorySegment chars = arena.allocateFrom(ValueLayout.JAVA_CHAR, str.toCharArray());
-            return (MemorySegment) NewString.invoke(env, chars, str.length());
+            return (MemorySegment) withGlobalRef(NewString).invoke(env, chars, str.length());
         }
         
         private void deleteGlobalRef(MemorySegment obj) throws Throwable {
@@ -230,7 +228,7 @@ class LookupProviderFFI implements LookupProvider {
                             ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
                     )
             ).asSpreader(MemorySegment[].class, args.length);
-            return (MemorySegment) CallObjectMethod.invoke(env, obj, methodId, args);
+            return (MemorySegment) withGlobalRef(CallObjectMethod).invoke(env, obj, methodId, args);
         }
 
         private MemorySegment callStaticMethod(MemorySegment clazz, MemorySegment methodId, MemorySegment... args) throws Throwable {
@@ -244,7 +242,7 @@ class LookupProviderFFI implements LookupProvider {
                             ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
                     )
             ).asSpreader(MemorySegment[].class, args.length);
-            return (MemorySegment) CallObjectMethod.invoke(env, clazz, methodId, args);
+            return (MemorySegment) withGlobalRef(CallObjectMethod).invoke(env, clazz, methodId, args);
         }
 
         private static MemorySegment getFunction(MemorySegment obj, int function) {
