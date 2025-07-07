@@ -32,6 +32,7 @@ managedVersioning {
             workflowDispatch = true
             gradleJob {
                 name = 'build'
+                javaVersion.set '21'
                 setupGitUser()
                 readOnly = false
                 gradlew 'Tag Release', 'tagRelease'
@@ -42,6 +43,7 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishCentral'
+                javaVersion.set '21'
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish', 'publish'
@@ -51,6 +53,7 @@ managedVersioning {
             }
             gradleJob {
                 name.set 'publishPlugins'
+                javaVersion.set '21'
                 buildCache()
                 needs.add('build')
                 gradlew 'Publish Plugins', 'publishPlugins'
@@ -172,6 +175,7 @@ managedVersioning {
             gradleJob {
                 buildCache()
                 name.set 'build'
+                javaVersion.set '21'
                 testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 mavenSnapshot('github')
@@ -182,6 +186,7 @@ managedVersioning {
             prettyName.set 'Build PR'
             pullRequest.set(true)
             gradleJob {
+                javaVersion.set '21'
                 name.set 'build'
                 testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
