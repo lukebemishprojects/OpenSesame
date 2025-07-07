@@ -8,8 +8,6 @@ import java.lang.invoke.MethodType;
 
 @ApiStatus.Internal
 class LookupProviderNative implements LookupProvider {
-
-
     private final MethodHandles.Lookup lookup;
 
     LookupProviderNative() {

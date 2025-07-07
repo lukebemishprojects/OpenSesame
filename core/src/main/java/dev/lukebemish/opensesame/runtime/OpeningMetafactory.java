@@ -9,6 +9,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * A series of metafactories that generate call sites for otherwise inaccessible members of other classes.
@@ -150,24 +151,29 @@ public final class OpeningMetafactory {
     private static final LookupProvider LOOKUP_PROVIDER_SAFE = new LookupProviderFallback();
     private static final Exception LOOKUP_PROVIDER_EXCEPTION;
 
+    private static final List<Supplier<LookupProvider>> IMPL_LOOKUP_PROVIDER_LIST = List.of(
+            LookupProviderFFI::new,
+            LookupProviderNative::new,
+            LookupProviderUnsafe::new
+    );
+
     static {
-        Exception LOOKUP_PROVIDER_EXCEPTION1;
-        LookupProvider LOOKUP_PROVIDER1;
-        try {
-            LOOKUP_PROVIDER1 = new LookupProviderNative();
-            LOOKUP_PROVIDER_EXCEPTION1 = null;
-        } catch (Exception e1) {
-            LOOKUP_PROVIDER_EXCEPTION1 = e1;
+        Exception LOOKUP_PROVIDER_EXCEPTION1 = null;
+        LookupProvider LOOKUP_PROVIDER1 = null;
+        for (var supplier : IMPL_LOOKUP_PROVIDER_LIST) {
             try {
-                LOOKUP_PROVIDER1 = new LookupProviderUnsafe();
-            } catch(Exception e2){
-                e2.addSuppressed(e1);
-                LOOKUP_PROVIDER_EXCEPTION1 = e2;
-                LOOKUP_PROVIDER1 = new LookupProviderFallback();
+                LOOKUP_PROVIDER1 = supplier.get();
+                break;
+            } catch (Exception e) {
+                //noinspection ConstantValue
+                if (LOOKUP_PROVIDER_EXCEPTION1 != null) {
+                    e.addSuppressed(LOOKUP_PROVIDER_EXCEPTION1);
+                    LOOKUP_PROVIDER_EXCEPTION1 = e;
+                }
             }
         }
+        LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1 == null ? new LookupProviderFallback() : LOOKUP_PROVIDER1;
         LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
-        LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1;
     }
 
     private synchronized static List<RuntimeRemapper> getRemapper(ClassLoader classLoader) {

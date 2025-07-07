@@ -5,9 +5,40 @@ plugins {
 java.withSourcesJar()
 java.withJavadocJar()
 
+sourceSets {
+    java22 {}
+}
+
+tasks.named('compileJava22Java', JavaCompile) {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(22)
+    }
+}
+
+tasks.named('processResources', ProcessResources) {
+    from(sourceSets.java22.output) {
+        into 'META-INF/versions/22'
+    }
+    dependsOn sourceSets.java22.output
+}
+
+tasks.named('jar', Jar) {
+    manifest {
+        attributes([
+                'Multi-Release': 'true'
+        ])
+    }
+}
+
+configurations {
+    java22CompileClasspath.extendsFrom compileClasspath
+}
+
 dependencies {
     implementation libs.asm.core
     implementation libs.asm.commons
+    
+    java22CompileOnly sourceSets.main.output.classesDirs
 }
 
 publishing {
