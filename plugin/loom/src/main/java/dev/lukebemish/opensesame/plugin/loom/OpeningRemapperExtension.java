@@ -7,22 +7,29 @@ import net.fabricmc.loom.api.remapping.RemapperParameters;
 import net.fabricmc.loom.api.remapping.TinyRemapperExtension;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.specs.Spec;
+import org.gradle.api.tasks.Nested;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Type;
 
 import javax.inject.Inject;
+import java.io.Serializable;
 import java.util.List;
 
 @SuppressWarnings("UnstableApiUsage")
 public abstract class OpeningRemapperExtension implements RemapperExtension<OpeningRemapperExtension.OpeningRemapperParameters>, TinyRemapperExtension {
-    private final OpeningRemapperParameters parameters;
+    @Nested
+    public abstract Property<OpeningRemapperParameters> getParameters();
 
     @Inject
     public OpeningRemapperExtension(OpeningRemapperParameters parameters) {
-        this.parameters = parameters;
+        this.getParameters().set(parameters);
     }
+    
+    @Inject
+    public OpeningRemapperExtension() {}
 
     public static abstract class OpeningRemapperParameters implements RemapperParameters {
         public abstract ListProperty<Spec<Context>> getContextFilters();
@@ -36,7 +43,7 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
     @Override
     public TinyRemapper.@Nullable ApplyVisitorProvider getPreApplyVisitor(Context context) {
         return (cls, classVisitor) -> {
-            for (var spec : parameters.getContextFilters().get()) {
+            for (var spec : getParameters().get().getContextFilters().get()) {
                 if (!spec.isSatisfiedBy(context)) {
                     return classVisitor;
                 }
