@@ -207,7 +207,9 @@ class LookupProviderFFI implements LookupProvider {
         }
 
         private MemorySegment getJniClass(Class<?> clazz) throws Throwable {
-            return (MemorySegment) withGlobalRef(FindClass).invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
+            var globalRef = (MemorySegment) withGlobalRef(FindClass).invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
+            globalRefs.add(globalRef);
+            return globalRef;
         }
         
         private MemorySegment getStaticFieldId(MemorySegment clazz, String name, @SuppressWarnings("SameParameterValue") Class<?> type) throws Throwable {
@@ -223,8 +225,9 @@ class LookupProviderFFI implements LookupProvider {
         }
 
         private MemorySegment newString(String str) throws Throwable {
-            MemorySegment chars = arena.allocateFrom(ValueLayout.JAVA_CHAR, str.toCharArray());
-            return (MemorySegment) withGlobalRef(NewString).invoke(env, chars, str.length());
+            var chars = str.toCharArray();
+            MemorySegment charsSegment = MemorySegment.ofArray(chars);
+            return (MemorySegment) withGlobalRef(NewString).invoke(env, charsSegment, chars.length);
         }
         
         private void deleteGlobalRef(MemorySegment obj) throws Throwable {
