@@ -3,11 +3,11 @@
     "concurrency": "ci-${{ github.ref }}",
     "on": {
         "workflow_run": {
-            "types": [
-                "completed"
-            ],
             "workflows": [
                 "Build PR"
+            ],
+            "types": [
+                "completed"
             ]
         }
     },

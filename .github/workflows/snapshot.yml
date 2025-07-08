@@ -140,13 +140,22 @@
                     "if": "${{ matrix.qemu }}"
                 },
                 {
+                    "name": "Setup Java",
+                    "uses": "actions/setup-java@v4",
+                    "with": {
+                        "distribution": "temurin",
+                        "java-version": "${{ matrix.java }}"
+                    },
+                    "if": "${{ !matrix.qemu }}"
+                },
+                {
                     "name": "Run with Docker",
                     "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
                     "if": "${{ matrix.docker }}"
                 },
                 {
                     "name": "Run",
-                    "run": "${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt",
+                    "run": "java @args-${{ matrix.os }}.txt",
                     "if": "${{ !matrix.qemu }}",
                     "shell": "bash"
                 },
@@ -175,6 +184,11 @@
                         "x86_64",
                         "aarch64",
                         "arm"
+                    ],
+                    "java": [
+                        "17",
+                        "21",
+                        "22"
                     ],
                     "exclude": [
                         {
@@ -205,25 +219,39 @@
                     "include": [
                         {
                             "os": "macos",
-                            "runner": "macos-latest",
-                            "java_home": "$JAVA_HOME_17_arm64"
+                            "runner": "macos-latest"
                         },
                         {
                             "os": "windows",
-                            "runner": "windows-latest",
-                            "java_home": "$JAVA_HOME_17_X64"
+                            "runner": "windows-latest"
                         },
                         {
                             "os": "linux",
-                            "runner": "ubuntu-latest",
-                            "java_home": "$JAVA_HOME_17_X64"
+                            "runner": "ubuntu-latest"
                         },
                         {
                             "os": "linux",
                             "arch": "aarch64",
+                            "java": "17",
                             "qemu": "arm64",
                             "docker_arch": "arm64",
                             "docker": "arm64v8/eclipse-temurin:17"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "aarch64",
+                            "java": "21",
+                            "qemu": "arm64",
+                            "docker_arch": "arm64",
+                            "docker": "arm64v8/eclipse-temurin:21"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "aarch64",
+                            "java": "17",
+                            "qemu": "arm64",
+                            "docker_arch": "arm64",
+                            "docker": "arm64v8/eclipse-temurin:22"
                         }
                     ]
                 }

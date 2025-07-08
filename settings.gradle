@@ -92,6 +92,7 @@ managedVersioning {
                 matrix.os = ['linux', 'windows', 'macos']
                 // We're giving up on testing on x32 systems (windows or linux) because it's too much of a hassle -- we'd probably need custom JDK builds at some point...
                 matrix.arch = ['x86_64', 'aarch64', 'arm']
+                matrix.java = ['17', '21', '22']
                 matrix.exclude = [
                         // No natives
                         [os: 'macos', arch: 'i386'],
@@ -104,11 +105,13 @@ managedVersioning {
                         [os: 'linux', arch: 'arm']
                 ]
                 matrix.include = [
-                        [os: 'macos', runner: 'macos-latest', java_home: '$JAVA_HOME_17_arm64'],
-                        [os: 'windows', runner: 'windows-latest', java_home: '$JAVA_HOME_17_X64'],
-                        [os: 'linux', runner: 'ubuntu-latest', java_home: '$JAVA_HOME_17_X64'],
+                        [os: 'macos', runner: 'macos-latest'],
+                        [os: 'windows', runner: 'windows-latest'],
+                        [os: 'linux', runner: 'ubuntu-latest'],
 
-                        [os: 'linux', arch: 'aarch64', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:17'],
+                        [os: 'linux', arch: 'aarch64', java: '17', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:17'],
+                        [os: 'linux', arch: 'aarch64', java: '21', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:21'],
+                        [os: 'linux', arch: 'aarch64', java: '17', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:22'],
                 ]
                 parameters.put('strategy', strategy)
                 name.set 'natives-test'
@@ -126,6 +129,13 @@ managedVersioning {
                     parameters.put('if', '${{ matrix.qemu }}')
                 }
                 step {
+                    name.set 'Setup Java'
+                    parameters.put('if', '${{ !matrix.qemu }}')
+                    uses.set 'actions/setup-java@v4'
+                    with.put 'distribution', 'temurin'
+                    with.put 'java-version', '${{ matrix.java }}'
+                }
+                step {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
                     run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \'' +
@@ -137,7 +147,7 @@ managedVersioning {
                     name.set 'Run'
                     parameters.put('if', '${{ !matrix.qemu }}')
                     parameters.put('shell', 'bash')
-                    run.set '${{ matrix.java_home }}/bin/java @args-${{ matrix.os }}.txt'
+                    run.set 'java @args-${{ matrix.os }}.txt'
                 }
                 step {
                     name.set 'Upload Results'
