@@ -153,7 +153,7 @@ public final class OpeningMetafactory {
     private static final Exception LOOKUP_PROVIDER_EXCEPTION;
 
     private static final List<Supplier<LookupProvider>> IMPL_LOOKUP_PROVIDER_LIST = List.of(
-            //LookupProviderFFI::new, // Temporarily disabled due to issue leading to unrecoverable crash
+            LookupProviderFFI::new,
             LookupProviderNative::new,
             LookupProviderUnsafe::new
     );
