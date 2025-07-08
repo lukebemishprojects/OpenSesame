@@ -23,7 +23,6 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
     @Nested
     public abstract Property<OpeningRemapperParameters> getParameters();
 
-    @Inject
     public OpeningRemapperExtension(OpeningRemapperParameters parameters) {
         this.getParameters().set(parameters);
     }
@@ -32,6 +31,7 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
     public OpeningRemapperExtension() {}
 
     public static abstract class OpeningRemapperParameters implements RemapperParameters {
+        @Nested
         public abstract ListProperty<Spec<Context>> getContextFilters();
 
         public void contextFilter(Spec<TinyRemapperExtension.Context> spec) {
