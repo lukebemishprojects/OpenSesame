@@ -101,9 +101,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                         var relative = input.relativize(file);
                         var out = output.resolve(relative);
                         Files.createDirectories(out.getParent());
-                        if (processFile(file, out, output)) {
-                            modified.add(file);
-                        }
+                        modified.addAll(processFile(file, out, output::resolve));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -111,15 +109,11 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             }
             return modified;
         } else {
-            if (processFile(input, output, null)) {
-                return Set.of(input);
-            } else {
-                return Set.of();
-            }
+            return processFile(input, output, null);
         }
     }
 
-    private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, int index, Path rootPath) throws IOException {
+    private static void makeMixins(boolean forPublic, boolean forClass, Type holderType, Type targetType, int index, OutputPathResolver rootPath, @Nullable Set<Path> modifiedExternal) throws IOException {
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         String originalName = holderType.getInternalName();
         String mixinName = MIXIN_PACKAGE + "/" + originalName + "$" + index + "/" + (forPublic ? "public" : "private") + (forClass ? "class" : "interface");
@@ -151,6 +145,9 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         var mixinPath = rootPath.resolve(mixinName + ".class");
         Files.createDirectories(mixinPath.getParent());
         Files.write(mixinPath, writer.toByteArray());
+        if (modifiedExternal != null) {
+            modifiedExternal.add(mixinPath);
+        }
     }
 
     protected enum MixinProviderType {
@@ -163,99 +160,111 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
             this.methodName = methodName;
         }
     }
+    
+    @FunctionalInterface
+    public interface OutputPathResolver {
+        Path resolve(String name) throws IOException;
+    }
+    
+    public static VisitingProcessor makeProcessor(ClassVisitor delegate, Set<Type> annotations, @Nullable OutputPathResolver rootPath, @Nullable Set<Path> modifiedExternal) {
+        return new VisitingProcessor(delegate, annotations) {
+            @Override
+            protected void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType) throws IOException {
+                if (rootPath != null) {
+                    Set<Type> targets = new HashSet<>();
+                    lines.forEach((k, v) -> {
+                        for (String line : v) {
+                            String type = line.split("\\.")[0];
+                            targets.add(Type.getObjectType(type));
+                        }
+                    });
+                    List<Type> orderedTargets = new ArrayList<>(targets);
+                    Map<Type, Integer> targetIndexes = new HashMap<>();
+                    for (int i = 0; i < orderedTargets.size(); i++) {
+                        targetIndexes.put(orderedTargets.get(i), i);
+                    }
+                    String generatedClassName = selfType.getInternalName() + UNFINAL_SERVICE;
+                    Path generatedClassPath = rootPath.resolve(generatedClassName + ".class");
+                    ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+                    writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()});
+                    var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
+                    generated.visit("value", UNFINAL);
+                    generated.visitEnd();
+                    var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+                    initWriter.visitCode();
+                    initWriter.visitVarInsn(Opcodes.ALOAD, 0);
+                    initWriter.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+                    initWriter.visitInsn(Opcodes.RETURN);
+                    initWriter.visitMaxs(1, 1);
+                    initWriter.visitEnd();
+                    for (MixinProviderType type : MixinProviderType.values()) {
+                        List<String> specificLines = lines.getOrDefault(type, List.of());
+                        if (!lines.isEmpty()) {
+                            generateImpl(type.methodName, selfType, writer, specificLines, targetIndexes);
+                        }
+                    }
+                    Files.write(generatedClassPath, writer.toByteArray());
+                    var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'));
+                    if (!Files.exists(serviceFile)) {
+                        Files.createDirectories(serviceFile.getParent());
+                        Files.createFile(serviceFile);
+                    }
+                    Files.write(serviceFile, List.of(generatedClassName.replace('/','.')), StandardOpenOption.APPEND);
 
-    public static boolean processFile(Path file, Path out, @Nullable Path rootPath) throws IOException {
+                    for (Type target : targets) {
+                        int index = targetIndexes.get(target);
+                        makeMixins(true, true, selfType, target, index, rootPath, modifiedExternal);
+                        makeMixins(true, false, selfType, target, index, rootPath, modifiedExternal);
+                        makeMixins(false, true, selfType, target, index, rootPath, modifiedExternal);
+                        makeMixins(false, false, selfType, target, index, rootPath, modifiedExternal);
+                    }
+                    if (modifiedExternal != null) {
+                        modifiedExternal.add(serviceFile);
+                    }
+                }
+                super.writeMixinProviderLines(lines, selfType);
+            }
+
+            private static void generateImpl(String implMethodName, Type selfType, ClassWriter writer, List<String> typeLines, Map<Type, Integer> targetIndexes) {
+                var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, implMethodName, "()[Ljava/lang/String;", null, null);
+                implWriter.visitCode();
+                implWriter.visitLdcInsn(typeLines.size());
+                implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String");
+                for (int i = 0; i < typeLines.size(); i++) {
+                    implWriter.visitInsn(Opcodes.DUP);
+                    implWriter.visitLdcInsn(i);
+                    var lineEnd = typeLines.get(i);
+                    var targetClass = Type.getObjectType(lineEnd.split("\\.")[0]);
+                    var mixinPackageFull = selfType.getInternalName() + "$" + targetIndexes.get(targetClass);
+                    implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd);
+                    implWriter.visitInsn(Opcodes.AASTORE);
+                }
+                implWriter.visitInsn(Opcodes.ARETURN);
+                implWriter.visitMaxs(3, 1);
+                implWriter.visitEnd();
+                writer.visitEnd();
+            }
+        };
+    }
+
+    public static Set<Path> processFile(Path file, Path out, @Nullable OutputPathResolver rootPath) throws IOException {
         if (!file.getFileName().toString().endsWith(".class") && !Files.exists(out)) {
             Files.copy(file, out);
-            return false;
+            return Set.of();
         }
-        boolean[] modifiedExternal = {false};
+        Set<Path> modifiedExternal = new HashSet<>();
         try (var inputStream = Files.newInputStream(file)) {
             ClassReader reader = new ClassReader(inputStream);
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             try {
-                reader.accept(new VisitingProcessor(writer, VisitingProcessor.ANNOTATIONS) {
-                    @Override
-                    protected void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType) throws IOException {
-                        if (rootPath != null) {
-                            Set<Type> targets = new HashSet<>();
-                            lines.forEach((k, v) -> {
-                                for (String line : v) {
-                                    String type = line.split("\\.")[0];
-                                    targets.add(Type.getObjectType(type));
-                                }
-                            });
-                            List<Type> orderedTargets = new ArrayList<>(targets);
-                            Map<Type, Integer> targetIndexes = new HashMap<>();
-                            for (int i = 0; i < orderedTargets.size(); i++) {
-                                targetIndexes.put(orderedTargets.get(i), i);
-                            }
-                            String generatedClassName = selfType.getInternalName() + UNFINAL_SERVICE;
-                            Path generatedClassPath = rootPath.resolve(generatedClassName + ".class");
-                            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-                            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()});
-                            var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
-                            generated.visit("value", UNFINAL);
-                            generated.visitEnd();
-                            var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-                            initWriter.visitCode();
-                            initWriter.visitVarInsn(Opcodes.ALOAD, 0);
-                            initWriter.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-                            initWriter.visitInsn(Opcodes.RETURN);
-                            initWriter.visitMaxs(1, 1);
-                            initWriter.visitEnd();
-                            for (MixinProviderType type : MixinProviderType.values()) {
-                                List<String> specificLines = lines.getOrDefault(type, List.of());
-                                if (!lines.isEmpty()) {
-                                    generateImpl(type.methodName, selfType, writer, specificLines, targetIndexes);
-                                }
-                            }
-                            Files.write(generatedClassPath, writer.toByteArray());
-                            var serviceFile = rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'));
-                            if (!Files.exists(serviceFile)) {
-                                Files.createDirectories(serviceFile.getParent());
-                                Files.createFile(serviceFile);
-                            }
-                            Files.write(serviceFile, List.of(generatedClassName.replace('/','.')), StandardOpenOption.APPEND);
-
-                            for (Type target : targets) {
-                                int index = targetIndexes.get(target);
-                                makeMixins(true, true, selfType, target, index, rootPath);
-                                makeMixins(true, false, selfType, target, index, rootPath);
-                                makeMixins(false, true, selfType, target, index, rootPath);
-                                makeMixins(false, false, selfType, target, index, rootPath);
-                            }
-                            modifiedExternal[0] = true;
-                        }
-                        super.writeMixinProviderLines(lines, selfType);
-                    }
-
-                    private static void generateImpl(String implMethodName, Type selfType, ClassWriter writer, List<String> typeLines, Map<Type, Integer> targetIndexes) {
-                        var implWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, implMethodName, "()[Ljava/lang/String;", null, null);
-                        implWriter.visitCode();
-                        implWriter.visitLdcInsn(typeLines.size());
-                        implWriter.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String");
-                        for (int i = 0; i < typeLines.size(); i++) {
-                            implWriter.visitInsn(Opcodes.DUP);
-                            implWriter.visitLdcInsn(i);
-                            var lineEnd = typeLines.get(i);
-                            var targetClass = Type.getObjectType(lineEnd.split("\\.")[0]);
-                            var mixinPackageFull = selfType.getInternalName() + "$" + targetIndexes.get(targetClass);
-                            implWriter.visitLdcInsn(mixinPackageFull +"."+lineEnd);
-                            implWriter.visitInsn(Opcodes.AASTORE);
-                        }
-                        implWriter.visitInsn(Opcodes.ARETURN);
-                        implWriter.visitMaxs(3, 1);
-                        implWriter.visitEnd();
-                        writer.visitEnd();
-                    }
-                }, 0);
+                reader.accept(makeProcessor(writer, VisitingProcessor.ANNOTATIONS, rootPath, modifiedExternal), 0);
             } catch (RuntimeException e) {
                 throw new IOException("Error processing class " + file, e);
             }
+            modifiedExternal.add(out);
             Files.write(out, writer.toByteArray());
         }
-        return modifiedExternal[0];
+        return modifiedExternal;
     }
 
     List<String> unFinalLines = new ArrayList<>();

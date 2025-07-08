@@ -16,6 +16,8 @@ tinyremapper = "0.10.0"
 
 mixin = "0.8.5"
 
+javacpostprocessor = "0.1.0"
+
 [libraries]
 
 junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitjupiter" }
@@ -38,3 +40,6 @@ fabric_loader_junit = { module = "net.fabricmc:fabric-loader-junit", version.ref
 fabric_tinyremapper = { module = "net.fabricmc:tiny-remapper", version.ref = "tinyremapper" }
 
 mixin = { module = "org.spongepowered:mixin", version.ref = "mixin" }
+
+javacpostprocessor = { module = "dev.lukebemish:javac-post-processor", version.ref = "javacpostprocessor" }
+javacpostprocessor-gradle = { module = "dev.lukebemish.javac-post-processor:dev.lukebemish.javac-post-processor.gradle.plugin", version.ref = "javacpostprocessor" }

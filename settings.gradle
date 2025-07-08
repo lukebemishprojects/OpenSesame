@@ -278,6 +278,11 @@ gradle.lifecycle.beforeProject {
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
+        // TODO: remove after maven central propogation
+        maven {
+            name = 'Staging'
+            url = 'https://maven.lukebemish.dev/staging/'
+        }
         maven {
             name = 'FabricMC'
             url = 'https://maven.fabricmc.net/'
@@ -286,6 +291,7 @@ dependencyResolutionManagement {
             name = 'SpongePowered'
             url = 'https://repo.spongepowered.org/maven'
         }
+        gradlePluginPortal()
     }
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
 }

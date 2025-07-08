@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.plugin;
 
+import dev.lukebemish.javacpostprocessor.plugin.PostProcessorExtension;
 import org.gradle.api.Project;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.plugins.ExtensionAware;
@@ -35,5 +36,19 @@ public abstract class OpenSesameExtension implements ExtensionAware {
 
     public void apply(SourceSet sourceSet) {
         apply(sourceSet, sourceSet.getJava(), project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class));
+    }
+
+    public void applyJavac(SourceSet sourceSet, TaskProvider<? extends AbstractCompile> compileTaskProvider) {
+        project.getPluginManager().apply("dev.lukebemish.javac-post-processor");
+        compileTaskProvider.configure(javaCompile -> {
+            javaCompile.getExtensions().getByType(PostProcessorExtension.class).getPlugins().add("dev.lukebemish.opensesame");
+        });
+        project.getConfigurations().named(sourceSet.getAnnotationProcessorConfigurationName()).configure(config ->
+                config.extendsFrom(project.getConfigurations().getByName(OpenSesamePlugin.DEPENDENCY_CONFIGURATION_NAME))
+        );
+    }
+
+    public void applyJavac(SourceSet sourceSet) {
+        applyJavac(sourceSet, project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class));
     }
 }

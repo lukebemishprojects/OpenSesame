@@ -78,9 +78,11 @@ public abstract class OpenSesameTask extends DefaultTask {
             Files.createDirectories(outputDir.resolve(relativePath).getParent());
             var inputPath = inputDir.resolve(relativePath);
             var outputPath = outputDir.resolve(relativePath);
-            if (VisitingProcessor.processFile(inputPath, outputPath, outputDir)) {
-                processed.add(relativePath);
-            }
+            processed.addAll(VisitingProcessor.processFile(inputPath, outputPath, outputDir::resolve)
+                    .stream()
+                    .map(p -> inputDir.relativize(p).toString())
+                    .toList()
+            );
         }
         Files.write(incrementalClassesFile.toPath(), processed);
     }

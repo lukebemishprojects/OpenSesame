@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'dev.lukebemish.opensesame'
+}
+
+group='dev.lukebemish.opensesame'
+
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+
+configurations {
+    testSource {
+        canBeResolved = true
+    }
+    testModulePath {
+        canBeResolved = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testSource('dev.lukebemish.opensesame:testtargets:testsources') {
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
+        }
+    }
+    testModulePath 'dev.lukebemish.opensesame:testtargets'
+}
+
+opensesame.applyJavac(sourceSets.test)
+
+tasks.named('compileTestJava', JavaCompile).configure {
+    dependsOn(configurations.testSource)
+    source(configurations.testSource)
+}
+
+testing {
+    suites {
+        test {
+            useJUnit()
+
+            targets.configureEach {
+                testTask.configure {
+                    useJUnitPlatform()
+
+                    testLogging {
+                        showStandardStreams = true
+                        exceptionFormat = 'full'
+                        showCauses = true
+                        showStackTraces = true
+                        events = ['passed', 'failed', 'skipped']
+                    }
+
+                    testClassesDirs.from configurations.testModulePath
+                    systemProperty 'modulartests', 'true'
+                }
+            }
+
+            dependencies {
+                runtimeOnly libs.junit.engine
+                implementation 'dev.lukebemish.opensesame:opensesame-core'
+                implementation 'dev.lukebemish.opensesame:testtargets'
+                implementation libs.asm.core
+                implementation libs.junit.api
+            }
+        }
+    }
+}
