@@ -50,7 +50,7 @@ class LookupProviderFFI implements LookupProvider {
                     var forNameMethodId = env.getStaticMethodId(classClass, "forName", MethodType.methodType(Class.class, String.class, boolean.class, ClassLoader.class));
                     
                     var selfClassName = env.newString(LookupProviderFFI.class.getName());
-                    var selfClass = env.callObjectMethod(
+                    var selfClass = env.callStaticMethod(
                             classClass,
                             forNameMethodId,
                             selfClassName,
@@ -93,15 +93,13 @@ class LookupProviderFFI implements LookupProvider {
             this.JNI_GetCreatedJavaVMs = Linker.nativeLinker().downcallHandle(
                     symbolLookup.find("JNI_GetCreatedJavaVMs").orElseThrow(), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             var javaVm = getJavaVm();
             this.GetEnv = Linker.nativeLinker().downcallHandle(
                     getFunction(javaVm, 6), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
 
             this.env = getJniEnv(javaVm);
@@ -109,69 +107,58 @@ class LookupProviderFFI implements LookupProvider {
             this.FindClass = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 6), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.GetStaticFieldID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 144), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.GetStaticObjectField = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 145), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.SetStaticObjectField = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 154), FunctionDescriptor.ofVoid(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.GetMethodID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 33), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.GetStaticMethodID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 113), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.NewGlobalRef = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 21), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.DeleteGlobalRef = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 22), FunctionDescriptor.ofVoid(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.NewString = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 163), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             // JNIEnv *env, jint capacity -> jint
             MethodHandle pushLocalFrame = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 19), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             this.PopLocalFrame = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 20), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(false)
+                    )
             );
             checkError((int) pushLocalFrame.invokeExact(env, 16));
         }
@@ -265,12 +252,12 @@ class LookupProviderFFI implements LookupProvider {
             for (int i = 0; i < args.length + 3; i++) {
                 argsLayout.add(ValueLayout.ADDRESS);
             }
-            var CallObjectMethod = Linker.nativeLinker().downcallHandle(
+            var CallStaticObjectMethod = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 114), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
                     )
             ).asSpreader(MemorySegment[].class, args.length);
-            return (MemorySegment) withGlobalRef(CallObjectMethod).invoke(env, clazz, methodId, args);
+            return (MemorySegment) withGlobalRef(CallStaticObjectMethod).invoke(env, clazz, methodId, args);
         }
 
         private static MemorySegment getFunction(MemorySegment obj, int function) {
