@@ -17,6 +17,10 @@ class TestNatives {
         MethodHandle nativeImplLookup = lookup.findStatic(clazz, "nativeImplLookup", MethodType.methodType(MethodHandles.Lookup.class));
         setup.invoke();
         MethodHandles.Lookup implLookup = (MethodHandles.Lookup) nativeImplLookup.invoke();
+
+        // Test if it is IMPL_LOOKUP, by using it to grab IMPL_LOOKUP
         Assertions.assertNotEquals(0, implLookup.lookupModes() & MethodHandles.Lookup.ORIGINAL);
+        var getter = implLookup.findStaticGetter(MethodHandles.Lookup.class, "IMPL_LOOKUP", MethodHandles.Lookup.class);
+        getter.invoke();
     }
 }
