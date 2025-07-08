@@ -15,7 +15,6 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Type;
 
 import javax.inject.Inject;
-import java.io.Serializable;
 import java.util.List;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -23,12 +22,10 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
     @Nested
     public abstract Property<OpeningRemapperParameters> getParameters();
 
+    @Inject
     public OpeningRemapperExtension(OpeningRemapperParameters parameters) {
         this.getParameters().set(parameters);
     }
-    
-    @Inject
-    public OpeningRemapperExtension() {}
 
     public static abstract class OpeningRemapperParameters implements RemapperParameters {
         @Nested
