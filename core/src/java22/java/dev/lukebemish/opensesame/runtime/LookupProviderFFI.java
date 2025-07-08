@@ -27,12 +27,13 @@ class LookupProviderFFI implements LookupProvider {
     LookupProviderFFI() {
         this.lookup = retrieveLookup();
     }
-    
+
     private static final class SpecialInformativeClassLoader extends ClassLoader {
         private SpecialInformativeClassLoader(ClassLoader parent) {
             super(parent);
         }
-        
+
+        // This wacky approach seems to be the most reliable way to do this for macos
         public Class<?> getProviderClass() {
             return LookupProviderFFI.class;
         }
@@ -92,19 +93,16 @@ class LookupProviderFFI implements LookupProvider {
             this.arena = arena;
             var symbolLookup = SymbolLookup.libraryLookup(System.mapLibraryName("jvm"), arena);
 
-            // These method handles are all marked as critical to avoid stack local ref clearing happening after each call
             this.JNI_GetCreatedJavaVMs = Linker.nativeLinker().downcallHandle(
                     symbolLookup.find("JNI_GetCreatedJavaVMs").orElseThrow(), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             var javaVm = getJavaVm();
             this.GetEnv = Linker.nativeLinker().downcallHandle(
                     getFunction(javaVm, 6), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
 
             this.env = getJniEnv(javaVm);
@@ -112,26 +110,22 @@ class LookupProviderFFI implements LookupProvider {
             this.FindClass = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 6), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.GetStaticFieldID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 144), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.GetStaticObjectField = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 145), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.SetStaticObjectField = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 154), FunctionDescriptor.ofVoid(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.GetMethodID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 33), FunctionDescriptor.of(
@@ -141,33 +135,28 @@ class LookupProviderFFI implements LookupProvider {
             this.GetStaticMethodID = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 113), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.NewGlobalRef = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 21), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.DeleteGlobalRef = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 22), FunctionDescriptor.ofVoid(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             // JNIEnv *env, jint capacity -> jint
             MethodHandle pushLocalFrame = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 19), FunctionDescriptor.of(
                             ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             this.PopLocalFrame = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 20), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS
-                    ),
-                    Linker.Option.critical(true)
+                    )
             );
             checkError((int) pushLocalFrame.invokeExact(env, 16));
         }
@@ -246,8 +235,7 @@ class LookupProviderFFI implements LookupProvider {
             var CallObjectMethod = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 34), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
-                    ),
-                    Linker.Option.critical(true)
+                    )
             ).asSpreader(MemorySegment[].class, args.length);
             return (MemorySegment) withGlobalRef(CallObjectMethod).invoke(env, obj, methodId, args);
         }
@@ -261,8 +249,7 @@ class LookupProviderFFI implements LookupProvider {
             var CallStaticObjectMethod = Linker.nativeLinker().downcallHandle(
                     getFunction(env, 114), FunctionDescriptor.of(
                             ValueLayout.ADDRESS, argsLayout.toArray(MemoryLayout[]::new)
-                    ),
-                    Linker.Option.critical(true)
+                    )
             ).asSpreader(MemorySegment[].class, args.length);
             return (MemorySegment) withGlobalRef(CallStaticObjectMethod).invoke(env, clazz, methodId, args);
         }

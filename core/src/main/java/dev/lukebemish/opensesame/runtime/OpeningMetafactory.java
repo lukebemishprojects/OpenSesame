@@ -88,8 +88,8 @@ public final class OpeningMetafactory {
             return invoke0(caller, targetMethodName, factoryType, classProvider, accessTypeProvider, type, true);
         } catch (RuntimeException e) {
             var exception = new OpeningException(e);
-            if (LOOKUP_PROVIDER_EXCEPTION != null) {
-                exception.addSuppressed(LOOKUP_PROVIDER_EXCEPTION);
+            if (getLookupProviderUnsafe().exception != null) {
+                exception.addSuppressed(getLookupProviderUnsafe().exception);
             }
             throw exception;
         }
@@ -148,9 +148,11 @@ public final class OpeningMetafactory {
     private static final LayeredServiceLoader<RuntimeRemapper> RUNTIME_REMAPPERS = LayeredServiceLoader.of(RuntimeRemapper.class);
     private static final Map<ClassLoaderKey, List<RuntimeRemapper>> REMAPPER_LOOKUP = new HashMap<>();
     private static final ReferenceQueue<ClassLoader> REMAPPER_LOOKUP_QUEUE = new ReferenceQueue<>();
-    private static final LookupProvider LOOKUP_PROVIDER_UNSAFE;
     private static final LookupProvider LOOKUP_PROVIDER_SAFE = new LookupProviderFallback();
-    private static final Exception LOOKUP_PROVIDER_EXCEPTION;
+    
+    private record LookupProviderResults(LookupProvider provider, Exception exception) {}
+    private static LookupProviderResults LOOKUP_PROVIDER_UNSAFE_RESULTS;
+    private static final Object LOOKUP_PROVIDER_UNSAFE_LOCK = new Object();
 
     private static final List<Supplier<LookupProvider>> IMPL_LOOKUP_PROVIDER_LIST = List.of(
             LookupProviderFFI::new,
@@ -158,23 +160,34 @@ public final class OpeningMetafactory {
             LookupProviderUnsafe::new
     );
 
-    static {
-        Exception LOOKUP_PROVIDER_EXCEPTION1 = null;
-        LookupProvider LOOKUP_PROVIDER1 = null;
-        for (var supplier : IMPL_LOOKUP_PROVIDER_LIST) {
-            try {
-                LOOKUP_PROVIDER1 = supplier.get();
-                break;
-            } catch (Exception e) {
-                if (LOOKUP_PROVIDER_EXCEPTION1 != null) {
-                    e.addSuppressed(LOOKUP_PROVIDER_EXCEPTION1);
-                }
-                LOOKUP_PROVIDER_EXCEPTION1 = e;
-            }
+    private static LookupProviderResults getLookupProviderUnsafe() {
+        if (LOOKUP_PROVIDER_UNSAFE_RESULTS != null) {
+            return LOOKUP_PROVIDER_UNSAFE_RESULTS;
         }
-
-        LOOKUP_PROVIDER_UNSAFE = LOOKUP_PROVIDER1 == null ? new LookupProviderFallback() : LOOKUP_PROVIDER1;
-        LOOKUP_PROVIDER_EXCEPTION = LOOKUP_PROVIDER_EXCEPTION1;
+        synchronized (LOOKUP_PROVIDER_UNSAFE_LOCK) {
+            if (LOOKUP_PROVIDER_UNSAFE_RESULTS != null) {
+                return LOOKUP_PROVIDER_UNSAFE_RESULTS;
+            }
+            Exception LOOKUP_PROVIDER_EXCEPTION1 = null;
+            LookupProvider LOOKUP_PROVIDER1 = null;
+            for (var supplier : IMPL_LOOKUP_PROVIDER_LIST) {
+                try {
+                    LOOKUP_PROVIDER1 = supplier.get();
+                    break;
+                } catch (Exception e) {
+                    if (LOOKUP_PROVIDER_EXCEPTION1 != null) {
+                        e.addSuppressed(LOOKUP_PROVIDER_EXCEPTION1);
+                    }
+                    LOOKUP_PROVIDER_EXCEPTION1 = e;
+                }
+            }
+            var results = new LookupProviderResults(
+                    LOOKUP_PROVIDER1 == null ? new LookupProviderFallback() : LOOKUP_PROVIDER1,
+                    LOOKUP_PROVIDER_EXCEPTION1
+            );
+            LOOKUP_PROVIDER_UNSAFE_RESULTS = results;
+            return results;
+        }
     }
 
     private synchronized static List<RuntimeRemapper> getRemapper(ClassLoader classLoader) {
@@ -207,7 +220,7 @@ public final class OpeningMetafactory {
         MethodHandles.Lookup lookup;
         try {
             if (unsafe) {
-                lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, holdingClass);
+                lookup = getLookupProviderUnsafe().provider.openingLookup(caller, holdingClass);
             } else {
                 lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, holdingClass);
             }
@@ -399,7 +412,7 @@ public final class OpeningMetafactory {
         MethodHandles.Lookup lookup;
         try {
             if (unsafe) {
-                lookup = LOOKUP_PROVIDER_UNSAFE.openingLookup(caller, targetClass);
+                lookup = getLookupProviderUnsafe().provider.openingLookup(caller, targetClass);
             } else {
                 lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, targetClass);
                 if (targetClass.getModule() != holdingClass.getModule() && (lookup.lookupModes() & MethodHandles.Lookup.ORIGINAL) == 0) {
