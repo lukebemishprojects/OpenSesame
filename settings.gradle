@@ -154,7 +154,7 @@ managedVersioning {
                     runsOnError.set true
                     requiredSteps.add 'download'
                     uses.set 'actions/upload-artifact@v4'
-                    with.put 'name', 'junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}'
+                    with.put 'name', 'junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}'
                     with.put 'path', 'results/TEST-*.xml'
                 }
             }
