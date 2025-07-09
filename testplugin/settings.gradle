@@ -1,11 +1,6 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        // TODO: remove after maven central propogation
-        maven {
-            name = 'Staging'
-            url = 'https://maven.lukebemish.dev/staging/'
-        }
         maven {
             url "https://maven.lukebemish.dev/releases/"
         }
