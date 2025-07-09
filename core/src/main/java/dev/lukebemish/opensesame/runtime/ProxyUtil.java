@@ -190,7 +190,7 @@ final class ProxyUtil {
         }
         String generatedName;
         do {
-            generatedName = Type.getInternalName(target)+"$ProxyInterface$"+new Object().hashCode();
+            generatedName = Type.getInternalName(target)+"$$dev$lukebemish$opensesame$$ProxyInterface$"+new Object().hashCode();
         } while (exists(generatedName, target));
         var writer = new ClassWriter(0);
         writer.visit(
@@ -216,7 +216,7 @@ final class ProxyUtil {
     static Class<?> makeBounceType(Class<?> targetClass, MethodHandles.Lookup unsafeLookup, List<List<Class<?>>> ctorTypes, List<List<Class<?>>> superTypes, CtorWriter ctorWriter) throws Throwable {
         String generatedName;
         do {
-            generatedName = Type.getInternalName(targetClass) + "$OpenSesameBounceInterface$" + new Object().hashCode();
+            generatedName = Type.getInternalName(targetClass) + "$$dev$lukebemish$opensesame$$BounceInterface$" + new Object().hashCode();
         } while (exists(generatedName, targetClass));
         
         var writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
