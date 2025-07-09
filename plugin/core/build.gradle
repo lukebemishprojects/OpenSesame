@@ -11,10 +11,10 @@ java.withJavadocJar()
 
 dependencies {
     compileOnly libs.jetbrains.annotations
-    annotationProcessor(libs.autoservice)
-    compileOnly(libs.autoservice)
 
     implementation libs.asm.core
+    
+    implementation libs.javacpostprocessor.gradle
 
     implementation project(':opensesame-compile')
     implementation(project(':opensesame-compile')) {

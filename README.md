@@ -60,6 +60,20 @@ dependencies {
 }
 ```
 
+The gradle plugin can also be used to more easily integrate the javac plugin, as below:
+
+```gradle
+plugins {
+    id 'dev.lukebemish.opensesame' version '<version>'
+}
+
+opensesame.applyJavac(sourceSets.main)
+
+dependencies {
+    implementation 'dev.lukebemish.opensesame:opensesame-core:<version>'
+}
+```
+
 #### Gradle Plugin - Loom Integration
 
 if you are using the [`fabric-loom`](https://github.com/FabricMC/fabric-loom/) plugin, OpenSesame can integrate itself
@@ -89,12 +103,17 @@ plugin present at runtime, you will likely want to split it into its runtime and
 
 ```gradle
 dependencies {
-    compileOnly 'dev.lukebemish.opensesame:opensesame-javac:<version>'
+    annotationProcessor 'dev.lukebemish.opensesame:opensesame-javac:<version>'
     runtimeOnly 'dev.lukebemish.opensesame:opensesame-core:<version>'
 }
 
 tasks.named('compileJava', JavaCompile).configure {
-    options.compilerArgs.add '-Xplugin:OpenSesame'
+    options.compilerArgs.add '-Xplugin:dev.lukebemish.javac-post-processor dev.lukebemish.opensesame'
+    options.forkOptions.jvmArgs.addAll([
+            '--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED',
+            '--add-exports=jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED',
+            '--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED'
+    ])
 }
 ```
 

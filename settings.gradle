@@ -286,6 +286,7 @@ dependencyResolutionManagement {
             name = 'SpongePowered'
             url = 'https://repo.spongepowered.org/maven'
         }
+        gradlePluginPortal()
     }
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
 }
