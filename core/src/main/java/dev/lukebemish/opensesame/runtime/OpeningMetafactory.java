@@ -8,6 +8,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -430,11 +431,22 @@ public final class OpeningMetafactory {
                 generatedClass = generateClass(caller, lookup, targetClass, constructionMethodName, holdingClass, fields, overrides, ctors);
                 classFieldPutter.invokeExact(generatedClass);
             }
-            MethodHandle ctor = lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class)).asType(factoryType);
+            MethodHandle ctor = findCtorOrAllocator(factoryType, lookup, generatedClass);
             return new ConstantCallSite(ctor);
         } catch (Throwable e) {
             throw new OpeningException("Could not get existing generated subclass", e);
         }
+    }
+
+    private static MethodHandle findCtorOrAllocator(MethodType factoryType, MethodHandles.Lookup lookup, Class<?> generatedClass) throws Throwable {
+        var constructor = generatedClass.getConstructor(factoryType.parameterArray());
+        if (constructor.isAnnotationPresent(ManualAllocation.class)) {
+            var annotationValue = constructor.getAnnotation(ManualAllocation.class);
+            var superClass = annotationValue.superClass();
+            var superClassCtor = lookup.findConstructor(superClass, MethodType.methodType(void.class, annotationValue.superConstructor()));
+            return ManualAllocationUtil.constructionHandle(generatedClass, annotationValue.superClass(), superClassCtor, lookup, annotationValue.fields()).asType(factoryType);
+        }
+        return lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class)).asType(factoryType);
     }
 
     private static Class<?> generateClass(MethodHandles.Lookup originalLookup, MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
@@ -473,6 +485,7 @@ public final class OpeningMetafactory {
                 allVisible = false;
             }
         }
+        var allCtorsVisible = true;
         if (!isInterface) {
             for (var ctor : ctors) {
                 MethodType superType;
@@ -486,23 +499,134 @@ public final class OpeningMetafactory {
                     Constructor<?> originalCtor = targetClass.getDeclaredConstructor(superType.parameterArray());
                     if ((originalCtor.getModifiers() & Opcodes.ACC_PUBLIC) == 0 && (originalCtor.getModifiers() & Opcodes.ACC_PROTECTED) == 0) {
                         allVisible = false;
+                        allCtorsVisible = false;
                     }
                 } catch (NoSuchMethodException e) {
                     allVisible = false;
+                    allCtorsVisible = false;
                 }
             }
         }
-        String generatedClassName = Type.getInternalName(allVisible ? holdingClass : targetClass) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
 
-        classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(superClass), interfaces);
+        ProxyUtil.ProxyData proxyData = new ProxyUtil.ProxyData(allVisible ? holdingClass : targetClass, false);
+        
+        if (!allVisible) {
+            Set<Class<?>> requirements = new HashSet<>();
+            for (var field : fields) {
+                var fieldType = (Class<?>) field.get(1);
+                requirements.add(fieldType);
+            }
+            for (var override : overrides) {
+                try {
+                    var interfaceType = (MethodType) ((MethodHandle) override.get(1)).invoke(holdingClass.getClassLoader());
+                    var overrideType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
+                    
+                    requirements.add(overrideType.returnType());
+                    requirements.addAll(overrideType.parameterList());
+                    requirements.add(interfaceType.returnType());
+                    requirements.addAll(interfaceType.parameterList());
+                } catch (Throwable t) {
+                    throw new OpeningException(t);
+                }
+            }
+            for (var ctor : ctors) {
+                try {
+                    var ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
+                    var superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+
+                    requirements.add(ctorType.returnType());
+                    requirements.addAll(ctorType.parameterList());
+                    requirements.add(superType.returnType());
+                    requirements.addAll(superType.parameterList());
+                } catch (Throwable t) {
+                    throw new OpeningException(t);
+                }
+            }
+
+            try {
+                proxyData = ProxyUtil.makeProxyModule(
+                        targetClass,
+                        holdingClass,
+                        requirements,
+                        lookup
+                );
+            } catch (Throwable t) {
+                throw new OpeningException(t);
+            }
+        }
 
         Map<String, Class<?>> fieldTypes = new HashMap<>();
 
         for (var field : fields) {
             String fieldName = (String) field.get(0);
             var fieldType = (Class<?>) field.get(1);
-            boolean isFinal = (boolean) field.get(2);
             fieldTypes.put(fieldName, fieldType);
+        }
+
+        boolean requiresManualAllocation = proxyData.isProxy() && !allCtorsVisible;
+        boolean bouncesCtors = false;
+        if (proxyData.isProxy() && (targetClass.getModifiers() & Modifier.PUBLIC) == 0) {
+            // Generate a new proxy interface and use that instead
+            try {
+                var ctorTypes = new ArrayList<List<Class<?>>>();
+                var superTypes = new ArrayList<List<Class<?>>>();
+                for (var ctor : ctors) {
+                    var ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
+                    var superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+                    //noinspection unchecked
+                    var fieldsToSet = (List<String>) ctor.get(2);
+                    
+                    ctorTypes.add(ctorType.parameterList().subList(fieldsToSet.size(), ctorType.parameterCount()));
+                    superTypes.add(superType.parameterList());
+                }
+                var bounceType =ProxyUtil.makeBounceType(targetClass, lookup, ctorTypes, superTypes, (ctorTypeList, superTypeList, classVisitor) -> {
+                    var methodVisitor = classVisitor.visitMethod(
+                            Opcodes.ACC_PUBLIC,
+                            "<init>",
+                            MethodType.methodType(void.class, ctorTypeList.toArray(Class[]::new)).descriptorString(),
+                            null,
+                            null
+                    );
+                    methodVisitor.visitCode();
+                    methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                    int j = 1;
+                    for (int i = 0; i < superTypeList.size(); i++) {
+                        var ctorArgClass = ctorTypeList.get(i);
+                        var t = Type.getType(ctorArgClass);
+                        methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                        var superArgClass = superTypeList.get(i);
+                        convertToType(methodVisitor, ctorArgClass, superArgClass);
+                        j += t.getSize();
+                    }
+                    methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", MethodType.methodType(void.class, superTypeList.toArray(Class[]::new)).descriptorString(), false);
+                    methodVisitor.visitInsn(Opcodes.RETURN);
+                    methodVisitor.visitMaxs(0, 0);
+                    methodVisitor.visitEnd();
+                });
+                if(targetClass.isInterface()) {
+                    interfaces[0] = Type.getInternalName(bounceType);
+                } else {
+                    bouncesCtors = true;
+                    superClass = bounceType;
+                }
+            } catch (Throwable t) {
+                throw new OpeningException("Could not bounce interface "+targetClass.getName()+" to a proxy interface", t);
+            }
+        }
+        
+        String generatedClassName = Type.getInternalName(proxyData.targetClass()) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
+
+        classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(superClass), interfaces);
+
+        for (var field : fields) {
+            String fieldName = (String) field.get(0);
+            var fieldType = (Class<?>) field.get(1);
+            boolean isFinal = (boolean) field.get(2);
+            
+            if (isFinal && requiresManualAllocation) {
+                throw new OpeningException("Extension "+holdingClass+" of target "+targetClass+" requires use of a dynamic module and manual allocation to construct, and thus cannot have final fields, but is defined with final field '"+fieldName+"'");
+            }
+            
             classWriter.visitField(Opcodes.ACC_PRIVATE | (isFinal ? Opcodes.ACC_FINAL : 0), fieldName, Type.getDescriptor(fieldType), null, null).visitEnd();
             //noinspection unchecked
             List<String> setters = (List<String>) field.get(3);
@@ -599,7 +723,14 @@ public final class OpeningMetafactory {
             MethodType superType;
             try {
                 ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
-                superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+                if (bouncesCtors) {
+                    var originalSuperType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+                    var fieldParams = ctorType.parameterCount() - originalSuperType.parameterCount();
+                    var newParamTypes = ctorType.parameterList().subList(fieldParams, ctorType.parameterCount());
+                    superType = MethodType.methodType(ctorType.returnType(), newParamTypes);
+                } else {
+                    superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
+                }
             } catch (Throwable e) {
                 throw new OpeningException(e);
             }
@@ -608,6 +739,35 @@ public final class OpeningMetafactory {
 
             var ctorDesc = ctorType.descriptorString();
             var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "<init>", ctorDesc, null, null);
+            
+            if (proxyData.isProxy() && !isInterface) {
+                try {
+                    Constructor<?> originalCtor = targetClass.getDeclaredConstructor(superType.parameterArray());
+                    if ((originalCtor.getModifiers() & Opcodes.ACC_PRIVATE) != 0) {
+                        // This proxy constructor is not visible, and we are using a proxy-generated dynamic module, so
+                        // construction must happen through manual allocation and superclass invocation.
+                        var annotationVisitor = methodVisitor.visitAnnotation(
+                                Type.getDescriptor(ManualAllocation.class),
+                                true
+                        );
+                        var arrayVisitor = annotationVisitor.visitArray("superConstructor");
+                        for (var type : superType.parameterArray()) {
+                            arrayVisitor.visit("superConstructor", Type.getType(type));
+                        }
+                        arrayVisitor.visitEnd();
+                        annotationVisitor.visit("superClass", Type.getType(superClass));
+                        arrayVisitor = annotationVisitor.visitArray("fields");
+                        for (var field : fieldsToSet) {
+                            arrayVisitor.visit("fields", field);
+                        }
+                        arrayVisitor.visitEnd();
+                        annotationVisitor.visitEnd();
+                    }
+                } catch (NoSuchMethodException e) {
+                    throw new OpeningException(e);
+                }
+            }
+            
             methodVisitor.visitCode();
             var superCtorCount = superType.parameterCount();
             var remainingCount = ctorType.parameterCount() - fieldsToSet.size();
@@ -647,22 +807,18 @@ public final class OpeningMetafactory {
         byte[] bytes = classWriter.toByteArray();
 
         try {
-            var lookupIn = allVisible ? originalLookup.in(holdingClass) : lookup.in(targetClass);
-            if (targetModule != holdingModule && targetModule != null && holdingModule != null && !targetModule.canRead(holdingModule)) {
-                try {
-                    MethodHandle handle = lookupIn.findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
-                    handle.invokeWithArguments(targetModule, holdingModule);
-                } catch (Throwable e) {
-                    throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+holdingModule, e);
-                }
+            MethodHandles.Lookup lookupIn;
+            if (allVisible) {
+                lookupIn = originalLookup.in(holdingClass);
+            } else {
+                lookupIn = lookup.in(proxyData.targetClass());
             }
-            var openingModule = OpeningMetafactory.class.getModule();
-            if (targetModule != openingModule && targetModule != null && openingModule != null && !targetModule.canRead(openingModule)) {
+            if (!proxyData.isProxy()) {
                 try {
-                    MethodHandle handle = lookupIn.findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
-                    handle.invokeWithArguments(targetModule, openingModule);
-                } catch (Throwable e) {
-                    throw new OpeningException("While opening, could not add read edge from "+targetModule+" to "+openingModule, e);
+                    ProxyUtil.expose(targetClass, holdingClass, lookup);
+                    ProxyUtil.expose(targetClass, OpeningMetafactory.class, lookup);
+                } catch (Throwable t) {
+                    throw new OpeningException("While opening, issues occured setting up module links", t);
                 }
             }
             return lookupIn.defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
