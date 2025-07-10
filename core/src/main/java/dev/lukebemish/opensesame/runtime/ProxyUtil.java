@@ -16,10 +16,11 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 final class ProxyUtil {
     private ProxyUtil() {}
-    
+
     record ProxyData(Class<?> targetClass, boolean isProxy) {}
     
     public static void expose(Class<?> viewer, Class<?> target, MethodHandles.Lookup unsafeLookup) throws Throwable {
@@ -184,6 +185,27 @@ final class ProxyUtil {
         return new ProxyData(proxyInstance.getClass(), true);
     }
 
+    static boolean canAccess(Class<?> proxyTarget, Set<Class<?>> superRequirements, MethodHandles.Lookup unsafeLookup) {
+        var inProxyLookup = unsafeLookup.in(proxyTarget);
+        for (var requiredClass : superRequirements) {
+            while (requiredClass.isArray()) {
+                requiredClass = requiredClass.getComponentType();
+            }
+            if (requiredClass.isPrimitive()) {
+                continue;
+            }
+            try {
+                inProxyLookup.accessClass(requiredClass);
+                if (!canSee(proxyTarget, requiredClass, unsafeLookup, true)) {
+                    return false;
+                }
+            } catch (Throwable t) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static Class<?> makeInterfaceInPackage(Class<?> target, MethodHandles.Lookup unsafeLookup) throws Throwable {
         if (target.isArray()) {
             target = target.componentType();
@@ -207,13 +229,24 @@ final class ProxyUtil {
     
     interface CtorWriter {
         void writeConstructor(
-                List<Class<?>> ctorTypes,
-                List<Class<?>> superTypes,
+                MethodType ctorTypes,
+                MethodType superTypes,
                 ClassVisitor classVisitor
         );
     }
+    
+    interface OverridesWriter {
+        void writeOverrides(
+                MethodType implTypes,
+                MethodType superTypes,
+                String implName,
+                String superName,
+                ClassVisitor classVisitor,
+                boolean isDefault
+        );
+    }
 
-    static Class<?> makeBounceType(Class<?> targetClass, MethodHandles.Lookup unsafeLookup, List<List<Class<?>>> ctorTypes, List<List<Class<?>>> superTypes, CtorWriter ctorWriter) throws Throwable {
+    static Class<?> makeBounceType(Class<?> targetClass, MethodHandles.Lookup unsafeLookup, List<MethodType> ctorTypes, List<MethodType> ctorSuperTypes, List<MethodType> overridesTypes, List<MethodType> overridesSuperTypes, List<String> overridesNames, List<String> overridesSuperNames, CtorWriter ctorWriter, OverridesWriter overridesWriter) throws Throwable {
         String generatedName;
         do {
             generatedName = Type.getInternalName(targetClass) + "$$dev$lukebemish$opensesame$$BounceInterface$" + new Object().hashCode();
@@ -231,13 +264,27 @@ final class ProxyUtil {
         if (!targetClass.isInterface()) {
             for (int i = 0; i < ctorTypes.size(); i++) {
                 var ctorTypeList = ctorTypes.get(i);
-                var superTypeList = superTypes.get(i);
+                var superTypeList = ctorSuperTypes.get(i);
                 ctorWriter.writeConstructor(
                         ctorTypeList,
                         superTypeList,
                         writer
                 );
             }
+        }
+        for (int i = 0; i < overridesTypes.size(); i++) {
+            var overridesTypeList = overridesTypes.get(i);
+            var superTypeList = overridesSuperTypes.get(i);
+            var overridesName = overridesNames.get(i);
+            var superName = overridesSuperNames.get(i);
+            overridesWriter.writeOverrides(
+                    overridesTypeList,
+                    superTypeList,
+                    overridesName,
+                    superName,
+                    writer,
+                    targetClass.isInterface()
+            );
         }
         writer.visitEnd();
 

@@ -509,7 +509,8 @@ public final class OpeningMetafactory {
         }
 
         ProxyUtil.ProxyData proxyData = new ProxyUtil.ProxyData(allVisible ? holdingClass : targetClass, false);
-        
+
+        Set<Class<?>> superRequirements = new HashSet<>();
         if (!allVisible) {
             Set<Class<?>> requirements = new HashSet<>();
             for (var field : fields) {
@@ -519,12 +520,13 @@ public final class OpeningMetafactory {
             for (var override : overrides) {
                 try {
                     var interfaceType = (MethodType) ((MethodHandle) override.get(1)).invoke(holdingClass.getClassLoader());
-                    var overrideType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
-                    
-                    requirements.add(overrideType.returnType());
-                    requirements.addAll(overrideType.parameterList());
+                    var superType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
+
                     requirements.add(interfaceType.returnType());
                     requirements.addAll(interfaceType.parameterList());
+                    
+                    superRequirements.add(superType.returnType());
+                    superRequirements.addAll(superType.parameterList());
                 } catch (Throwable t) {
                     throw new OpeningException(t);
                 }
@@ -534,10 +536,8 @@ public final class OpeningMetafactory {
                     var ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
                     var superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
 
-                    requirements.add(ctorType.returnType());
                     requirements.addAll(ctorType.parameterList());
-                    requirements.add(superType.returnType());
-                    requirements.addAll(superType.parameterList());
+                    superRequirements.addAll(superType.parameterList());
                 } catch (Throwable t) {
                     throw new OpeningException(t);
                 }
@@ -565,55 +565,116 @@ public final class OpeningMetafactory {
 
         boolean requiresManualAllocation = proxyData.isProxy() && !allCtorsVisible;
         boolean bouncesCtors = false;
-        if (proxyData.isProxy() && (targetClass.getModifiers() & Modifier.PUBLIC) == 0) {
-            // Generate a new proxy interface and use that instead
-            try {
-                var ctorTypes = new ArrayList<List<Class<?>>>();
-                var superTypes = new ArrayList<List<Class<?>>>();
+        boolean boundeOverrides = false;
+        try {
+            if (proxyData.isProxy() && ((targetClass.getModifiers() & Modifier.PUBLIC) == 0 || !ProxyUtil.canAccess(proxyData.targetClass(), superRequirements, lookup))) {
+                // Generate a new proxy interface and use that instead
+                var ctorTypes = new ArrayList<MethodType>();
+                var superCtorTypes = new ArrayList<MethodType>();
+                var overridesTypes = new ArrayList<MethodType>();
+                var overridesSuperTypes = new ArrayList<MethodType>();
+                var overridesNames = new ArrayList<String>();
+                var overridesSuperNames = new ArrayList<String>();
                 for (var ctor : ctors) {
                     var ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
                     var superType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
                     //noinspection unchecked
                     var fieldsToSet = (List<String>) ctor.get(2);
-                    
-                    ctorTypes.add(ctorType.parameterList().subList(fieldsToSet.size(), ctorType.parameterCount()));
-                    superTypes.add(superType.parameterList());
+
+                    ctorTypes.add(MethodType.methodType(ctorType.returnType(), ctorType.parameterList().subList(fieldsToSet.size(), ctorType.parameterCount())));
+                    superCtorTypes.add(superType);
                 }
-                var bounceType =ProxyUtil.makeBounceType(targetClass, lookup, ctorTypes, superTypes, (ctorTypeList, superTypeList, classVisitor) -> {
+                for (var override : overrides) {
+                    var interfaceType = (MethodType) ((MethodHandle) override.get(1)).invoke(holdingClass.getClassLoader());
+                    var superType = (MethodType) ((MethodHandle) override.get(3)).invoke(holdingClass.getClassLoader());
+
+                    var interfaceName = (String) override.get(0);
+                    var superName = (String) override.get(2);
+                    superName = remapMethod(superName, superType.descriptorString(), targetClass.getName(), holdingClass);
+
+                    overridesTypes.add(interfaceType);
+                    overridesSuperTypes.add(superType);
+
+                    overridesNames.add(interfaceName);
+                    overridesSuperNames.add(superName);
+                }
+                var bounceType = ProxyUtil.makeBounceType(targetClass, lookup, ctorTypes, superCtorTypes, overridesTypes, overridesSuperTypes, overridesNames, overridesSuperNames, (ctorTypeList, superTypeList, classVisitor) -> {
                     var methodVisitor = classVisitor.visitMethod(
                             Opcodes.ACC_PUBLIC,
                             "<init>",
-                            MethodType.methodType(void.class, ctorTypeList.toArray(Class[]::new)).descriptorString(),
+                            MethodType.methodType(void.class, ctorTypeList.parameterArray()).descriptorString(),
                             null,
                             null
                     );
                     methodVisitor.visitCode();
                     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
                     int j = 1;
-                    for (int i = 0; i < superTypeList.size(); i++) {
-                        var ctorArgClass = ctorTypeList.get(i);
+                    for (int i = 0; i < superTypeList.parameterCount(); i++) {
+                        var ctorArgClass = ctorTypeList.parameterType(i);
                         var t = Type.getType(ctorArgClass);
                         methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
-                        var superArgClass = superTypeList.get(i);
+                        var superArgClass = superTypeList.parameterType(i);
                         convertToType(methodVisitor, ctorArgClass, superArgClass);
                         j += t.getSize();
                     }
-                    methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", MethodType.methodType(void.class, superTypeList.toArray(Class[]::new)).descriptorString(), false);
+                    methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(targetClass), "<init>", MethodType.methodType(void.class, superTypeList.parameterArray()).descriptorString(), false);
                     methodVisitor.visitInsn(Opcodes.RETURN);
                     methodVisitor.visitMaxs(0, 0);
                     methodVisitor.visitEnd();
+                }, (implTypes, superTypes, implName, superName, classVisitor, isDefault) -> {
+                    var superMethodVisitor = classVisitor.visitMethod(
+                            Opcodes.ACC_PUBLIC,
+                            superName,
+                            superTypes.descriptorString(),
+                            null,
+                            null
+                    );
+                    superMethodVisitor.visitCode();
+                    superMethodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                    int j = 1;
+                    for (int i = 0; i < superTypes.parameterCount(); i++) {
+                        var superArgClass = superTypes.parameterType(i);
+                        var t = Type.getType(superArgClass);
+                        superMethodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                        var implArgClass = implTypes.parameterType(i);
+                        convertToType(superMethodVisitor, superArgClass, implArgClass);
+                        j += t.getSize();
+                    }
+                    superMethodVisitor.visitMethodInsn(isDefault ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL, Type.getInternalName(targetClass), implName, implTypes.descriptorString(), isDefault);
+                    var superReturnType = superTypes.returnType();
+                    var returnT = Type.getType(superReturnType);
+                    var implReturnType = implTypes.returnType();
+                    convertToType(superMethodVisitor, implReturnType, superReturnType);
+                    if (superReturnType.equals(void.class)) {
+                        superMethodVisitor.visitInsn(Opcodes.RETURN);
+                    } else {
+                        superMethodVisitor.visitInsn(returnT.getOpcode(Opcodes.IRETURN));
+                    }
+                    superMethodVisitor.visitInsn(returnT.getOpcode(Opcodes.IRETURN));
+                    superMethodVisitor.visitMaxs(0, 0);
+                    superMethodVisitor.visitEnd();
+
+                    var implMethodVisitor = classVisitor.visitMethod(
+                            Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
+                            implName,
+                            implTypes.descriptorString(),
+                            null,
+                            null
+                    );
+                    implMethodVisitor.visitEnd();
                 });
-                if(targetClass.isInterface()) {
+                boundeOverrides = true;
+                if (targetClass.isInterface()) {
                     interfaces[0] = Type.getInternalName(bounceType);
                 } else {
                     bouncesCtors = true;
                     superClass = bounceType;
                 }
-            } catch (Throwable t) {
-                throw new OpeningException("Could not bounce interface "+targetClass.getName()+" to a proxy interface", t);
             }
+        } catch (Throwable t) {
+            throw new OpeningException("Could not bounce interface " + targetClass.getName() + " to a proxy interface", t);
         }
-        
+
         String generatedClassName = Type.getInternalName(proxyData.targetClass()) + "$" + Type.getInternalName(holdingClass).replace('/','$') + "$" + constructionMethodName;
 
         classWriter.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, Type.getInternalName(superClass), interfaces);
@@ -626,7 +687,7 @@ public final class OpeningMetafactory {
             if (isFinal && requiresManualAllocation) {
                 throw new OpeningException("Extension "+holdingClass+" of target "+targetClass+" requires use of a dynamic module and manual allocation to construct, and thus cannot have final fields, but is defined with final field '"+fieldName+"'");
             }
-            
+
             classWriter.visitField(Opcodes.ACC_PRIVATE | (isFinal ? Opcodes.ACC_FINAL : 0), fieldName, Type.getDescriptor(fieldType), null, null).visitEnd();
             //noinspection unchecked
             List<String> setters = (List<String>) field.get(3);
@@ -680,42 +741,68 @@ public final class OpeningMetafactory {
                     .orElseThrow(() -> new OpeningException("Could not find interface method to bounce override to with name "+name+", type "+interfaceType));
             var parameterTypes = Arrays.stream(overrideType.parameterArray()).map(Type::getType).toArray(Type[]::new);
             var overrideDesc = Type.getMethodDescriptor(Type.getType(overrideType.returnType()), parameterTypes);
-            var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, overrideName, overrideDesc, null, null);
-            methodVisitor.visitCode();
-            methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-            int j = 1;
-            for (int i = 0; i < overrideType.parameterCount(); i++) {
-                var t = Type.getType(overrideType.parameterType(i));
-                methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
-                j += t.getSize();
-            }
-            var fullParameterTypes = new Type[overrideType.parameterCount() + 1];
-            fullParameterTypes[0] = Type.getType(holdingClass);
-            System.arraycopy(parameterTypes, 0, fullParameterTypes, 1, parameterTypes.length);
-            var fullInterfaceParameterTypes = new Type[interfaceType.parameterCount() + 1];
-            fullInterfaceParameterTypes[0] = Type.getType(holdingClass);
-            System.arraycopy(Arrays.stream(interfaceType.parameterArray()).map(Type::getType).toArray(Type[]::new), 0, fullInterfaceParameterTypes, 1, interfaceType.parameterCount());
-            methodVisitor.visitInvokeDynamicInsn(
-                    name,
-                    Type.getMethodDescriptor(Type.getType(overrideType.returnType()), fullParameterTypes),
-                    new Handle(
-                            Opcodes.H_INVOKESTATIC,
-                            Type.getInternalName(OpeningMetafactory.class),
-                            "invoke",
-                            MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, int.class).toMethodDescriptorString(),
-                            false
-                    ),
-                    MinimalConDynUtils.conDynFromClass(Type.getType(holdingClass)),
-                    MinimalConDynUtils.conDynMethodType(MinimalConDynUtils.conDynFromClass(Type.getType(interfaceType.returnType())), Arrays.stream(fullInterfaceParameterTypes).map(MinimalConDynUtils::conDynFromClass).toList()),
-                    VIRTUAL_TYPE
-            );
-            if (overrideType.returnType().equals(void.class)) {
-                methodVisitor.visitInsn(Opcodes.RETURN);
+            if (boundeOverrides) {
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, name, interfaceType.descriptorString(), null, null);
+                methodVisitor.visitCode();
+                methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                int j = 1;
+                for (int i = 0; i < interfaceType.parameterCount(); i++) {
+                    var t = Type.getType(interfaceType.parameterType(i));
+                    methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                    j += t.getSize();
+                }
+                methodVisitor.visitMethodInsn(
+                        isInterface ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL,
+                        Type.getInternalName(superClass),
+                        name,
+                        interfaceType.descriptorString(),
+                        isInterface
+                );
+                if (interfaceType.returnType().equals(void.class)) {
+                    methodVisitor.visitInsn(Opcodes.RETURN);
+                } else {
+                    methodVisitor.visitInsn(Type.getType(interfaceType.returnType()).getOpcode(Opcodes.IRETURN));
+                }
+                methodVisitor.visitMaxs(1, 1);
+                methodVisitor.visitEnd();
             } else {
-                methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.IRETURN));
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, overrideName, overrideDesc, null, null);
+                methodVisitor.visitCode();
+                methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
+                int j = 1;
+                for (int i = 0; i < overrideType.parameterCount(); i++) {
+                    var t = Type.getType(overrideType.parameterType(i));
+                    methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
+                    j += t.getSize();
+                }
+                var fullParameterTypes = new Type[overrideType.parameterCount() + 1];
+                fullParameterTypes[0] = Type.getType(holdingClass);
+                System.arraycopy(parameterTypes, 0, fullParameterTypes, 1, parameterTypes.length);
+                var fullInterfaceParameterTypes = new Type[interfaceType.parameterCount() + 1];
+                fullInterfaceParameterTypes[0] = Type.getType(holdingClass);
+                System.arraycopy(Arrays.stream(interfaceType.parameterArray()).map(Type::getType).toArray(Type[]::new), 0, fullInterfaceParameterTypes, 1, interfaceType.parameterCount());
+                methodVisitor.visitInvokeDynamicInsn(
+                        name,
+                        Type.getMethodDescriptor(Type.getType(overrideType.returnType()), fullParameterTypes),
+                        new Handle(
+                                Opcodes.H_INVOKESTATIC,
+                                Type.getInternalName(OpeningMetafactory.class),
+                                "invoke",
+                                MethodType.methodType(CallSite.class, MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class, MethodHandle.class, int.class).toMethodDescriptorString(),
+                                false
+                        ),
+                        MinimalConDynUtils.conDynFromClass(Type.getType(holdingClass)),
+                        MinimalConDynUtils.conDynMethodType(MinimalConDynUtils.conDynFromClass(Type.getType(interfaceType.returnType())), Arrays.stream(fullInterfaceParameterTypes).map(MinimalConDynUtils::conDynFromClass).toList()),
+                        VIRTUAL_TYPE
+                );
+                if (overrideType.returnType().equals(void.class)) {
+                    methodVisitor.visitInsn(Opcodes.RETURN);
+                } else {
+                    methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.IRETURN));
+                }
+                methodVisitor.visitMaxs(1, 1);
+                methodVisitor.visitEnd();
             }
-            methodVisitor.visitMaxs(1, 1);
-            methodVisitor.visitEnd();
         }
 
         for (var ctor : ctors) {
