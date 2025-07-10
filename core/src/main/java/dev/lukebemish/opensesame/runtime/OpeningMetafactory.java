@@ -621,7 +621,7 @@ public final class OpeningMetafactory {
                     methodVisitor.visitInsn(Opcodes.RETURN);
                     methodVisitor.visitMaxs(0, 0);
                     methodVisitor.visitEnd();
-                }, (implTypes, superTypes, implName, superName, classVisitor, isDefault) -> {
+                }, (implTypes, superTypes, implName, superName, classVisitor, bounceClassType, isDefault) -> {
                     var superMethodVisitor = classVisitor.visitMethod(
                             Opcodes.ACC_PUBLIC,
                             superName,
@@ -640,7 +640,7 @@ public final class OpeningMetafactory {
                         convertToType(superMethodVisitor, superArgClass, implArgClass);
                         j += t.getSize();
                     }
-                    superMethodVisitor.visitMethodInsn(isDefault ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL, Type.getInternalName(targetClass), implName, implTypes.descriptorString(), isDefault);
+                    superMethodVisitor.visitMethodInsn(isDefault ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL, bounceClassType, implName, implTypes.descriptorString(), isDefault);
                     var superReturnType = superTypes.returnType();
                     var returnT = Type.getType(superReturnType);
                     var implReturnType = implTypes.returnType();

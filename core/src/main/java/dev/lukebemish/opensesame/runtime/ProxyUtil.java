@@ -242,6 +242,7 @@ final class ProxyUtil {
                 String implName,
                 String superName,
                 ClassVisitor classVisitor,
+                String bounceClassType,
                 boolean isDefault
         );
     }
@@ -283,6 +284,7 @@ final class ProxyUtil {
                     overridesName,
                     superName,
                     writer,
+                    generatedName,
                     targetClass.isInterface()
             );
         }
