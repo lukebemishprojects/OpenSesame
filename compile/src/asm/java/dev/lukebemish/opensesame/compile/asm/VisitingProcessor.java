@@ -55,6 +55,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     private final Set<String> annotationDescriptors;
     private Type type;
+    private boolean modifiedAny;
 
     public static void main(String[] args) {
         if (args.length != 2) {
@@ -256,12 +257,15 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         try (var inputStream = Files.newInputStream(file)) {
             ClassReader reader = new ClassReader(inputStream);
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            var processor = makeProcessor(writer, VisitingProcessor.ANNOTATIONS, rootPath, modifiedExternal);
             try {
-                reader.accept(makeProcessor(writer, VisitingProcessor.ANNOTATIONS, rootPath, modifiedExternal), 0);
+                reader.accept(processor, 0);
             } catch (RuntimeException e) {
                 throw new IOException("Error processing class " + file, e);
             }
-            modifiedExternal.add(out);
+            if (processor.modifiedAny) {
+                modifiedExternal.add(out);
+            }
             Files.write(out, writer.toByteArray());
         }
         return modifiedExternal;
@@ -297,6 +301,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     @Override
     public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
         if (annotationDescriptors.contains(descriptor)) {
+            modifiedAny = true;
             var type = Type.getType(descriptor);
             var annotation = new Annotation(super.visitAnnotation(descriptor, visible), descriptor);
             if (descriptor.equals(Extend.class.descriptorString())) {
