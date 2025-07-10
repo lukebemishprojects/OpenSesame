@@ -75,14 +75,14 @@ public abstract class OpenSesameTask extends DefaultTask {
         VisitingProcessor.cleanup(outputDir);
         List<String> processed = new ArrayList<>();
         for (var relativePath : toProcess) {
-            Files.createDirectories(outputDir.resolve(relativePath).getParent());
             var inputPath = inputDir.resolve(relativePath);
-            var outputPath = outputDir.resolve(relativePath);
-            processed.addAll(VisitingProcessor.processFile(inputPath, outputPath, outputDir::resolve)
-                    .stream()
-                    .map(p -> inputDir.relativize(p).toString())
-                    .toList()
-            );
+            if (Files.exists(inputPath)) {
+                var outputPath = outputDir.resolve(relativePath);
+                Files.createDirectories(outputPath.getParent());
+                if (!VisitingProcessor.processFile(inputPath, outputPath, outputDir::resolve).isEmpty()) {
+                    processed.add(relativePath);
+                }
+            }
         }
         Files.write(incrementalClassesFile.toPath(), processed);
     }
