@@ -31,6 +31,13 @@ dependencies {
     testClasses project(path: ':loom', configuration: 'testClasses')
 
     modImplementation libs.fabric.loader
+
+    testImplementation 'dev.lukebemish.opensesame:testtargets'
+    testImplementation 'dev.lukebemish.opensesame:opensesame-core'
+    testImplementation libs.asm.core
+    testRuntimeOnly libs.bundles.junit.runtime
+    testImplementation libs.bundles.junit.implementation
+    testRuntimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
 }
 
 tasks.register('remapTestClasses', RemapJarTask).configure {
@@ -47,43 +54,27 @@ tasks.register('unpackRemappedJar', Copy).configure {
     into layout.buildDirectory.dir('unpacked')
 }
 
-testing {
-    suites.test {
-        targets.configureEach {
-            testTask.configure {
-                test {
-                    useJUnitPlatform()
+test {
+    useJUnitPlatform()
 
-                    testLogging {
-                        showStandardStreams = true
-                        exceptionFormat = 'full'
-                        showCauses = true
-                        showStackTraces = true
-                        events = ['passed', 'failed', 'skipped']
-                    }
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+        events = ['passed', 'failed', 'skipped']
+    }
 
-                    testClassesDirs.from tasks.unpackRemappedJar.outputs
-                    classpath.from tasks.unpackRemappedJar.outputs
+    testClassesDirs.from tasks.unpackRemappedJar.outputs
+    classpath.from tasks.unpackRemappedJar.outputs
 
-                    enableAssertions = true
-                    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-                    systemProperty('junit.platform.reporting.output.dir', 'build/reports/tests')
-                    systemProperty('opensesame.transformer.name', 'gradle-loom, on intermediary')
-                    reports {
-                        junitXml.required = false
-                        html.required = false
-                    }
-                }
-            }
-        }
-
-        dependencies {
-            implementation 'dev.lukebemish.opensesame:testtargets'
-            implementation 'dev.lukebemish.opensesame:opensesame-core'
-            implementation libs.asm.core
-            runtimeOnly libs.bundles.junit.runtime
-            implementation libs.bundles.junit.implementation
-            runtimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
-        }
+    enableAssertions = true
+    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
+    systemProperty('opensesame.transformer.name', 'gradle-loom')
+    reports {
+        junitXml.required = false
+        html.required = false
     }
 }
+
