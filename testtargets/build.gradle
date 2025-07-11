@@ -43,6 +43,7 @@ dependencies {
     
     metafactoryTestImplementation project(':opensesame-core')
     metafactoryTestImplementation project(':opensesame-natives')
+    metafactoryTestImplementation project(':opensesame-javac')
     metafactoryTestImplementation libs.asm.core
     metafactoryTestImplementation libs.junit.platform.launcher
     metafactoryTestImplementation libs.apiguardian // Needed so that we can compile stuff at runtime against junit
@@ -141,7 +142,17 @@ tasks.register('setupTestEnvironment', SetupJunitEnvironment) {
     classpath.from configurations.testBundleClasspath
     jvmArgs.addAll([
             '-ea',
+            
+            // Avoid warnings; native access is necessary for these components (FFI and native lookup providers)
             '--enable-native-access=dev.lukebemish.opensesame.core',
+            '--enable-native-access=dev.lukebemish.opensesame.natives',
+            
+            // Necessary for opensesame-javac, for use in the module layer framework
+            '--add-exports=jdk.compiler/com.sun.tools.javac.api=dev.lukebemish.javacpostprocessor',
+            '--add-exports=jdk.compiler/com.sun.tools.javac.jvm=dev.lukebemish.javacpostprocessor',
+            '--add-exports=jdk.compiler/com.sun.tools.javac.util=dev.lukebemish.javacpostprocessor',
+
+            // Let our test framework test the native-access bits
             '--add-opens=dev.lukebemish.opensesame.natives/dev.lukebemish.opensesame.natives=dev.lukebemish.opensesame.test.metafactory',
             '--add-opens=dev.lukebemish.opensesame.core/dev.lukebemish.opensesame.runtime=dev.lukebemish.opensesame.test.metafactory'
     ])

@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,10 +22,13 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -86,15 +88,14 @@ public final class LayerBuilder {
 
         List<Path> compileModulePath = getPaths().toList();
 
+        paths.addAll(ModuleBuilder.build(modules, working, compileModulePath));
         for (ModuleBuilder moduleBuilder : modules) {
-            var path = moduleBuilder.build(working, compileModulePath);
             moduleNames.add(moduleBuilder.name);
-            paths.add(path);
         }
-        
+
         var configuration = parentLayer.configuration().resolveAndBind(
                 ModuleFinder.of(),
-                ModuleFinder.of(working),
+                ModuleFinder.of(working.resolve("out")),
                 moduleNames
         );
         var controller = ModuleLayer.defineModulesWithOneLoader(
@@ -128,6 +129,7 @@ public final class LayerBuilder {
     }
 
     private void close() throws IOException {
+        if (true) return;
         var pending = new ArrayList<IOException>();
         for (var path : paths) {
             try {
@@ -203,8 +205,9 @@ public final class LayerBuilder {
             return this;
         }
 
-        public void opens(String packageName) {
+        public ModuleBuilder opens(String packageName) {
             this.opens.add(packageName);
+            return this;
         }
         
         public ModuleBuilder resource(String name, byte[] content) {
@@ -248,46 +251,66 @@ public final class LayerBuilder {
             return this;
         }
         
-        Path build(Path working, List<Path> compileModulePath) throws IOException {
-            var modulePath = working.resolve(name);
-            Files.createDirectories(modulePath);
-            StringBuilder moduleInfoBuilder = new StringBuilder();
-            if (open) {
-                moduleInfoBuilder.append("open ");
-            }
-            moduleInfoBuilder.append("module ").append(name).append(" {\n");
-            for (String require : requires) {
-                moduleInfoBuilder.append("    requires ").append(require).append(";\n");
-            }
-            for (String export : exports) {
-                moduleInfoBuilder.append("    exports ").append(export).append(";\n");
-            }
-            for (String open : opens) {
-                moduleInfoBuilder.append("    opens ").append(open).append(";\n");
-            }
-            moduleInfoBuilder.append("}\n");
-            String moduleInfo = moduleInfoBuilder.toString();
-
+        static List<Path> build(List<ModuleBuilder> modules, Path working, List<Path> compileModulePath) throws IOException {
+            var paths = new ArrayList<Path>();
             var compiler = ToolProvider.getSystemJavaCompiler();
+
             List<String> options = new ArrayList<>();
-            options.add("-proc:none");
-
-            var files = new ArrayList<JavaFileObject>();
-
-            files.add(new JavaSourceFromString("module-info", moduleInfo));
-            for (var entry : javaSources.entrySet()) {
-                String className = entry.getKey();
-                String sourceCode = entry.getValue();
-                files.add(new JavaSourceFromString(className, sourceCode));
-            }
+            options.add("-Xplugin:dev.lukebemish.javac-post-processor dev.lukebemish.opensesame");
 
             var diagnostics = new DiagnosticCollector<>();
             var manager = compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8);
 
-            manager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(modulePath));
+            var files = new ArrayList<JavaFileObject>();
+            for (var module : modules) {
+                var modulePath = working.resolve("out").resolve(module.name);
+                paths.add(modulePath);
+                Files.createDirectories(modulePath);
+                StringBuilder moduleInfoBuilder = new StringBuilder();
+                if (module.open) {
+                    moduleInfoBuilder.append("open ");
+                }
+                moduleInfoBuilder.append("module ").append(module.name).append(" {\n");
+                for (String require : module.requires) {
+                    moduleInfoBuilder.append("    requires ").append(require).append(";\n");
+                }
+                for (String export : module.exports) {
+                    moduleInfoBuilder.append("    exports ").append(export).append(";\n");
+                }
+                for (String open : module.opens) {
+                    moduleInfoBuilder.append("    opens ").append(open).append(";\n");
+                }
+                moduleInfoBuilder.append("}\n");
+                String moduleInfo = moduleInfoBuilder.toString();
+
+                Files.createDirectories(working.resolve("src").resolve(module.name));
+                manager.setLocationForModule(StandardLocation.MODULE_SOURCE_PATH, module.name, List.of(working.resolve("src").resolve(module.name)));
+                
+                var fullSources = new HashMap<>(module.javaSources);
+                fullSources.put("module-info", moduleInfo);
+                
+                for (var entry : fullSources.entrySet()) {
+                    var sourcePath = working.resolve("src").resolve(module.name).resolve(entry.getKey().replace('.', '/')+".java");
+                    Files.createDirectories(sourcePath.getParent());
+                    Files.writeString(sourcePath, entry.getValue());
+                    var location = manager.getLocationForModule(StandardLocation.MODULE_SOURCE_PATH, module.name);
+                    files.add(manager.getJavaFileForInput(
+                            location,
+                            entry.getKey(),
+                            JavaFileObject.Kind.SOURCE
+                    ));
+                }
+
+                manager.setLocationForModule(StandardLocation.CLASS_OUTPUT, module.name, List.of(modulePath));
+            }
+
+            manager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(working.resolve("out")));
             manager.setLocationFromPaths(StandardLocation.MODULE_PATH, compileModulePath);
 
             var task = compiler.getTask(null, manager, diagnostics, options, null, files);
+            for (var module : modules) {
+                task.addModules(List.of(module.name));
+            }
             if (!task.call()) {
                 var firstError = diagnostics.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst();
                 firstError.ifPresent(error -> {
@@ -296,20 +319,24 @@ public final class LayerBuilder {
                 throw new RuntimeException("Failed to compile");
             }
 
-            for (var entry : resources.entrySet()) {
-                var resourcePath = modulePath.resolve(entry.getKey());
-                Files.createDirectories(resourcePath.getParent());
-                Files.write(resourcePath, entry.getValue());
+            for (var module : modules){
+                for (var entry : module.resources.entrySet()) {
+                    var resourcePath = working.resolve("out").resolve(module.name).resolve(entry.getKey());
+                    Files.createDirectories(resourcePath.getParent());
+                    Files.write(resourcePath, entry.getValue());
+                }
             }
-            return modulePath;
+            return paths;
         }
 
         public static class JavaSourceFromString extends SimpleJavaFileObject {
             private final String sourceCode;
+            private final String module;
 
-            public JavaSourceFromString(String name, String sourceCode) {
-                super(URI.create("string:///" + name.replace('.', '/') + Kind.SOURCE.extension), Kind.SOURCE);
+            public JavaSourceFromString(String name, String sourceCode, String module) {
+                super(URI.create("string:///" + module + "/" + name.replace('.', '/') + Kind.SOURCE.extension), Kind.SOURCE);
                 this.sourceCode = sourceCode;
+                this.module = module;
             }
 
             @Override
