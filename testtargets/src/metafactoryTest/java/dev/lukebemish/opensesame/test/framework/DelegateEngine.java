@@ -83,7 +83,7 @@ public class DelegateEngine implements TestEngine {
 
         @Override
         public Optional<TestSource> getSource() {
-            return Optional.of(MethodSource.from(method.getClass(), method));
+            return Optional.of(MethodSource.from(method.getDeclaringClass(), method));
         }
     }
 
@@ -121,7 +121,7 @@ public class DelegateEngine implements TestEngine {
 
         @Override
         public Optional<TestSource> getSource() {
-            return Optional.of(MethodSource.from(method.getClass(), method));
+            return Optional.of(MethodSource.from(method.getDeclaringClass(), method));
         }
     }
 
