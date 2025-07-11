@@ -169,6 +169,7 @@
                     }
                 }
             ],
+            "if": "always()",
             "needs": [
                 "build"
             ],
@@ -268,14 +269,6 @@
                     }
                 },
                 {
-                    "name": "Upload Results",
-                    "uses": "actions/upload-artifact@v4",
-                    "with": {
-                        "name": "junit-test-results-platform",
-                        "path": "**/open-test-report.xml"
-                    }
-                },
-                {
                     "name": "Download Gradle Results",
                     "uses": "actions/download-artifact@v4",
                     "if": "(success() || failure())",
@@ -284,19 +277,37 @@
                     }
                 },
                 {
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "with": {
+                        "name": "junit-test-results-platform",
+                        "path": "**/open-test-report.xml"
+                    }
+                },
+                {
                     "name": "Find Reports",
                     "id": "findreports",
                     "run": "find . -name \"open-test-report.xml\" >> reports.txt"
                 },
                 {
+                    "name": "Setup Java",
+                    "id": "setup-java",
+                    "uses": "actions/setup-java@v4",
+                    "with": {
+                        "distribution": "temurin",
+                        "java-version": "21"
+                    }
+                },
+                {
+                    "name": "Download Open Test Reporting CLI",
+                    "id": "download-cli",
+                    "run": "curl -o open-test-reporting-cli.jar https://repo1.maven.org/maven2/org/opentest4j/reporting/open-test-reporting-cli/0.2.4/open-test-reporting-cli-0.2.4-standalone.jar"
+                },
+                {
                     "name": "Generate HTML Report",
                     "id": "generate",
-                    "uses": "jbangdev/jbang-action@v0.126.3",
-                    "if": "(success() || failure()) && steps.findreports.outcome == 'success'",
-                    "with": {
-                        "script": "org.opentest4j.reporting:open-test-reporting-cli:0.2.4:standalone@fatjar",
-                        "scriptargs": "html-report @reports.txt --output=report.html"
-                    }
+                    "run": "java -jar open-test-reporting-cli.jar html-report @reports.txt --output=report.html",
+                    "if": "(success() || failure()) && steps.findreports.outcome == 'success' && steps.download-cli.outcome == 'success'"
                 },
                 {
                     "name": "Upload HTML Report",

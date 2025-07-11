@@ -116,6 +116,7 @@ managedVersioning {
                 parameters.put('strategy', strategy)
                 name.set 'platform-test'
                 needs.add('build')
+                getIf().set('always()')
                 runsOn.set('${{ matrix.runner }}')
                 step {
                     name.set 'Download Artifact'
@@ -169,16 +170,16 @@ managedVersioning {
                     with.put 'pattern', 'junit-test-results-platform-*'
                 }
                 step {
-                    name.set 'Upload Results'
-                    uses.set 'actions/upload-artifact@v4'
-                    with.put 'name', 'junit-test-results-platform'
-                    with.put 'path', '**/open-test-report.xml'
-                }
-                step {
                     name.set 'Download Gradle Results'
                     runsOnError.set true
                     uses.set 'actions/download-artifact@v4'
                     with.put 'pattern', 'junit-test-results-gradle'
+                }
+                step {
+                    name.set 'Upload Results'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'junit-test-results-platform'
+                    with.put 'path', '**/open-test-report.xml'
                 }
                 step {
                     name.set 'Find Reports'
@@ -186,13 +187,24 @@ managedVersioning {
                     run.set 'find . -name "open-test-report.xml" >> reports.txt'
                 }
                 step {
+                    name.set 'Setup Java'
+                    id.set 'setup-java'
+                    uses.set 'actions/setup-java@v4'
+                    with.put 'distribution', 'temurin'
+                    with.put 'java-version', '21'
+                }
+                step {
+                    name.set 'Download Open Test Reporting CLI'
+                    id.set 'download-cli'
+                    run.set 'curl -o open-test-reporting-cli.jar https://repo1.maven.org/maven2/org/opentest4j/reporting/open-test-reporting-cli/0.2.4/open-test-reporting-cli-0.2.4-standalone.jar'
+                }
+                step {
                     name.set 'Generate HTML Report'
                     id.set 'generate'
                     runsOnError.set true
                     requiredSteps.add 'findreports'
-                    uses.set 'jbangdev/jbang-action@v0.126.3'
-                    with.put 'script', 'org.opentest4j.reporting:open-test-reporting-cli:0.2.4:standalone@fatjar'
-                    with.put 'scriptargs', 'html-report @reports.txt --output=report.html'
+                    requiredSteps.add 'download-cli'
+                    run.set 'java -jar open-test-reporting-cli.jar html-report @reports.txt --output=report.html'
                 }
                 step {
                     name.set 'Upload HTML Report'
