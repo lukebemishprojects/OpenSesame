@@ -32,9 +32,17 @@ dependencies {
     asmApi project
     asmCompileOnly libs.jetbrains.annotations
 
-    testSource project(path: ':testtargets', configuration: 'testSource')
+    testSource(project(':testtargets')) {
+        capabilities {
+            requireFeature 'transformation-sources'
+        }
+    }
 
-    testImplementation project(path: ':opensesame-compile', configuration: 'asmRuntimeElements')
+    testImplementation(project(':opensesame-compile')) {
+        capabilities {
+            requireFeature 'asm'
+        }
+    }
 }
 
 def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
@@ -49,11 +57,18 @@ var processTestClasses = tasks.register('processTestClasses', JavaExec) {
     dependsOn compileTestJava
     dependsOn configurations.asmRuntimeClasspath
     inputs.dir(tempClassesDir)
+    var singleFile = sourceSets.test.output.classesDirs.singleFile;
+    doFirst {
+        if (singleFile.exists()) {
+            singleFile.deleteDir()
+        }
+        singleFile.mkdirs()
+    }
     inputs.files(sourceSets.asm.runtimeClasspath)
-    outputs.dir(sourceSets.test.output.classesDirs)
+    outputs.dir(singleFile)
     classpath = sourceSets.asm.runtimeClasspath
     mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
-    args = [tempClassesDir.get().asFile.canonicalPath, sourceSets.test.output.classesDirs.singleFile.canonicalPath]
+    args = [tempClassesDir.get().asFile.canonicalPath, singleFile.canonicalPath]
 }
 
 tasks.testClasses.dependsOn processTestClasses

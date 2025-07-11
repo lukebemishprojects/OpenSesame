@@ -19,6 +19,7 @@ public class Public {
         return "packagePrivateInstance";
     }
 
+    public String publicInstanceField;
     String packagePrivateInstanceField;
     private String privateInstanceField;
     protected String protectedInstanceField;
@@ -61,6 +62,12 @@ public class Public {
         public String toString() {
             return "PrivateCtor";
         }
+    }
+    
+    public Public() {}
+    
+    public Public(String value) {
+        this.publicInstanceField = value;
     }
 
     public static class PublicSubclass extends Public {

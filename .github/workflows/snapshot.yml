@@ -51,7 +51,7 @@
                 {
                     "name": "Assemble",
                     "id": "assemble",
-                    "run": "./gradlew assemble :opensesame-natives:setupTestEnvironment",
+                    "run": "./gradlew assemble :testtargets:setupTestEnvironment",
                     "env": {
                         "BUILD_CACHE_PASSWORD": "${{ secrets.BUILD_CACHE_PASSWORD }}",
                         "BUILD_CACHE_USER": "${{ secrets.BUILD_CACHE_USER }}",
@@ -62,11 +62,11 @@
                     }
                 },
                 {
-                    "name": "Upload natives-test-environment",
+                    "name": "Upload platform-test-environment",
                     "uses": "actions/upload-artifact@v4",
                     "with": {
-                        "name": "natives-test-environment",
-                        "path": "natives/build/testEnvironment/*",
+                        "name": "platform-test-environment",
+                        "path": "testtargets/build/testEnvironment/*",
                         "retention-days": "1"
                     }
                 },
@@ -123,7 +123,7 @@
                 }
             ]
         },
-        "natives-test": {
+        "platform-test": {
             "runs-on": "${{ matrix.runner }}",
             "steps": [
                 {
@@ -131,7 +131,7 @@
                     "id": "download",
                     "uses": "actions/download-artifact@v4",
                     "with": {
-                        "name": "natives-test-environment"
+                        "name": "platform-test-environment"
                     }
                 },
                 {
@@ -150,12 +150,12 @@
                 },
                 {
                     "name": "Run with Docker",
-                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args-${{ matrix.os }}.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
+                    "run": "docker run --workdir \"${GITHUB_WORKSPACE}\" -v \"${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z\" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c 'mkdir ../working; cp -r ./ ../working/; cd ../working; java @args.txt; return=$?; cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return'",
                     "if": "${{ matrix.docker }}"
                 },
                 {
                     "name": "Run",
-                    "run": "java @args-${{ matrix.os }}.txt",
+                    "run": "java @args.txt",
                     "if": "${{ !matrix.qemu }}",
                     "shell": "bash"
                 },
@@ -164,7 +164,7 @@
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure()) && steps.download.outcome == 'success'",
                     "with": {
-                        "name": "junit-test-results-native-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}",
+                        "name": "junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}",
                         "path": "results/TEST-*.xml"
                     }
                 }
@@ -265,22 +265,21 @@
                     "id": "download",
                     "uses": "actions/download-artifact@v4",
                     "with": {
-                        "pattern": "junit-test-results-*"
+                        "pattern": "junit-test-results-platform-*"
                     }
                 },
                 {
                     "name": "Upload Results",
                     "uses": "actions/upload-artifact@v4",
                     "with": {
-                        "name": "junit-test-results",
+                        "name": "junit-test-results-platform",
                         "path": "**/TEST-*.xml"
                     }
                 }
             ],
             "if": "always()",
             "needs": [
-                "natives-test",
-                "build"
+                "natives-test"
             ]
         }
     }

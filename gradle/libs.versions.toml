@@ -2,7 +2,8 @@
 
 junitjupiter = "5.8.1"
 junitplatform = "1.10.3"
-junit = "4.13.2"
+apiguardian = "1.1.2"
+
 jetbrains_annotations = "24.0.1"
 autoservice = "1.0.1"
 
@@ -20,10 +21,14 @@ javacpostprocessor = "0.1.0"
 
 [libraries]
 
-junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitjupiter" }
-junit_engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitjupiter" }
-junit_console = { module = "org.junit.platform:junit-platform-console", version.ref = "junitplatform" }
-junit_junit = { module = "junit:junit", version.ref = "junit" }
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitjupiter" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitjupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitplatform" }
+junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporting", version.ref = "junitplatform" }
+junit-platform-suite-engine = { module = "org.junit.platform:junit-platform-suite-engine", version.ref = "junitplatform" }
+junit-platform-suite-api = { module = "org.junit.platform:junit-platform-suite-api", version.ref = "junitplatform" }
+
+apiguardian = { module = "org.apiguardian:apiguardian-api", version.ref = "apiguardian" }
 
 jetbrains_annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains_annotations" }
 autoservice = { module = "com.google.auto.service:auto-service", version.ref = "autoservice" }

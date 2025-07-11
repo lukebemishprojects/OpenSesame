@@ -21,7 +21,11 @@ dependencies {
     implementation libs.asm.core
     implementation libs.javacpostprocessor
 
-    testSource project(path: ':testtargets', configuration: 'testSource')
+    testSource(project(':testtargets')) {
+        capabilities {
+            requireFeature 'transformation-sources'
+        }
+    }
     testAnnotationProcessor project(':opensesame-javac')
 }
 

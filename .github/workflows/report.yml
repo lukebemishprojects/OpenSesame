@@ -2,12 +2,12 @@
     "name": "Report Test Results",
     "on": {
         "workflow_run": {
+            "types": [
+                "completed"
+            ],
             "workflows": [
                 "Build PR",
                 "Snapshot"
-            ],
-            "types": [
-                "completed"
             ]
         }
     },
@@ -24,56 +24,47 @@
                     }
                 },
                 {
-                    "name": "Download Test Report",
+                    "name": "Download Gradle Test Report",
+                    "id": "download-gradle",
                     "uses": "actions/download-artifact@v4",
                     "with": {
-                        "name": "junit-test-results",
+                        "name": "junit-test-results-gradle",
+                        "path": "gradle",
                         "github-token": "${{ github.token }}",
                         "run-id": "${{ github.event.workflow_run.id }}"
                     }
                 },
                 {
-                    "name": "JUnit Test Report - Java 17",
+                    "name": "JUnit Test Report - Transformation",
                     "uses": "dorny/test-reporter@v1",
+                    "if": "(success() || failure()) && steps.download-gradle.outcome == 'success'",
                     "with": {
-                        "name": "Test Results - Java 17",
-                        "path": "**/test-results/testOn17/**/TEST-*.xml",
+                        "name": "Test Results - Transformation",
+                        "path": "gradle/**/TEST-*.xml",
                         "reporter": "java-junit",
                         "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
+                        "list-tests": "failed"
                     }
                 },
                 {
-                    "name": "JUnit Test Report - Java 21",
-                    "uses": "dorny/test-reporter@v1",
+                    "name": "Download Platform Test Report",
+                    "id": "download-platform",
+                    "uses": "actions/download-artifact@v4",
+                    "if": "(success() || failure())",
                     "with": {
-                        "name": "Test Results - Java 21",
-                        "path": "**/test-results/testOn21/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
+                        "name": "junit-test-results-platform",
+                        "path": "platform",
+                        "github-token": "${{ github.token }}",
+                        "run-id": "${{ github.event.workflow_run.id }}"
                     }
                 },
                 {
-                    "name": "JUnit Test Report - Java 22",
+                    "name": "JUnit Test Report - Metafactory",
                     "uses": "dorny/test-reporter@v1",
+                    "if": "(success() || failure()) && steps.download-platform.outcome == 'success'",
                     "with": {
-                        "name": "Test Results - Java 22",
-                        "path": "**/test-results/testOn22/**/TEST-*.xml",
-                        "reporter": "java-junit",
-                        "fail-on-empty": "true",
-                        "list-tests": "failed",
-                        "list-suites": "failed"
-                    }
-                },
-                {
-                    "name": "JUnit Test Report - Misc",
-                    "uses": "dorny/test-reporter@v1",
-                    "with": {
-                        "name": "Test Results - Misc",
-                        "path": "**/test-results/test/**/TEST-*.xml,junit-test-results-native-*/**/TEST-*.xml",
+                        "name": "Test Results - Metafactory",
+                        "path": "platform/**/TEST-*.xml",
                         "reporter": "java-junit",
                         "fail-on-empty": "true",
                         "list-tests": "failed"

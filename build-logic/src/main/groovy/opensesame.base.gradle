@@ -1,1 +1,20 @@
 group="dev.lukebemish.opensesame"
+
+processResources {
+    from(rootProject.isolated.projectDirectory.file('LICENSE')) {
+        into 'META-INF'
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                'Implementation-Version'   : (version as String),
+                'Specification-Version'   : (version as String).split("-")[0],
+                'Implementation-Commit-Time': managedVersioning.timestamp.get(),
+                'Implementation-Commit': managedVersioning.hash.get()
+        ])
+    }
+}
+
+java.toolchain.languageVersion.set JavaLanguageVersion.of(17)

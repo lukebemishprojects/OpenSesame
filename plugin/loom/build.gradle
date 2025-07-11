@@ -4,8 +4,6 @@ plugins {
     alias cLibs.plugins.gradlepublish
 }
 
-java.toolchain.languageVersion.set JavaLanguageVersion.of(17)
-
 java.withSourcesJar()
 java.withJavadocJar()
 
@@ -41,11 +39,5 @@ gradlePlugin {
             description = 'Gradle plugin adding fabric-loom support to OpenSesame, a tool for typesafe access to normally inaccessible members'
             tags.addAll(['java', 'mapping'])
         }
-    }
-}
-
-processResources {
-    from(rootProject.isolated.projectDirectory.file('LICENSE')) {
-        into 'META-INF'
     }
 }

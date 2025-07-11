@@ -1,29 +1,161 @@
+import javax.inject.Inject
+
 plugins {
     id 'java-library'
     id 'opensesame.base'
 }
 
-java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+sourceSets {
+    transformationTest {}
+}
+
+java {
+    registerFeature('metafactoryTest') {
+        usingSourceSet(sourceSets.create('metafactoryTest'))
+        disablePublication()
+    }
+}
 
 configurations {
-    testSource {
-        canBeResolved = false
-        canBeConsumed = true
-        attributes {
-            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
-        }
+    consumable('testSource') {
+        outgoing.capability("$group:testtargets-transformation-sources:$version" as String)
+    }
+    dependencyScope('compileAsm')
+    resolvable('compileAsmClasspath') {
+        extendsFrom compileAsm
+    }
+    dependencyScope('testBundleImplementation')
+    resolvable('testBundleClasspath') {
+        extendsFrom testBundleImplementation
     }
 }
 
 dependencies {
-    testImplementation project(':opensesame-core')
-    testImplementation libs.asm.core
-    testImplementation libs.junit.api
+    transformationTestImplementation project(':opensesame-core')
+    transformationTestImplementation libs.asm.core
+    transformationTestImplementation libs.junit.api
+    transformationTestImplementation project(':testtargets')
+
+    metafactoryTestCompileOnly libs.jetbrains.annotations
+    
+    metafactoryTestImplementation project(':opensesame-core')
+    metafactoryTestImplementation project(':opensesame-natives')
+    metafactoryTestImplementation libs.asm.core
+    metafactoryTestImplementation libs.junit.api
+    metafactoryTestImplementation libs.junit.platform.launcher
+    metafactoryTestImplementation libs.junit.platform.reporting
+    metafactoryTestImplementation libs.junit.platform.suite.api
+    metafactoryTestImplementation libs.apiguardian // Needed so that we can compile stuff at runtime against junit
+
+    metafactoryTestRuntimeOnly libs.junit.engine
+    metafactoryTestRuntimeOnly libs.junit.platform.suite.engine
+
+    metafactoryTestImplementation project(':testtargets')
+    
+    testBundleImplementation(project(':testtargets')) {
+        capabilities {
+            requireFeature 'metafactory-test'
+        }
+    }
+
+    compileAsm(project(':opensesame-compile')) {
+        capabilities {
+            requireFeature 'asm'
+        }
+    }
 }
 
+def tempClassesDir = layout.buildDirectory.dir("tempClasses/compileJava")
+
+tasks.named('compileMetafactoryTestJava', JavaCompile).configure {
+    options.javaModuleMainClass = 'dev.lukebemish.opensesame.test.framework.Framework'
+    destinationDirectory.set(tempClassesDir)
+}
+
+var processTestClasses = tasks.register('processMetafactoryTestClasses', JavaExec) {
+    dependsOn tasks.compileMetafactoryTestJava
+    dependsOn configurations.compileAsmClasspath
+    inputs.dir(tempClassesDir)
+    var singleFile = sourceSets.metafactoryTest.output.classesDirs.singleFile;
+    doFirst {
+        if (singleFile.exists()) {
+            singleFile.deleteDir()
+        }
+        singleFile.mkdirs()
+    }
+    inputs.files(configurations.compileAsmClasspath)
+    outputs.dir(singleFile)
+    classpath = configurations.compileAsmClasspath
+    mainClass.set 'dev.lukebemish.opensesame.compile.asm.VisitingProcessor'
+    args = [tempClassesDir.get().asFile.canonicalPath, singleFile.canonicalPath]
+}
+
+tasks.metafactoryTestClasses.dependsOn processMetafactoryTestClasses
+
 artifacts {
-    testSource(sourceSets.test.java.sourceDirectories.singleFile) {
+    testSource(sourceSets.transformationTest.java.sourceDirectories.singleFile) {
         type 'directory'
         classifier 'testsources'
     }
+}
+
+
+abstract class SetupJunitEnvironment extends DefaultTask {
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract ConfigurableFileCollection getClasspath()
+    
+    @Input
+    abstract ListProperty<String> getJvmArgs()
+
+    @Inject
+    SetupJunitEnvironment() {}
+
+    @Inject
+    abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void run() {
+        getOutputDirectory().get().asFile.deleteDir()
+        getOutputDirectory().get().asFile.mkdirs()
+        fileSystemOperations.copy {
+            from classpath
+            into getOutputDirectory().get().dir('libraries')
+        }
+        def argFile = getOutputDirectory().get().file('args.txt')
+        def args = []
+        args.addAll(jvmArgs.get())
+        args.add('--module-path')
+        args.add('libraries')
+        args.add('--module')
+        args.add('dev.lukebemish.opensesame.test.metafactory')
+        argFile.getAsFile().text = args.join(' ')
+    }
+}
+
+tasks.register('setupTestEnvironment', SetupJunitEnvironment) {
+    dependsOn tasks.metafactoryTestJar
+    outputDirectory.set(layout.buildDirectory.dir('testEnvironment'))
+    classpath.from configurations.testBundleClasspath
+    jvmArgs.addAll([
+            '-ea',
+            '--enable-native-access=dev.lukebemish.opensesame.core'
+    ])
+}
+
+tasks.register('metafactoryTest', JavaExec) {
+    dependsOn tasks.setupTestEnvironment
+    inputs.files(tasks.setupTestEnvironment.outputDirectory)
+    
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(22))
+    }
+    workingDir(tasks.setupTestEnvironment.outputDirectory)
+    jvmArgs(tasks.setupTestEnvironment.jvmArgs.get())
+    classpath = configurations.testBundleClasspath
+    modularity.inferModulePath = true
+    mainModule = 'dev.lukebemish.opensesame.test.metafactory'
 }

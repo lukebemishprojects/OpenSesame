@@ -218,6 +218,17 @@ public final class OpeningMetafactory {
     }
 
     private static CallSite invoke1(MethodHandles.Lookup caller, String name, MethodType factoryType, MethodType accessType, Class<?> holdingClass, int type, boolean unsafe) {
+        try {
+            var fromModule = caller.lookupClass().getModule();
+            var toModule = holdingClass.getModule();
+            if (fromModule != toModule && !fromModule.canRead(toModule)) {
+                var addReads = caller.findVirtual(Module.class, "addReads", MethodType.methodType(Module.class, Module.class));
+                addReads.invoke(fromModule, toModule);
+            }
+        } catch (Throwable t) {
+            throw new OpeningException("Issue ensuring module visibility: ", t);
+        }
+
         MethodHandles.Lookup lookup;
         try {
             if (unsafe) {
@@ -241,6 +252,7 @@ public final class OpeningMetafactory {
             }
             name = remapField(name, fieldType.descriptorString(), holdingClass.getName(), caller.lookupClass());
         }
+        
         var handle = makeHandle(lookup, name, factoryType, accessType, holdingClass, type);
         return new ConstantCallSite(handle);
     }
