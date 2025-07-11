@@ -161,7 +161,7 @@ managedVersioning {
             action.job {
                 name.set 'aggregate-test-results'
                 runsOn.set 'ubuntu-latest'
-                needs.add('natives-test')
+                needs.add('platform-test')
                 getIf().set('always()')
                 step {
                     name.set 'Download Artifact'
