@@ -249,65 +249,6 @@ managedVersioning {
                     'Build PR'
             )
         }
-        report {
-            prettyName.set 'Report Test Results'
-            concurrency.unsetConvention()
-            concurrency.unset()
-            completedWorkflows.set(['Build PR', 'Snapshot'])
-            job {
-                name.set 'checks'
-                permissions.put('contents', 'read')
-                permissions.put('actions', 'read')
-                permissions.put('checks', 'write')
-                step {
-                    name.set 'Checkout'
-                    uses.set 'actions/checkout@v4'
-                    with.put 'ref', '${{ github.event.workflow_run.head_commit.id }}'
-                    with.put 'repository', '${{ github.event.workflow_run.head_repository.full_name }}'
-                }
-                step {
-                    name.set 'Download Gradle Test Report'
-                    id.set 'download-gradle'
-                    uses.set 'actions/download-artifact@v4'
-                    with.put 'name', 'junit-test-results-gradle'
-                    with.put 'path', 'gradle'
-                    with.put 'github-token', '${{ github.token }}'
-                    with.put 'run-id', '${{ github.event.workflow_run.id }}'
-                }
-                step {
-                    name.set 'JUnit Test Report - Transformation'
-                    runsOnError.set true
-                    requiredSteps.add 'download-gradle'
-                    uses.set 'dorny/test-reporter@v1'
-                    with.put 'name', 'Test Results - Transformation'
-                    with.put 'path', 'gradle/**/TEST-*.xml'
-                    with.put 'reporter', 'java-junit'
-                    with.put 'fail-on-empty', 'true'
-                    with.put 'list-tests', 'failed'
-                }
-                step {
-                    name.set 'Download Platform Test Report'
-                    id.set 'download-platform'
-                    runsOnError.set true
-                    uses.set 'actions/download-artifact@v4'
-                    with.put 'name', 'junit-test-results-platform'
-                    with.put 'path', 'platform'
-                    with.put 'github-token', '${{ github.token }}'
-                    with.put 'run-id', '${{ github.event.workflow_run.id }}'
-                }
-                step {
-                    name.set 'JUnit Test Report - Metafactory'
-                    runsOnError.set true
-                    requiredSteps.add 'download-platform'
-                    uses.set 'dorny/test-reporter@v1'
-                    with.put 'name', 'Test Results - Metafactory'
-                    with.put 'path', 'platform/**/TEST-*.xml'
-                    with.put 'reporter', 'java-junit'
-                    with.put 'fail-on-empty', 'true'
-                    with.put 'list-tests', 'failed'
-                }
-            }
-        }
     }
 }
 
