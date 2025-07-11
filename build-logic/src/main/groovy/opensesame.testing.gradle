@@ -4,13 +4,10 @@ plugins {
 }
 
 dependencies {
-    testRuntimeOnly libs.junit.engine
-    testImplementation libs.junit.api
-
     testImplementation project(':testtargets')
     testRuntimeOnly sourceSets.test.output
-    testRuntimeOnly libs.junit.engine
-    testRuntimeOnly libs.junit.api
+    testRuntimeOnly libs.bundles.junit.runtime
+    testImplementation libs.bundles.junit.implementation
 }
 
 def openSesameExtension = project.extensions.getByName('openSesameConvention')
@@ -26,5 +23,14 @@ test {
         showCauses = true
         showStackTraces = true
         events = ['passed', 'failed', 'skipped']
+    }
+    
+    enableAssertions = true
+    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
+    systemProperty('opensesame.transformer.name', project.name.startsWith('opensesame-') ? project.name.substring('opensesame-'.length()) : project.name)
+    reports {
+        junitXml.required = false
+        html.required = false
     }
 }

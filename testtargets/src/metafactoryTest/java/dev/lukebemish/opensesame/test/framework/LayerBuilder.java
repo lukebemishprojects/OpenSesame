@@ -192,8 +192,8 @@ public final class LayerBuilder {
             this.resources.put(name, content);
             return this;
         }
-        
-        public ModuleBuilder java(
+
+        public ModuleBuilder test(
                 String className,
                 @Language(
                         value = "JAVA",
@@ -211,6 +211,20 @@ public final class LayerBuilder {
                     "import org.junit.jupiter.api.*;\n" +
                     "import static org.junit.jupiter.api.Assertions.*;\n" +
                     "public class "+simpleName+" {\n"+contents+"}";
+            this.javaSources.put(className, source);
+            return this;
+        }
+
+        public ModuleBuilder java(
+                String className,
+                @Language(
+                        value = "JAVA"
+                )
+                String contents
+        ) {
+            var lastDot = className.lastIndexOf('.');
+            var packageName = lastDot == -1 ? "" : className.substring(0, lastDot);
+            var source = "package "+packageName+";\n" + contents;
             this.javaSources.put(className, source);
             return this;
         }

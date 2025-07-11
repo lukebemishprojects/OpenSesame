@@ -31,9 +31,8 @@ dependencies {
     implementation 'dev.lukebemish.opensesame:opensesame-fabric'
     implementation 'dev.lukebemish.opensesame:testtargets'
 
-    testImplementation libs.junit.api
-    testImplementation libs.fabric.loader.junit
-    testRuntimeOnly libs.junit.engine
+    testRuntimeOnly libs.bundles.junit.runtime
+    testImplementation libs.bundles.junit.implementation
     testImplementation 'dev.lukebemish.opensesame:testtargets'
 }
 
@@ -54,5 +53,14 @@ test {
         showCauses = true
         showStackTraces = true
         events = ['passed', 'failed', 'skipped']
+    }
+
+    enableAssertions = true
+    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
+    systemProperty('opensesame.transformer.name', 'gradle-loom, applied to minecraft')
+    reports {
+        junitXml.required = false
+        html.required = false
     }
 }

@@ -104,7 +104,7 @@
                     "if": "(success() || failure()) && steps.assemble.outcome == 'success'",
                     "with": {
                         "name": "junit-test-results-gradle",
-                        "path": "**/build/test-results/*/TEST-*.xml",
+                        "path": "**/build/reports/test/open-test-report.xml",
                         "retention-days": "1"
                     }
                 },
@@ -165,7 +165,7 @@
                     "if": "(success() || failure()) && steps.download.outcome == 'success'",
                     "with": {
                         "name": "junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}",
-                        "path": "results/TEST-*.xml"
+                        "path": "results/open-test-report.xml"
                     }
                 }
             ],
@@ -261,7 +261,7 @@
             "runs-on": "ubuntu-latest",
             "steps": [
                 {
-                    "name": "Download Artifact",
+                    "name": "Download Platform Results",
                     "id": "download",
                     "uses": "actions/download-artifact@v4",
                     "with": {
@@ -273,7 +273,40 @@
                     "uses": "actions/upload-artifact@v4",
                     "with": {
                         "name": "junit-test-results-platform",
-                        "path": "**/TEST-*.xml"
+                        "path": "**/open-test-report.xml"
+                    }
+                },
+                {
+                    "name": "Download Gradle Results",
+                    "id": "download",
+                    "uses": "actions/download-artifact@v4",
+                    "if": "(success() || failure())",
+                    "with": {
+                        "pattern": "junit-test-results-gradle"
+                    }
+                },
+                {
+                    "name": "Find Reports",
+                    "id": "findreports",
+                    "run": "find . -name \"open-test-report.xml\" >> reports.txt"
+                },
+                {
+                    "name": "Generate HTML Report",
+                    "id": "generate",
+                    "uses": "jbangdev/jbang-action@v0.126.3",
+                    "if": "(success() || failure()) && steps.findreports.outcome == 'success'",
+                    "with": {
+                        "script": "org.opentest4j.reporting:open-test-reporting-cli:0.2.4:standalone@fatjar",
+                        "scriptargs": "html-report @reports.txt --output=report.html"
+                    }
+                },
+                {
+                    "name": "Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.generate.outcome == 'success'",
+                    "with": {
+                        "name": "test-report",
+                        "path": "report.html"
                     }
                 }
             ],

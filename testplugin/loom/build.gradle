@@ -56,8 +56,6 @@ artifacts {
 testing {
     suites {
         test {
-            useJUnit()
-
             targets.configureEach {
                 testTask.configure {
                     useJUnitPlatform()
@@ -68,6 +66,15 @@ testing {
                         showCauses = true
                         showStackTraces = true
                         events = ['passed', 'failed', 'skipped']
+                    }
+
+                    enableAssertions = true
+                    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+                    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
+                    systemProperty('opensesame.transformer.name', 'gradle-loom')
+                    reports {
+                        junitXml.required = false
+                        html.required = false
                     }
                 }
             }

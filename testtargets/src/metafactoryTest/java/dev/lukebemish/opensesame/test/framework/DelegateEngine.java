@@ -10,13 +10,16 @@ import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.ClasspathRootSelector;
 import org.junit.platform.engine.discovery.ModuleSelector;
 import org.junit.platform.engine.discovery.PackageSelector;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
+import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
+import org.junit.platform.engine.support.descriptor.MethodSource;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -25,6 +28,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Optional;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
@@ -32,7 +36,7 @@ import static java.util.stream.Collectors.joining;
 public class DelegateEngine implements TestEngine {
     @Override
     public String getId() {
-        return "opensesame-delegate";
+        return "opensesame-layered-framework";
     }
 
     private static final class ClassTestDescriptor extends AbstractTestDescriptor {
@@ -51,6 +55,11 @@ public class DelegateEngine implements TestEngine {
         @Override
         public boolean mayRegisterTests() {
             return true;
+        }
+
+        @Override
+        public Optional<TestSource> getSource() {
+            return Optional.of(ClassSource.from(clazz));
         }
     }
 
@@ -71,6 +80,11 @@ public class DelegateEngine implements TestEngine {
         public boolean mayRegisterTests() {
             return true;
         }
+
+        @Override
+        public Optional<TestSource> getSource() {
+            return Optional.of(MethodSource.from(method.getClass(), method));
+        }
     }
 
     private static final class GeneratedClassDescriptor extends AbstractTestDescriptor {
@@ -84,6 +98,11 @@ public class DelegateEngine implements TestEngine {
         @Override
         public Type getType() {
             return Type.CONTAINER;
+        }
+
+        @Override
+        public Optional<TestSource> getSource() {
+            return Optional.of(ClassSource.from(clazz));
         }
     }
 
@@ -99,11 +118,16 @@ public class DelegateEngine implements TestEngine {
         public Type getType() {
             return Type.TEST;
         }
+
+        @Override
+        public Optional<TestSource> getSource() {
+            return Optional.of(MethodSource.from(method.getClass(), method));
+        }
     }
 
     @Override
     public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
-        var descriptor = new EngineDescriptor(uniqueId, "OpenSesame Delegate Engine");
+        var descriptor = new EngineDescriptor(uniqueId, "Module Layer Tests");
 
         discoveryRequest.getSelectorsByType(ClasspathRootSelector.class).forEach(selector -> {
             appendTestsInClasspathRoot(selector.getClasspathRoot(), descriptor);
@@ -164,96 +188,99 @@ public class DelegateEngine implements TestEngine {
 
     @Override
     public void execute(ExecutionRequest request) {
-        var root = request.getRootTestDescriptor();
-
-        root.accept(new DelegateExecutor(request.getEngineExecutionListener()));
+        var root = (EngineDescriptor) request.getRootTestDescriptor();
+        var listener = request.getEngineExecutionListener();
+        var executor = new DelegateExecutor(listener);
+        listener.executionStarted(root);
+        for (var child : root.getChildren()) {
+            executor.execute((ClassTestDescriptor) child);
+        }
+        listener.executionFinished(root, TestExecutionResult.successful());
     }
     
-    private static final class DelegateExecutor implements TestDescriptor.Visitor {
+    private static final class DelegateExecutor {
         private final EngineExecutionListener listener;
-        private final Path workingDirectory = Paths.get("opensesame-delegate");
+        private final Path workingDirectory = Paths.get("opensesame-layered-framework");
         
         public DelegateExecutor(EngineExecutionListener listener) {
             this.listener = listener;
         }
 
-        @Override
-        public void visit(TestDescriptor descriptor) {
-            if (descriptor instanceof ClassTestDescriptor classTestDescriptor) {
-                listener.executionStarted(classTestDescriptor);
-                Object instance;
-                
-                try {
-                    instance = ReflectionSupport.newInstance(classTestDescriptor.clazz);
-                } catch (Throwable t) {
-                    listener.executionFinished(classTestDescriptor, TestExecutionResult.failed(t));
-                    return;
-                }
-                for (var childDescriptor : descriptor.getChildren()) {
-                    if (childDescriptor instanceof LayerMethodDescriptor layerMethodDescriptor) {
-                        listener.executionStarted(childDescriptor);
-                        Throwable throwable = null;
-                        try {
-                            var layerBuilder = (LayerBuilder) layerMethodDescriptor.method.invoke(instance);
-                            var path = workingDirectory.resolve(classTestDescriptor.clazz.getName()).resolve(layerMethodDescriptor.method.getName());
-                            try (var info = layerBuilder.build(path)) {
-                                for (var clazz : info.classes()) {
-                                    var annotated = AnnotationSupport.findAnnotatedMethods(clazz, Test.class, HierarchyTraversalMode.TOP_DOWN);
-                                    if (annotated.isEmpty()) {
-                                        continue;
-                                    }
-                                    var classDescriptor = new GeneratedClassDescriptor(
-                                            childDescriptor.getUniqueId().append("class", clazz.getName()),
-                                            clazz.getSimpleName(),
-                                            clazz
-                                    );
-                                    listener.dynamicTestRegistered(classDescriptor);
-                                    var tests = new ArrayList<TestMethodDescriptor>();
-                                    for (var method : annotated) {
-                                        String methodId = String.format("%s(%s)", method.getName(),
-                                                nullSafeToString(method.getParameterTypes()));
-                                        var methodDescriptor = new TestMethodDescriptor(
-                                                classDescriptor.getUniqueId().append("method", methodId),
-                                                methodId,
-                                                method
-                                        );
-                                        classDescriptor.addChild(methodDescriptor);
-                                        tests.add(methodDescriptor);
-                                        listener.dynamicTestRegistered(methodDescriptor);
-                                    }
-                                    listener.executionStarted(classDescriptor);
-                                    try {
-                                        var lookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
-                                        Object innerInstance = lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
-                                        for (var test : tests) {
-                                            listener.executionStarted(test);
-                                            try {
-                                                lookup.unreflect(test.method).invoke(innerInstance);
-                                            } catch (Throwable t) {
-                                                listener.executionFinished(test, TestExecutionResult.failed(t));
-                                                continue;
-                                            }
-                                            listener.executionFinished(test, TestExecutionResult.successful());
-                                        }
-                                    } catch (Throwable t) {
-                                        listener.executionFinished(classDescriptor, TestExecutionResult.failed(t));
-                                        continue;
-                                    }
-                                    listener.executionFinished(classDescriptor, TestExecutionResult.successful());
+        public void execute(ClassTestDescriptor classTestDescriptor) {
+            listener.executionStarted(classTestDescriptor);
+            Object instance;
+            
+            try {
+                instance = ReflectionSupport.newInstance(classTestDescriptor.clazz);
+            } catch (Throwable t) {
+                listener.executionFinished(classTestDescriptor, TestExecutionResult.failed(t));
+                return;
+            }
+            for (var childDescriptor : classTestDescriptor.getChildren()) {
+                if (childDescriptor instanceof LayerMethodDescriptor layerMethodDescriptor) {
+                    listener.executionStarted(childDescriptor);
+                    Throwable throwable = null;
+                    try {
+                        var layerBuilder = (LayerBuilder) layerMethodDescriptor.method.invoke(instance);
+                        var path = workingDirectory.resolve(classTestDescriptor.clazz.getName()).resolve(layerMethodDescriptor.method.getName());
+                        try (var info = layerBuilder.build(path)) {
+                            for (var clazz : info.classes()) {
+                                var annotated = AnnotationSupport.findAnnotatedMethods(clazz, Test.class, HierarchyTraversalMode.TOP_DOWN);
+                                if (annotated.isEmpty()) {
+                                    continue;
                                 }
+                                var classDescriptor = new GeneratedClassDescriptor(
+                                        childDescriptor.getUniqueId().append("class", clazz.getName()),
+                                        clazz.getSimpleName(),
+                                        clazz
+                                );
+                                childDescriptor.addChild(classDescriptor);
+                                listener.dynamicTestRegistered(classDescriptor);
+                                var tests = new ArrayList<TestMethodDescriptor>();
+                                for (var method : annotated) {
+                                    String methodId = String.format("%s(%s)", method.getName(),
+                                            nullSafeToString(method.getParameterTypes()));
+                                    var methodDescriptor = new TestMethodDescriptor(
+                                            classDescriptor.getUniqueId().append("method", methodId),
+                                            methodId,
+                                            method
+                                    );
+                                    classDescriptor.addChild(methodDescriptor);
+                                    tests.add(methodDescriptor);
+                                    listener.dynamicTestRegistered(methodDescriptor);
+                                }
+                                listener.executionStarted(classDescriptor);
+                                try {
+                                    var lookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
+                                    Object innerInstance = lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
+                                    for (var test : tests) {
+                                        listener.executionStarted(test);
+                                        try {
+                                            lookup.unreflect(test.method).invoke(innerInstance);
+                                        } catch (Throwable t) {
+                                            listener.executionFinished(test, TestExecutionResult.failed(t));
+                                            continue;
+                                        }
+                                        listener.executionFinished(test, TestExecutionResult.successful());
+                                    }
+                                } catch (Throwable t) {
+                                    listener.executionFinished(classDescriptor, TestExecutionResult.failed(t));
+                                    continue;
+                                }
+                                listener.executionFinished(classDescriptor, TestExecutionResult.successful());
                             }
-                        } catch (Throwable t) {
-                            throwable = t;
                         }
-                        if (throwable != null) {
-                            listener.executionFinished(childDescriptor, TestExecutionResult.failed(throwable));
-                        } else {
-                            listener.executionFinished(childDescriptor, TestExecutionResult.successful());
-                        }
+                    } catch (Throwable t) {
+                        throwable = t;
+                    }
+                    if (throwable != null) {
+                        listener.executionFinished(childDescriptor, TestExecutionResult.failed(throwable));
+                    } else {
+                        listener.executionFinished(childDescriptor, TestExecutionResult.successful());
                     }
                 }
-                listener.executionFinished(classTestDescriptor, TestExecutionResult.successful());
             }
+            listener.executionFinished(classTestDescriptor, TestExecutionResult.successful());
         }
     }
 

@@ -13,9 +13,6 @@ configurations {
     testSource {
         canBeResolved = true
     }
-    testModulePath {
-        canBeResolved = true
-    }
 }
 
 repositories {
@@ -28,7 +25,6 @@ dependencies {
             requireFeature 'transformation-sources'
         }
     }
-    testModulePath 'dev.lukebemish.opensesame:testtargets'
 }
 
 opensesame.apply(sourceSets.test)
@@ -41,8 +37,6 @@ tasks.named('compileTestJava', JavaCompile).configure {
 testing {
     suites {
         test {
-            useJUnit()
-
             targets.configureEach {
                 testTask.configure {
                     useJUnitPlatform()
@@ -55,8 +49,14 @@ testing {
                         events = ['passed', 'failed', 'skipped']
                     }
 
-                    testClassesDirs.from configurations.testModulePath
-                    systemProperty 'modulartests', 'true'
+                    enableAssertions = true
+                    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+                    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
+                    systemProperty('opensesame.transformer.name', 'gradle')
+                    reports {
+                        junitXml.required = false
+                        html.required = false
+                    }
                 }
             }
 

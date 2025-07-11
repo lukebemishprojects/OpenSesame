@@ -7,9 +7,14 @@ public class TestLayerBuilder {
     @LayerTest
     public LayerBuilder layerBuilder() {
         return LayerBuilder.create().withModule("test.test", module ->
-                module.java("test.test.TestSomething", """
+                module.test("test.test.TestSomething", """
                         @Test
                         void alwaysPass() {}
+                        
+                        @Test
+                        void alwaysFail() {
+                            fail("This test should not run");
+                        }
                         """)
                 );
     }

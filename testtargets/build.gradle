@@ -36,7 +36,7 @@ configurations {
 dependencies {
     transformationTestImplementation project(':opensesame-core')
     transformationTestImplementation libs.asm.core
-    transformationTestImplementation libs.junit.api
+    transformationTestImplementation libs.bundles.junit.implementation
     transformationTestImplementation project(':testtargets')
 
     metafactoryTestCompileOnly libs.jetbrains.annotations
@@ -44,14 +44,11 @@ dependencies {
     metafactoryTestImplementation project(':opensesame-core')
     metafactoryTestImplementation project(':opensesame-natives')
     metafactoryTestImplementation libs.asm.core
-    metafactoryTestImplementation libs.junit.api
     metafactoryTestImplementation libs.junit.platform.launcher
-    metafactoryTestImplementation libs.junit.platform.reporting
-    metafactoryTestImplementation libs.junit.platform.suite.api
     metafactoryTestImplementation libs.apiguardian // Needed so that we can compile stuff at runtime against junit
 
-    metafactoryTestRuntimeOnly libs.junit.engine
-    metafactoryTestRuntimeOnly libs.junit.platform.suite.engine
+    metafactoryTestRuntimeOnly libs.bundles.junit.runtime
+    metafactoryTestImplementation libs.bundles.junit.implementation
 
     metafactoryTestImplementation project(':testtargets')
     

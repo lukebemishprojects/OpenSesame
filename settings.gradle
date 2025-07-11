@@ -76,7 +76,7 @@ managedVersioning {
                 runsOnError.set true
                 requiredSteps.add 'assemble'
             }
-            job.upload('junit-test-results-gradle', ['**/build/test-results/*/TEST-*.xml']) {
+            job.upload('junit-test-results-gradle', ['**/build/reports/test/open-test-report.xml']) {
                 runsOnError.set true
                 requiredSteps.add 'assemble'
                 with.put('retention-days', '1')
@@ -155,7 +155,7 @@ managedVersioning {
                     requiredSteps.add 'download'
                     uses.set 'actions/upload-artifact@v4'
                     with.put 'name', 'junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}'
-                    with.put 'path', 'results/TEST-*.xml'
+                    with.put 'path', 'results/open-test-report.xml'
                 }
             }
             action.job {
@@ -164,7 +164,7 @@ managedVersioning {
                 needs.add('platform-test')
                 getIf().set('always()')
                 step {
-                    name.set 'Download Artifact'
+                    name.set 'Download Platform Results'
                     id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'pattern', 'junit-test-results-platform-*'
@@ -173,7 +173,36 @@ managedVersioning {
                     name.set 'Upload Results'
                     uses.set 'actions/upload-artifact@v4'
                     with.put 'name', 'junit-test-results-platform'
-                    with.put 'path', '**/TEST-*.xml'
+                    with.put 'path', '**/open-test-report.xml'
+                }
+                step {
+                    name.set 'Download Gradle Results'
+                    runsOnError.set true
+                    id.set 'download'
+                    uses.set 'actions/download-artifact@v4'
+                    with.put 'pattern', 'junit-test-results-gradle'
+                }
+                step {
+                    name.set 'Find Reports'
+                    id.set 'findreports'
+                    run.set 'find . -name "open-test-report.xml" >> reports.txt'
+                }
+                step {
+                    name.set 'Generate HTML Report'
+                    id.set 'generate'
+                    runsOnError.set true
+                    requiredSteps.add 'findreports'
+                    uses.set 'jbangdev/jbang-action@v0.126.3'
+                    with.put 'script', 'org.opentest4j.reporting:open-test-reporting-cli:0.2.4:standalone@fatjar'
+                    with.put 'scriptargs', 'html-report @reports.txt --output=report.html'
+                }
+                step {
+                    name.set 'Upload Results'
+                    runsOnError.set true
+                    requiredSteps.add 'generate'
+                    uses.set 'actions/upload-artifact@v4'
+                    with.put 'name', 'test-report'
+                    with.put 'path', 'report.html'
                 }
             }
         }

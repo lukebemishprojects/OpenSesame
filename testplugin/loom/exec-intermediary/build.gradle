@@ -64,6 +64,15 @@ testing {
 
                     testClassesDirs.from tasks.unpackRemappedJar.outputs
                     classpath.from tasks.unpackRemappedJar.outputs
+
+                    enableAssertions = true
+                    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
+                    systemProperty('junit.platform.reporting.output.dir', 'build/reports/tests')
+                    systemProperty('opensesame.transformer.name', 'gradle-loom, on intermediary')
+                    reports {
+                        junitXml.required = false
+                        html.required = false
+                    }
                 }
             }
         }
@@ -72,9 +81,8 @@ testing {
             implementation 'dev.lukebemish.opensesame:testtargets'
             implementation 'dev.lukebemish.opensesame:opensesame-core'
             implementation libs.asm.core
-            implementation libs.junit.api
-
-            runtimeOnly libs.junit.engine
+            runtimeOnly libs.bundles.junit.runtime
+            implementation libs.bundles.junit.implementation
             runtimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
         }
     }
