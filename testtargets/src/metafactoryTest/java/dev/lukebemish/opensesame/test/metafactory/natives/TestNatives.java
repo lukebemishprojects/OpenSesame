@@ -1,6 +1,5 @@
-package dev.lukebemish.opensesame.test.natives;
+package dev.lukebemish.opensesame.test.metafactory.natives;
 
-import dev.lukebemish.opensesame.natives.NativeImplementations;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -8,10 +7,11 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-class TestNatives {
+public class TestNatives {
     @Test
     void testNativeImplLookup() throws Throwable {
-        Class<?> clazz = NativeImplementations.class;
+        Class<?> clazz = Class.forName("dev.lukebemish.opensesame.natives.NativeImplementations");
+        TestNatives.class.getModule().addReads(clazz.getModule());
         var lookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
         MethodHandle setup = lookup.findStatic(clazz, "setup", MethodType.methodType(void.class));
         MethodHandle nativeImplLookup = lookup.findStatic(clazz, "nativeImplLookup", MethodType.methodType(MethodHandles.Lookup.class));

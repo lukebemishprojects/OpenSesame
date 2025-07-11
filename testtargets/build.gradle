@@ -99,7 +99,6 @@ artifacts {
     }
 }
 
-
 abstract class SetupJunitEnvironment extends DefaultTask {
     @OutputDirectory
     abstract DirectoryProperty getOutputDirectory()
@@ -142,7 +141,9 @@ tasks.register('setupTestEnvironment', SetupJunitEnvironment) {
     classpath.from configurations.testBundleClasspath
     jvmArgs.addAll([
             '-ea',
-            '--enable-native-access=dev.lukebemish.opensesame.core'
+            '--enable-native-access=dev.lukebemish.opensesame.core',
+            '--add-opens=dev.lukebemish.opensesame.natives/dev.lukebemish.opensesame.natives=dev.lukebemish.opensesame.test.metafactory',
+            '--add-opens=dev.lukebemish.opensesame.core/dev.lukebemish.opensesame.runtime=dev.lukebemish.opensesame.test.metafactory'
     ])
 }
 
@@ -155,7 +156,7 @@ tasks.register('metafactoryTest', JavaExec) {
     }
     workingDir(tasks.setupTestEnvironment.outputDirectory)
     jvmArgs(tasks.setupTestEnvironment.jvmArgs.get())
-    classpath = configurations.testBundleClasspath
+    classpath(configurations.testBundleClasspath)
     modularity.inferModulePath = true
     mainModule = 'dev.lukebemish.opensesame.test.metafactory'
 }

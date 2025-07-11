@@ -92,6 +92,10 @@ targets.each { os, archs ->
     }
 }
 
+dependencies {
+    compileOnly project(':opensesame-core')
+}
+
 configurations {
     runtimeElements {
         outgoing.variants.clear()

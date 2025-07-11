@@ -1,4 +1,4 @@
-package dev.lukebemish.opensesame.test.natives;
+package dev.lukebemish.opensesame.test.metafactory.ffi;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

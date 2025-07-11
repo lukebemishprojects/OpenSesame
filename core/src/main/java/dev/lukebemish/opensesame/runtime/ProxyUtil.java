@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.runtime;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+@ApiStatus.Internal
 final class ProxyUtil {
     private ProxyUtil() {}
 

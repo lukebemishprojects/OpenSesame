@@ -1,5 +1,7 @@
 package dev.lukebemish.opensesame.runtime;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import java.lang.ref.WeakReference;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -7,6 +9,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.WeakHashMap;
 
+@ApiStatus.Internal
 final class LayeredServiceLoader<T> {
     private final Class<T> service;
 

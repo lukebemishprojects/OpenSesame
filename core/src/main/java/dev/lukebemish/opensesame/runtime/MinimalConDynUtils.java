@@ -1,5 +1,6 @@
 package dev.lukebemish.opensesame.runtime;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
@@ -11,6 +12,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.List;
 
+@ApiStatus.Internal
 final class MinimalConDynUtils {
     private MinimalConDynUtils() {}
 
