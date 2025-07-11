@@ -92,7 +92,7 @@ managedVersioning {
                 matrix.os = ['linux', 'windows', 'macos']
                 // We're giving up on testing on x32 systems (windows or linux) because it's too much of a hassle -- we'd probably need custom JDK builds at some point...
                 matrix.arch = ['x86_64', 'aarch64', 'arm']
-                matrix.java = ['17', '21', '22']
+                matrix.java = ['17', '21', '24']
                 matrix.exclude = [
                         // No natives
                         [os: 'macos', arch: 'i386'],
@@ -107,12 +107,8 @@ managedVersioning {
                 matrix.include = [
                         [os: 'macos', runner: 'macos-latest'],
                         [os: 'windows', runner: 'windows-latest'],
-                        [os: 'linux', runner: 'ubuntu-latest'],
-
-                        [os: 'linux', arch: 'aarch64', java: '17', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:17'],
-                        [os: 'linux', arch: 'aarch64', java: '21', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:21'],
-                        [os: 'linux', arch: 'aarch64', java: '17', qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:22'],
-                ]
+                        [os: 'linux', runner: 'ubuntu-latest']
+                ] + matrix.java.collect { [os: 'linux', arch: 'aarch64', java: it, qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:'+it] }
                 parameters.put('strategy', strategy)
                 name.set 'platform-test'
                 needs.add('build')

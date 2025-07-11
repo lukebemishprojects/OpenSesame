@@ -172,7 +172,7 @@
                     "java": [
                         "17",
                         "21",
-                        "22"
+                        "24"
                     ],
                     "exclude": [
                         {
@@ -232,10 +232,10 @@
                         {
                             "os": "linux",
                             "arch": "aarch64",
-                            "java": "17",
+                            "java": "24",
                             "qemu": "arm64",
                             "docker_arch": "arm64",
-                            "docker": "arm64v8/eclipse-temurin:22"
+                            "docker": "arm64v8/eclipse-temurin:24"
                         }
                     ]
                 }
