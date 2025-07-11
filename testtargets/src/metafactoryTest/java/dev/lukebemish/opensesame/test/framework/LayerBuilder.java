@@ -6,13 +6,11 @@ import org.jetbrains.annotations.Nullable;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.lang.module.ModuleFinder;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -23,12 +21,10 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -129,7 +125,6 @@ public final class LayerBuilder {
     }
 
     private void close() throws IOException {
-        if (true) return;
         var pending = new ArrayList<IOException>();
         for (var path : paths) {
             try {
@@ -327,22 +322,6 @@ public final class LayerBuilder {
                 }
             }
             return paths;
-        }
-
-        public static class JavaSourceFromString extends SimpleJavaFileObject {
-            private final String sourceCode;
-            private final String module;
-
-            public JavaSourceFromString(String name, String sourceCode, String module) {
-                super(URI.create("string:///" + module + "/" + name.replace('.', '/') + Kind.SOURCE.extension), Kind.SOURCE);
-                this.sourceCode = sourceCode;
-                this.module = module;
-            }
-
-            @Override
-            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
-                return sourceCode;
-            }
         }
     }
 }

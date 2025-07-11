@@ -8,8 +8,9 @@ public class TestLayerBuilder {
     public LayerBuilder layerBuilder() {
         // TODO: Build all the tests I actually wanted to using this framework
 
-        return LayerBuilder.create().withModule("test.test", module ->
-                module.test("test.test.TestThatClassesAreProcessed", """
+        return LayerBuilder.create()
+                .withModule("test.test", module -> module
+                        .test("test.test.TestThatClassesAreProcessed", """
                             @Open(
                                     name = "staticMethod",
                                     targetClass = test.target.Public.class,
@@ -24,9 +25,9 @@ public class TestLayerBuilder {
                                 assertEquals("staticMethod", withStaticMethod());
                             }
                             """)
-                        .requires("test.target")
-        ).withModule("test.target", module ->
-                module.java("test.target.Public", """
+                        .requires("test.target"))
+                .withModule("test.target", module -> module
+                        .java("test.target.Public", """
                             public class Public {
                                 private static String staticMethod() {
                                     return "staticMethod";
