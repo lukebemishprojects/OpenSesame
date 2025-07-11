@@ -262,7 +262,6 @@
             "steps": [
                 {
                     "name": "Download Platform Results",
-                    "id": "download",
                     "uses": "actions/download-artifact@v4",
                     "with": {
                         "pattern": "junit-test-results-platform-*"
@@ -278,7 +277,6 @@
                 },
                 {
                     "name": "Download Gradle Results",
-                    "id": "download",
                     "uses": "actions/download-artifact@v4",
                     "if": "(success() || failure())",
                     "with": {
@@ -301,7 +299,7 @@
                     }
                 },
                 {
-                    "name": "Upload Results",
+                    "name": "Upload HTML Report",
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure()) && steps.generate.outcome == 'success'",
                     "with": {

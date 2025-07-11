@@ -15,9 +15,12 @@ import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -25,7 +28,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.jar.JarOutputStream;
 import java.util.stream.Stream;
 
 public final class LayerBuilder {
@@ -85,7 +87,7 @@ public final class LayerBuilder {
         List<Path> compileModulePath = getPaths().toList();
 
         for (ModuleBuilder moduleBuilder : modules) {
-            var path = moduleBuilder.build(working, parentLayer, compileModulePath);
+            var path = moduleBuilder.build(working, compileModulePath);
             moduleNames.add(moduleBuilder.name);
             paths.add(path);
         }
@@ -129,7 +131,24 @@ public final class LayerBuilder {
         var pending = new ArrayList<IOException>();
         for (var path : paths) {
             try {
-                Files.deleteIfExists(path);
+                Files.walkFileTree(path, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
+                        Files.delete(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path directory, IOException exception) throws IOException {
+                        if (exception == null) {
+                            Files.delete(directory);
+                            return FileVisitResult.CONTINUE;
+                        } else {
+                            throw exception;
+                        }
+                    }
+
+                });
             } catch (IOException e) {
                 pending.add(e);
             }
@@ -229,17 +248,9 @@ public final class LayerBuilder {
             return this;
         }
         
-        Path build(Path working, ModuleLayer parent, List<Path> compileModulePath) throws IOException {
-            Files.createDirectories(working);
-            var modulePath = working.resolve(name + ".jar");
-            //noinspection EmptyTryBlock
-            if (Files.exists(modulePath)) {
-                Files.delete(modulePath);
-            }
-            try (
-                    var os = Files.newOutputStream(modulePath);
-                    var ignored = new JarOutputStream(os)
-            ) {}
+        Path build(Path working, List<Path> compileModulePath) throws IOException {
+            var modulePath = working.resolve(name);
+            Files.createDirectories(modulePath);
             StringBuilder moduleInfoBuilder = new StringBuilder();
             if (open) {
                 moduleInfoBuilder.append("open ");
@@ -256,41 +267,39 @@ public final class LayerBuilder {
             }
             moduleInfoBuilder.append("}\n");
             String moduleInfo = moduleInfoBuilder.toString();
-            
-            try (var jarFileSystem = FileSystems.newFileSystem(modulePath)) {
-                var compiler = ToolProvider.getSystemJavaCompiler();
-                List<String> options = new ArrayList<>();
-                options.add("-proc:none");
 
-                var files = new ArrayList<JavaFileObject>();
-                
-                files.add(new JavaSourceFromString("module-info", moduleInfo));
-                for (var entry : javaSources.entrySet()) {
-                    String className = entry.getKey();
-                    String sourceCode = entry.getValue();
-                    files.add(new JavaSourceFromString(className, sourceCode));
-                }
-                
-                var diagnostics = new DiagnosticCollector<>();
-                var manager = compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8);
+            var compiler = ToolProvider.getSystemJavaCompiler();
+            List<String> options = new ArrayList<>();
+            options.add("-proc:none");
 
-                manager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(jarFileSystem.getPath("/")));
-                manager.setLocationFromPaths(StandardLocation.MODULE_PATH, compileModulePath);
-                
-                var task = compiler.getTask(null, manager, diagnostics, options, null, files);
-                if (!task.call()) {
-                    var firstError = diagnostics.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst();
-                    firstError.ifPresent(error -> {
-                        throw new RuntimeException("Failed to compile: " + error.getMessage(Locale.ROOT));
-                    });
-                    throw new RuntimeException("Failed to compile");
-                }
-                
-                for (var entry : resources.entrySet()) {
-                    var resourcePath = jarFileSystem.getPath("/" + entry.getKey());
-                    Files.createDirectories(resourcePath.getParent());
-                    Files.write(resourcePath, entry.getValue());
-                }
+            var files = new ArrayList<JavaFileObject>();
+
+            files.add(new JavaSourceFromString("module-info", moduleInfo));
+            for (var entry : javaSources.entrySet()) {
+                String className = entry.getKey();
+                String sourceCode = entry.getValue();
+                files.add(new JavaSourceFromString(className, sourceCode));
+            }
+
+            var diagnostics = new DiagnosticCollector<>();
+            var manager = compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8);
+
+            manager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(modulePath));
+            manager.setLocationFromPaths(StandardLocation.MODULE_PATH, compileModulePath);
+
+            var task = compiler.getTask(null, manager, diagnostics, options, null, files);
+            if (!task.call()) {
+                var firstError = diagnostics.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst();
+                firstError.ifPresent(error -> {
+                    throw new RuntimeException("Failed to compile: " + error.getMessage(Locale.ROOT));
+                });
+                throw new RuntimeException("Failed to compile");
+            }
+
+            for (var entry : resources.entrySet()) {
+                var resourcePath = modulePath.resolve(entry.getKey());
+                Files.createDirectories(resourcePath.getParent());
+                Files.write(resourcePath, entry.getValue());
             }
             return modulePath;
         }

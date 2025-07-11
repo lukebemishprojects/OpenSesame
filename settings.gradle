@@ -165,7 +165,6 @@ managedVersioning {
                 getIf().set('always()')
                 step {
                     name.set 'Download Platform Results'
-                    id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'pattern', 'junit-test-results-platform-*'
                 }
@@ -178,7 +177,6 @@ managedVersioning {
                 step {
                     name.set 'Download Gradle Results'
                     runsOnError.set true
-                    id.set 'download'
                     uses.set 'actions/download-artifact@v4'
                     with.put 'pattern', 'junit-test-results-gradle'
                 }
@@ -197,7 +195,7 @@ managedVersioning {
                     with.put 'scriptargs', 'html-report @reports.txt --output=report.html'
                 }
                 step {
-                    name.set 'Upload Results'
+                    name.set 'Upload HTML Report'
                     runsOnError.set true
                     requiredSteps.add 'generate'
                     uses.set 'actions/upload-artifact@v4'
