@@ -32,6 +32,7 @@ dependencies {
     implementation 'dev.lukebemish.opensesame:testtargets'
 
     testRuntimeOnly libs.bundles.junit.runtime
+    testImplementation libs.fabric.loader.junit
     testImplementation libs.bundles.junit.implementation
     testImplementation 'dev.lukebemish.opensesame:testtargets'
 }
