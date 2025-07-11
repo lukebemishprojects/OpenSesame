@@ -93,7 +93,10 @@ class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
                 ClassNode staticReceiver = type.type
                 if (openedClasses.contains(staticReceiver)) {
                     if (name == CTOR_DUMMY) {
-                        return staticReceiver.getMethods(name) + (staticReceiver.getDeclaredConstructors().collect {
+                        return staticReceiver.getDeclaredConstructors().findAll { it.parameters.size() == argumentTypes.size() }.collect {
+                            if (it.parameters.size() != argumentTypes.size()) {
+                                return null
+                            }
                             var out = new MethodNode(
                                     CTOR_DUMMY,
                                     Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
@@ -104,9 +107,9 @@ class OpenClassTypeCheckingExtension extends TypeCheckingExtension {
                             )
                             out.setDeclaringClass(staticReceiver)
                             out
-                        } as Collection<MethodNode>)
+                        }
                     }
-                    return staticReceiver.getMethods(name)
+                    return staticReceiver.getMethods(name).findAll { it.parameters.size() == argumentTypes.size() }
                 }
             }
         }

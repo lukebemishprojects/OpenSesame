@@ -34,7 +34,7 @@ dependencies {
 
     testSource(project(':testtargets')) {
         capabilities {
-            requireCapability("$group:testtargets-transformation-sources" as String)
+            requireFeature 'transformation-sources'
         }
     }
 

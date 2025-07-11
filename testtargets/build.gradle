@@ -18,7 +18,10 @@ java {
 
 configurations {
     consumable('testSource') {
-        outgoing.capability("$group:testtargets-transformation-sources:$version" as String)
+        outgoing.capability("${project.group}:testtargets-transformation-sources:${project.version}" as String)
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-sources'))
+        }
     }
     dependencyScope('compileAsm')
     resolvable('compileAsmClasspath') {

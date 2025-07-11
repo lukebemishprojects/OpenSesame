@@ -21,9 +21,9 @@ repositories {
 }
 
 dependencies {
-    testSource('dev.lukebemish.opensesame:testtargets:testsources') {
-        attributes {
-            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
+    testSource('dev.lukebemish.opensesame:testtargets') {
+        capabilities {
+            requireFeature 'transformation-sources'
         }
     }
     testModulePath 'dev.lukebemish.opensesame:testtargets'

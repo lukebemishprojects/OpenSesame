@@ -32,9 +32,9 @@ dependencies {
     minecraft 'com.mojang:minecraft:1.20.4'
     mappings loom.officialMojangMappings()
 
-    testSource('dev.lukebemish.opensesame:testtargets:testsources') {
-        attributes {
-            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, 'java-source'))
+    testSource('dev.lukebemish.opensesame:testtargets') {
+        capabilities {
+            requireFeature 'transformation-sources'
         }
     }
     modImplementation libs.fabric.loader
