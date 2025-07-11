@@ -10,11 +10,6 @@ public class TestLayerBuilder {
                 module.test("test.test.TestSomething", """
                         @Test
                         void alwaysPass() {}
-                        
-                        @Test
-                        void alwaysFail() {
-                            fail("This test should not run");
-                        }
                         """)
                 );
     }

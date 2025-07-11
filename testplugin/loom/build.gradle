@@ -80,11 +80,11 @@ testing {
             }
 
             dependencies {
-                runtimeOnly libs.junit.engine
-                implementation 'dev.lukebemish.opensesame:testtargets'
+                runtimeOnly libs.bundles.junit.runtime
                 implementation 'dev.lukebemish.opensesame:opensesame-core'
+                implementation 'dev.lukebemish.opensesame:testtargets'
                 implementation libs.asm.core
-                implementation libs.junit.api
+                implementation libs.bundles.junit.implementation
             }
         }
     }
