@@ -16,7 +16,7 @@ fabric_loader = "0.15.4"
 
 tinyremapper = "0.10.0"
 
-mixin = "0.8.5"
+mixin = "0.8.7"
 
 javacpostprocessor = "0.1.0"
 
