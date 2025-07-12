@@ -258,12 +258,14 @@ public class DelegateEngine implements TestEngine {
                                         try {
                                             lookup.unreflect(test.method).invoke(innerInstance);
                                         } catch (Throwable t) {
+                                            info.builder().fillStackTrace(t);
                                             listener.executionFinished(test, TestExecutionResult.failed(t));
                                             continue;
                                         }
                                         listener.executionFinished(test, TestExecutionResult.successful());
                                     }
                                 } catch (Throwable t) {
+                                    info.builder().fillStackTrace(t);
                                     listener.executionFinished(classDescriptor, TestExecutionResult.failed(t));
                                     continue;
                                 }

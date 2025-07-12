@@ -68,6 +68,24 @@ public final class LayerBuilder {
         }
     }
     
+    private final Map<String, StackTraceElement> javaInitialLocations = new HashMap<>();
+    
+    public <T extends Throwable> void fillStackTrace(T throwable) {
+        var stackTrace = new ArrayList<>(List.of(throwable.getStackTrace()));
+        var iterator = stackTrace.listIterator();
+        while (iterator.hasNext()) {
+            var element = iterator.next();
+            if (element.getModuleName() != null) {
+                var identifyingString = element.getModuleName() + "/" + element.getClassName();
+                var initialLocation = javaInitialLocations.get(identifyingString);
+                if (initialLocation != null) {
+                    iterator.add(initialLocation);
+                }
+            }
+        }
+        throwable.setStackTrace(stackTrace.toArray(StackTraceElement[]::new));
+    }
+    
     synchronized LayerInfo build(Path working) throws IOException {
         var parentInfo = parent != null ? parent.build(working.resolve("parent")) : new LayerInfo(
                 null,
@@ -109,6 +127,10 @@ public final class LayerBuilder {
                 try {
                     var clazz = Class.forName(className, false, classLoader);
                     classes.add(clazz);
+                    var initialLocation = module.javaInitialLocations.get(className);
+                    if (initialLocation != null) {
+                        this.javaInitialLocations.put(module.name + "/" + className, initialLocation);
+                    }
                     controller.addOpens(source, clazz.getPackageName(), target);
                 } catch (ClassNotFoundException e) {
                     throw new RuntimeException(e);
@@ -178,6 +200,7 @@ public final class LayerBuilder {
         private final List<String> exports = new ArrayList<>();
         private final List<String> opens = new ArrayList<>();
         private final Map<String, String> javaSources = new LinkedHashMap<>();
+        private final Map<String, StackTraceElement> javaInitialLocations = new LinkedHashMap<>();
         private final Map<String, byte[]> resources = new LinkedHashMap<>();
         private final String name;
 
@@ -219,17 +242,25 @@ public final class LayerBuilder {
                 )
                 String contents
         ) {
+            findLineNumber(className);
             var lastDot = className.lastIndexOf('.');
             var packageName = lastDot == -1 ? "" : className.substring(0, lastDot);
             var simpleName = lastDot == -1 ? className : className.substring(lastDot + 1);
-            var source = "package "+packageName+";\n" +
-                    "import dev.lukebemish.opensesame.annotations.*;\n" +
-                    "import dev.lukebemish.opensesame.annotations.extend.*;\n" +
-                    "import org.junit.jupiter.api.*;\n" +
-                    "import static org.junit.jupiter.api.Assertions.*;\n" +
-                    "public class "+simpleName+" {\n"+contents+"}";
+            var source = "package "+packageName+";" +
+                    "import dev.lukebemish.opensesame.annotations.*;" +
+                    "import dev.lukebemish.opensesame.annotations.extend.*;" +
+                    "import org.junit.jupiter.api.*;" +
+                    "import static org.junit.jupiter.api.Assertions.*;" +
+                    "public class "+simpleName+" {"+contents+"}";
             this.javaSources.put(className, source);
             return this;
+        }
+
+        private void findLineNumber(String className) {
+            var stackTrace = new RuntimeException().getStackTrace();
+            if (stackTrace.length >= 3) {
+                this.javaInitialLocations.put(className, stackTrace[2]);
+            }
         }
 
         public ModuleBuilder java(
@@ -239,9 +270,10 @@ public final class LayerBuilder {
                 )
                 String contents
         ) {
+            findLineNumber(className);
             var lastDot = className.lastIndexOf('.');
             var packageName = lastDot == -1 ? "" : className.substring(0, lastDot);
-            var source = "package "+packageName+";\n" + contents;
+            var source = "package "+packageName+";" + contents;
             this.javaSources.put(className, source);
             return this;
         }
