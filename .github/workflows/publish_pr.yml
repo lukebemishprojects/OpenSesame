@@ -2,11 +2,11 @@
     "name": "Publish PR",
     "on": {
         "workflow_run": {
-            "types": [
-                "completed"
-            ],
             "workflows": [
                 "Build PR"
+            ],
+            "types": [
+                "completed"
             ]
         }
     },

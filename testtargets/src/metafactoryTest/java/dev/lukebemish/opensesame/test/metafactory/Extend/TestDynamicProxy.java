@@ -26,10 +26,12 @@ public class TestDynamicProxy {
                             interface PackagePrivateInterface {}
                             """)
                         .java("opensesame.target.MethodReturnsPackagePrivateInInterface", """
+                            import static org.junit.jupiter.api.Assertions.*;
+                            
                             public interface MethodReturnsPackagePrivateInInterface extends opensesame.target.api.TestImplemented {
                                 PackagePrivateInterface hasPackagePrivateType();
                                 default void testImplemented() {
-                                    assert hasPackagePrivateType() == null;
+                                    assertNull(hasPackagePrivateType());
                                 }
                             }""")
                         .java("opensesame.target.MethodParameterPackagePrivateInInterface", """

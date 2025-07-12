@@ -105,10 +105,12 @@ managedVersioning {
                         [os: 'linux', arch: 'arm']
                 ]
                 matrix.include = [
-                        [os: 'macos', runner: 'macos-latest'],
-                        [os: 'windows', runner: 'windows-latest'],
-                        [os: 'linux', runner: 'ubuntu-latest']
-                ] + matrix.java.collect { [os: 'linux', arch: 'aarch64', java: it, qemu: 'arm64', docker_arch: 'arm64', docker: 'arm64v8/eclipse-temurin:'+it] }
+                        [os: 'macos', arch: 'aarch64', runner: 'macos-latest'],
+                        [os: 'windows', arch: 'x86_64', runner: 'windows-latest'],
+                        [os: 'windows', arch: 'aarch64', runner: 'windows-11-arm'],
+                        [os: 'linux', arch: 'x86_64', runner: 'ubuntu-latest'],
+                        [os: 'linux', arch: 'aarch64', runner: 'ubuntu-24.04-arm']
+                ]
                 parameters.put('strategy', strategy)
                 name.set 'platform-test'
                 needs.add('build')
@@ -136,6 +138,7 @@ managedVersioning {
                     name.set 'Run with Docker'
                     parameters.put('if', '${{ matrix.docker }}')
                     run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \'' +
+                            'GITHUB_WORKSPACE=$(pwd)' +
                             'mkdir ../working; cp -r ./ ../working/; cd ../working; ' +
                             'java @args.txt; return=$?; ' +
                             'cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return\''
