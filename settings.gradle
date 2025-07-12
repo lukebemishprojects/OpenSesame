@@ -101,7 +101,11 @@ managedVersioning {
 
                         // No way to test at present
                         [os: 'macos', arch: 'x86_64'],
-                        [os: 'linux', arch: 'arm']
+                        [os: 'linux', arch: 'arm'],
+
+                        // Only 17 and 24 not available on aarch64 windows via adoptium
+                        [os: 'windows', arch: 'aarch64', java: '24'],
+                        [os: 'windows', arch: 'aarch64', java: '17']
                 ]
                 matrix.include = [
                         [os: 'macos', arch: 'aarch64', runner: 'macos-latest'],

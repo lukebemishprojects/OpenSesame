@@ -194,6 +194,16 @@
                         {
                             "os": "linux",
                             "arch": "arm"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64",
+                            "java": "24"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64",
+                            "java": "17"
                         }
                     ],
                     "include": [
