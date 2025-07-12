@@ -100,7 +100,6 @@ managedVersioning {
                         [os: 'windows', arch: 'arm'],
 
                         // No way to test at present
-                        [os: 'windows', arch: 'aarch64'],
                         [os: 'macos', arch: 'x86_64'],
                         [os: 'linux', arch: 'arm']
                 ]

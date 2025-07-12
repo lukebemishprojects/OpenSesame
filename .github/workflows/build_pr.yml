@@ -188,10 +188,6 @@
                             "arch": "arm"
                         },
                         {
-                            "os": "windows",
-                            "arch": "aarch64"
-                        },
-                        {
                             "os": "macos",
                             "arch": "x86_64"
                         },
