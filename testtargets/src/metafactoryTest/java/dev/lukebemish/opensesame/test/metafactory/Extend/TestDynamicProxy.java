@@ -3,6 +3,8 @@ package dev.lukebemish.opensesame.test.metafactory.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Field;
+import dev.lukebemish.opensesame.test.framework.LayerBuilder;
+import dev.lukebemish.opensesame.test.framework.LayerTest;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -11,6 +13,113 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestDynamicProxy {
+    @LayerTest
+    public LayerBuilder testBounceGenerationInterfaces() {
+        return LayerBuilder.create()
+                .withModule("opensesame.target", module -> module
+                        .java("opensesame.target.api.TestImplemented", """
+                            public interface TestImplemented {
+                                void testImplemented();
+                            }""")
+                        .exports("opensesame.target.api")
+                        .java("opensesame.target.PackagePrivateInterface", """
+                            interface PackagePrivateInterface {}
+                            """)
+                        .java("opensesame.target.MethodReturnsPackagePrivateInInterface", """
+                            public interface MethodReturnsPackagePrivateInInterface extends opensesame.target.api.TestImplemented {
+                                PackagePrivateInterface hasPackagePrivateType();
+                                default void testImplemented() {
+                                    assert hasPackagePrivateType() == null;
+                                }
+                            }""")
+                        .java("opensesame.target.MethodParameterPackagePrivateInInterface", """
+                            public interface MethodParameterPackagePrivateInInterface extends opensesame.target.api.TestImplemented {
+                                void hasPackagePrivateType(PackagePrivateInterface param);
+                                default void testImplemented() {
+                                    hasPackagePrivateType(null);
+                                }
+                            }"""))
+                .child().withModule("opensesame.test", module -> module
+                        .requires("opensesame.target")
+                        .test("opensesame.test.TestBounceGeneration", """
+                            @Extend(
+                                    targetName = "opensesame.target.PackagePrivateInterface",
+                                    unsafe = true
+                            )
+                            public interface ExtendsPackagePrivateInterface {
+                                @Constructor
+                                static ExtendsPackagePrivateInterface constructor() {
+                                    throw new AssertionError("Constructor not transformed");
+                                }
+                            }
+                            
+                            @Extend(
+                                    targetName = "opensesame.target.MethodReturnsPackagePrivateInInterface",
+                                    unsafe = true
+                            )
+                            public interface ExtendsMethodReturnsPackagePrivateInInterface extends opensesame.target.api.TestImplemented {
+                                @Constructor
+                                static ExtendsMethodReturnsPackagePrivateInInterface constructor() {
+                                    throw new AssertionError("Constructor not transformed");
+                                }
+                            
+                                @Overrides("hasPackagePrivateType")
+                                default @Coerce(targetName = "opensesame.target.PackagePrivateInterface") Object hasPackagePrivateTypeImpl() {
+                                    return null;
+                                }
+                            }
+                            
+                            @Extend(
+                                    targetName = "opensesame.target.MethodParameterPackagePrivateInInterface",
+                                    unsafe = true
+                            )
+                            public interface ExtendsMethodParameterPackagePrivateInInterface extends opensesame.target.api.TestImplemented {
+                                @Constructor
+                                static ExtendsMethodParameterPackagePrivateInInterface constructor() {
+                                    throw new AssertionError("Constructor not transformed");
+                                }
+                            
+                                @Overrides("hasPackagePrivateType")
+                                default void hasPackagePrivateTypeImpl(@Coerce(targetName = "opensesame.target.PackagePrivateInterface") Object param) {}
+                            }
+                            
+                            @Test
+                            void testBouncePackagePrivateInterface() throws ClassNotFoundException {
+                                var instance = ExtendsPackagePrivateInterface.constructor();
+                                var targetClass = Class.forName("opensesame.target.PackagePrivateInterface");
+                                assertInstanceOf(targetClass, instance);
+                                assertTrue(instance.getClass().getPackage().getName().contains("jdk.proxy"));
+                                assertTrue(java.util.Arrays.stream(instance.getClass().getInterfaces()).anyMatch(
+                                        clazz -> clazz.getName().contains("$$dev$lukebemish$opensesame$$BounceInterface")
+                                ));
+                            }
+                            
+                            @Test
+                            void testBouncePackagePrivateReturn() throws ClassNotFoundException {
+                                var instance = ExtendsMethodReturnsPackagePrivateInInterface.constructor();
+                                instance.testImplemented();
+                                var targetClass = Class.forName("opensesame.target.MethodReturnsPackagePrivateInInterface");
+                                assertInstanceOf(targetClass, instance);
+                                assertTrue(instance.getClass().getPackage().getName().contains("jdk.proxy"));
+                                assertTrue(java.util.Arrays.stream(instance.getClass().getInterfaces()).anyMatch(
+                                        clazz -> clazz.getName().contains("$$dev$lukebemish$opensesame$$BounceInterface")
+                                ));
+                            }
+                            
+                            @Test
+                            void testBouncePackagePrivateParameter() throws ClassNotFoundException {
+                                var instance = ExtendsMethodParameterPackagePrivateInInterface.constructor();
+                                instance.testImplemented();
+                                var targetClass = Class.forName("opensesame.target.MethodParameterPackagePrivateInInterface");
+                                assertInstanceOf(targetClass, instance);
+                                assertTrue(instance.getClass().getPackage().getName().contains("jdk.proxy"));
+                                assertTrue(java.util.Arrays.stream(instance.getClass().getInterfaces()).anyMatch(
+                                        clazz -> clazz.getName().contains("$$dev$lukebemish$opensesame$$BounceInterface")
+                                ));
+                            }
+                            """));
+    }
+    
     @Extend(
             targetName = "java.lang.invoke.MethodHandle$PolymorphicSignature",
             unsafe = true

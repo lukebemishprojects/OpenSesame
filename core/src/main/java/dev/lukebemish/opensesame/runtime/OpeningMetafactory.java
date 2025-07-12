@@ -662,7 +662,6 @@ public final class OpeningMetafactory {
                     } else {
                         superMethodVisitor.visitInsn(returnT.getOpcode(Opcodes.IRETURN));
                     }
-                    superMethodVisitor.visitInsn(returnT.getOpcode(Opcodes.IRETURN));
                     superMethodVisitor.visitMaxs(0, 0);
                     superMethodVisitor.visitEnd();
 
@@ -754,12 +753,12 @@ public final class OpeningMetafactory {
             var parameterTypes = Arrays.stream(overrideType.parameterArray()).map(Type::getType).toArray(Type[]::new);
             var overrideDesc = Type.getMethodDescriptor(Type.getType(overrideType.returnType()), parameterTypes);
             if (boundeOverrides) {
-                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, name, interfaceType.descriptorString(), null, null);
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, name, overrideType.descriptorString(), null, null);
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
                 int j = 1;
-                for (int i = 0; i < interfaceType.parameterCount(); i++) {
-                    var t = Type.getType(interfaceType.parameterType(i));
+                for (int i = 0; i < overrideType.parameterCount(); i++) {
+                    var t = Type.getType(overrideType.parameterType(i));
                     methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
                     j += t.getSize();
                 }
@@ -767,13 +766,13 @@ public final class OpeningMetafactory {
                         isInterface ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL,
                         Type.getInternalName(superClass),
                         name,
-                        interfaceType.descriptorString(),
+                        overrideType.descriptorString(),
                         isInterface
                 );
-                if (interfaceType.returnType().equals(void.class)) {
+                if (overrideType.returnType().equals(void.class)) {
                     methodVisitor.visitInsn(Opcodes.RETURN);
                 } else {
-                    methodVisitor.visitInsn(Type.getType(interfaceType.returnType()).getOpcode(Opcodes.IRETURN));
+                    methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.IRETURN));
                 }
                 methodVisitor.visitMaxs(1, 1);
                 methodVisitor.visitEnd();
