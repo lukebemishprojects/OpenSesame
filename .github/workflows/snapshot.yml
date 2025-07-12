@@ -165,6 +165,7 @@
                     "if": "(success() || failure()) && steps.download.outcome == 'success'",
                     "with": {
                         "name": "junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}",
+                        "if-no-files-found": "error",
                         "path": "results/open-test-report.xml"
                     }
                 }

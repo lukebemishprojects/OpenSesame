@@ -158,6 +158,7 @@ managedVersioning {
                     requiredSteps.add 'download'
                     uses.set 'actions/upload-artifact@v4'
                     with.put 'name', 'junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}'
+                    with.put 'if-no-files-found', 'error'
                     with.put 'path', 'results/open-test-report.xml'
                 }
             }
