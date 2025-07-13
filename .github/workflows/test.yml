@@ -116,7 +116,7 @@
                 },
                 {
                     "name": "Annotate Test Results",
-                    "run": "find results -name '*-test-report.xml' > reports.txt;\njava -jar testingutils-cli.jar annotate repository ${{needs.check.outputs.sourcedirectories}} @reports.txt\n"
+                    "run": "find results -name '*-test-report.xml' > reports.txt;\n$JAVA_HOME/bin/java -jar testingutils-cli.jar annotate repository ${{needs.check.outputs.sourcedirectories}} @reports.txt\n"
                 }
             ],
             "if": "always()",
