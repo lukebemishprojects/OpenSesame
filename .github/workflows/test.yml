@@ -106,13 +106,13 @@
                     "name": "Download Test Results",
                     "uses": "actions/download-artifact@v4",
                     "with": {
-                        "name": "test-results-*",
+                        "pattern": "test-results-*",
                         "path": "results"
                     }
                 },
                 {
                     "name": "Download TestingUtils CLI",
-                    "run": "curl -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.6/cli-0.1.6-all.jar"
+                    "run": "curl -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.7/cli-0.1.7-all.jar"
                 },
                 {
                     "name": "Annotate Test Results",
