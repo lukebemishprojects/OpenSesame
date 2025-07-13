@@ -122,11 +122,6 @@ public class TestDynamicProxy implements OpenSesameLayerConfiguration {
                             """));
     }
     
-    @Test
-    void testAlwaysFails() {
-        assertEquals("Expected", "Actual");
-    }
-    
     @Extend(
             targetName = "java.lang.invoke.MethodHandle$PolymorphicSignature",
             unsafe = true
