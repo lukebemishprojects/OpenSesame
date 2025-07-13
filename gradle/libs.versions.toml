@@ -3,7 +3,7 @@
 jetbrains-annotations = "24.0.1"
 autoservice = "1.0.1"
 
-testingutils = "0.1.1"
+testingutils = "0.1.2"
 
 groovy = "4.0.18"
 asm = "9.6"
