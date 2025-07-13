@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestDynamicProxy implements OpenSesameLayerConfiguration {
     @LayerTest
@@ -121,6 +120,11 @@ public class TestDynamicProxy implements OpenSesameLayerConfiguration {
                                 ));
                             }
                             """));
+    }
+    
+    @Test
+    void testAlwaysFails() {
+        fail();
     }
     
     @Extend(
