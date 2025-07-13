@@ -124,7 +124,7 @@ public class TestDynamicProxy implements OpenSesameLayerConfiguration {
     
     @Test
     void testAlwaysFails() {
-        fail();
+        assertEquals("Expected", "Actual");
     }
     
     @Extend(

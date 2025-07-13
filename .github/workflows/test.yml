@@ -112,7 +112,7 @@
                 },
                 {
                     "name": "Download TestingUtils CLI",
-                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.8/cli-0.1.8-all.jar"
+                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.9/cli-0.1.9-all.jar"
                 },
                 {
                     "name": "Annotate Test Results",
