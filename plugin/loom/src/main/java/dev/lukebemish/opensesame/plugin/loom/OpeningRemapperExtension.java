@@ -18,13 +18,12 @@ import javax.inject.Inject;
 import java.util.List;
 
 @SuppressWarnings("UnstableApiUsage")
-public abstract class OpeningRemapperExtension implements RemapperExtension<OpeningRemapperExtension.OpeningRemapperParameters>, TinyRemapperExtension {
-    @Nested
-    public abstract Property<OpeningRemapperParameters> getParameters();
+public class OpeningRemapperExtension implements RemapperExtension<OpeningRemapperExtension.OpeningRemapperParameters>, TinyRemapperExtension {
+    private final OpeningRemapperParameters parameters;
 
     @Inject
     public OpeningRemapperExtension(OpeningRemapperParameters parameters) {
-        this.getParameters().set(parameters);
+        this.parameters = parameters;
     }
 
     public static abstract class OpeningRemapperParameters implements RemapperParameters {
@@ -40,7 +39,7 @@ public abstract class OpeningRemapperExtension implements RemapperExtension<Open
     @Override
     public TinyRemapper.@Nullable ApplyVisitorProvider getPreApplyVisitor(Context context) {
         return (cls, classVisitor) -> {
-            for (var spec : getParameters().get().getContextFilters().get()) {
+            for (var spec : parameters.getContextFilters().get()) {
                 if (!spec.isSatisfiedBy(context)) {
                     return classVisitor;
                 }
