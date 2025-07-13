@@ -17,6 +17,9 @@ loom {
 repositories {
     mavenCentral()
     maven {
+        url = "https://maven.lukebemish.dev/releases/"
+    }
+    maven {
         name = 'SpongePowered'
         url = 'https://repo.spongepowered.org/maven'
     }
@@ -31,9 +34,7 @@ dependencies {
     implementation 'dev.lukebemish.opensesame:opensesame-fabric'
     implementation 'dev.lukebemish.opensesame:testtargets'
 
-    testRuntimeOnly libs.bundles.junit.runtime
     testImplementation libs.fabric.loader.junit
-    testImplementation libs.bundles.junit.implementation
     testImplementation 'dev.lukebemish.opensesame:testtargets'
 }
 
@@ -57,11 +58,4 @@ test {
     }
 
     enableAssertions = true
-    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
-    systemProperty('opensesame.transformer.name', 'gradle-loom, applied to minecraft')
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
 }

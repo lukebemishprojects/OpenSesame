@@ -1,0 +1,234 @@
+{
+    "name": "Run Tests",
+    "on": {
+        "push": {
+            "branches": [
+                "main"
+            ]
+        },
+        "pull_request": {
+            
+        }
+    },
+    "jobs": {
+        "check": {
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_21_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4",
+                    "with": {
+                        "fetch-depth": "0",
+                        "persist-credentials": "false"
+                    }
+                },
+                {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v4"
+                },
+                {
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4",
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    }
+                },
+                {
+                    "name": "Setup Gradle",
+                    "uses": "gradle/actions/setup-gradle@v4",
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    }
+                },
+                {
+                    "name": "Check .",
+                    "id": "check__",
+                    "run": "./gradlew check --continue",
+                    "if": "(success() || failure())",
+                    "working-directory": "."
+                },
+                {
+                    "name": "Check ./testplugin",
+                    "id": "check___testplugin",
+                    "run": "./gradlew check --continue",
+                    "if": "(success() || failure())",
+                    "working-directory": "./testplugin"
+                },
+                {
+                    "name": "Upload Upload Results",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure())",
+                    "with": {
+                        "name": "Upload Results",
+                        "path": "**/testingUtils/out/*-open-test-report.xml",
+                        "retention-days": "1"
+                    }
+                }
+            ]
+        },
+        "make-test-environment": {
+            "runs-on": "ubuntu-22.04",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_21_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4",
+                    "with": {
+                        "fetch-depth": "0",
+                        "persist-credentials": "false"
+                    }
+                },
+                {
+                    "name": "Validate Gradle Wrapper",
+                    "uses": "gradle/actions/wrapper-validation@v4"
+                },
+                {
+                    "name": "Cache",
+                    "uses": "actions/cache/restore@v4",
+                    "with": {
+                        "path": "**/.gradle/loom-cache\n**/.gradle/quilt-loom-cache",
+                        "key": "${{ runner.os }}-gradle-${{ hashFiles('**/libs.versions.*', '**/*.gradle*', '**/gradle-wrapper.properties') }}",
+                        "restore-keys": "${{ runner.os }}-gradle-"
+                    }
+                },
+                {
+                    "name": "Setup Gradle",
+                    "uses": "gradle/actions/setup-gradle@v4",
+                    "with": {
+                        "cache-read-only": true,
+                        "gradle-home-cache-cleanup": true
+                    }
+                },
+                {
+                    "name": "Make Test Environment",
+                    "id": "make-test-environment",
+                    "run": "./gradlew testtargets:testingUtilsMakeTestEnvironment"
+                },
+                {
+                    "name": "Upload Test Environment",
+                    "uses": "actions/upload-artifact@v4",
+                    "with": {
+                        "name": "platform-test-environment",
+                        "path": "build/testingUtils/platform/testtargets",
+                        "if-no-files-found": "error",
+                        "retention-days": "1"
+                    }
+                }
+            ]
+        },
+        "platform-test": {
+            "runs-on": "${{ matrix.runner }}",
+            "steps": [
+                {
+                    "name": "Download Test Environment",
+                    "id": "download",
+                    "uses": "actions/download-artifact@v4",
+                    "with": {
+                        "name": "platform-test-environment"
+                    }
+                },
+                {
+                    "name": "Setup Java",
+                    "id": "setup-java",
+                    "uses": "actions/setup-java@v4",
+                    "with": {
+                        "java-version": "${{ matrix.java }}",
+                        "distribution": "temurin"
+                    }
+                },
+                {
+                    "name": "Run",
+                    "id": "run",
+                    "run": "java @args.txt",
+                    "shell": "bash"
+                },
+                {
+                    "name": "Upload Results",
+                    "id": "upload",
+                    "uses": "actions/upload-artifact@v4",
+                    "if": "(success() || failure()) && steps.setup-java.outcome == 'success'",
+                    "with": {
+                        "name": "test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}",
+                        "if-no-files-found": "error",
+                        "path": "results/open-test-report.xml"
+                    }
+                }
+            ],
+            "needs": [
+                "make-test-environment"
+            ],
+            "strategy": {
+                "fail-fast": "false",
+                "matrix": {
+                    "os": [
+                        "linux",
+                        "windows",
+                        "macos"
+                    ],
+                    "arch": [
+                        "x86_64",
+                        "aarch64"
+                    ],
+                    "java": [
+                        "17",
+                        "21",
+                        "24"
+                    ],
+                    "exclude": [
+                        {
+                            "os": "macos",
+                            "arch": "x86_64"
+                        },
+                        {
+                            "os": "17",
+                            "arch": "aarch64",
+                            "java": "windows"
+                        },
+                        {
+                            "os": "24",
+                            "arch": "aarch64",
+                            "java": "windows"
+                        }
+                    ],
+                    "include": [
+                        {
+                            "os": "macos",
+                            "arch": "aarch64",
+                            "runner": "macos-latest"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "x86_64",
+                            "runner": "windows-latest"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "aarch64",
+                            "runner": "ubuntu-24.04-arm"
+                        },
+                        {
+                            "os": "linux",
+                            "arch": "x86_64",
+                            "runner": "ubuntu-latest"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64",
+                            "runner": "windows-11-arm"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

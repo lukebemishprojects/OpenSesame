@@ -2,7 +2,7 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         maven {
-            url "https://maven.lukebemish.dev/releases/"
+            url = "https://maven.lukebemish.dev/releases/"
         }
     }
     includeBuild 'build-logic'
@@ -10,6 +10,7 @@ pluginManagement {
 
 plugins {
     id 'dev.lukebemish.central-portal-publishing' version '0.1.7' apply false
+    id 'dev.lukebemish.testingutils' version '0.1.1'
     id 'dev.lukebemish.managedversioning' version '2.0.0-beta.6'
     id 'dev.lukebemish.conventions' version '0.2.0-beta.2'
     id 'dev.lukebemish.zig-gradle' version '0.1.0'
@@ -64,104 +65,7 @@ managedVersioning {
             }
         }
 
-        def testOnBuild = { dev.lukebemish.managedversioning.actions.GradleJob job ->
-            job.gradlew 'Assemble', 'assemble', ':testtargets:setupTestEnvironment'
-            job.upload('platform-test-environment', ['testtargets/build/testEnvironment/*']) {
-                requiredSteps.add 'assemble'
-                with.put('retention-days', '1')
-            }
-            job.gradlew 'Test', 'check', '--continue'
-            job.gradlew('Test Plugin', ['check', '--continue']) {
-                workingDirectory.set './testplugin'
-                runsOnError.set true
-                requiredSteps.add 'assemble'
-            }
-            job.upload('junit-test-results-gradle', ['**/build/reports/test/open-test-report.xml']) {
-                runsOnError.set true
-                requiredSteps.add 'assemble'
-                with.put('retention-days', '1')
-            }
-        }
-
         def platformTest = { dev.lukebemish.managedversioning.actions.GitHubAction action ->
-            action.job {
-                def strategy = [:]
-                strategy['fail-fast'] = false
-                def matrix = [:]
-                strategy.matrix = matrix
-                matrix.os = ['linux', 'windows', 'macos']
-                // We're giving up on testing on x32 systems (windows or linux) because it's too much of a hassle -- we'd probably need custom JDK builds at some point...
-                matrix.arch = ['x86_64', 'aarch64', 'arm']
-                matrix.java = ['17', '21', '24']
-                matrix.exclude = [
-                        // No natives
-                        [os: 'macos', arch: 'i386'],
-                        [os: 'macos', arch: 'arm'],
-                        [os: 'windows', arch: 'arm'],
-
-                        // No way to test at present
-                        [os: 'macos', arch: 'x86_64'],
-                        [os: 'linux', arch: 'arm'],
-
-                        // Only 17 and 24 not available on aarch64 windows via adoptium
-                        [os: 'windows', arch: 'aarch64', java: '24'],
-                        [os: 'windows', arch: 'aarch64', java: '17']
-                ]
-                matrix.include = [
-                        [os: 'macos', arch: 'aarch64', runner: 'macos-latest'],
-                        [os: 'windows', arch: 'x86_64', runner: 'windows-latest'],
-                        [os: 'windows', arch: 'aarch64', runner: 'windows-11-arm'],
-                        [os: 'linux', arch: 'x86_64', runner: 'ubuntu-latest'],
-                        [os: 'linux', arch: 'aarch64', runner: 'ubuntu-24.04-arm']
-                ]
-                parameters.put('strategy', strategy)
-                name.set 'platform-test'
-                needs.add('build')
-                getIf().set('always()')
-                runsOn.set('${{ matrix.runner }}')
-                step {
-                    name.set 'Download Artifact'
-                    id.set 'download'
-                    uses.set 'actions/download-artifact@v4'
-                    with.put 'name', 'platform-test-environment'
-                }
-                step {
-                    name.set 'Setup QEMU'
-                    uses.set 'docker/setup-qemu-action@v3'
-                    parameters.put('if', '${{ matrix.qemu }}')
-                }
-                step {
-                    name.set 'Setup Java'
-                    parameters.put('if', '${{ !matrix.qemu }}')
-                    uses.set 'actions/setup-java@v4'
-                    with.put 'distribution', 'temurin'
-                    with.put 'java-version', '${{ matrix.java }}'
-                }
-                step {
-                    name.set 'Run with Docker'
-                    parameters.put('if', '${{ matrix.docker }}')
-                    run.set 'docker run --workdir "${GITHUB_WORKSPACE}" -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:z" --rm --platform linux/${{ matrix.docker_arch }} -t ${{ matrix.docker }} /bin/bash -c \'' +
-                            'GITHUB_WORKSPACE=$(pwd)' +
-                            'mkdir ../working; cp -r ./ ../working/; cd ../working; ' +
-                            'java @args.txt; return=$?; ' +
-                            'cp -r ./ ${GITHUB_WORKSPACE}/; cd ${GITHUB_WORKSPACE}; exit $return\''
-                }
-                step {
-                    name.set 'Run'
-                    parameters.put('if', '${{ !matrix.qemu }}')
-                    parameters.put('shell', 'bash')
-                    run.set 'java @args.txt'
-                }
-                step {
-                    name.set 'Upload Results'
-                    runsOnError.set true
-                    requiredSteps.add 'download'
-                    uses.set 'actions/upload-artifact@v4'
-                    with.put 'name', 'junit-test-results-platform-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.java }}'
-                    with.put 'if-no-files-found', 'error'
-                    with.put 'path', 'results/open-test-report.xml'
-                }
-            }
             action.job {
                 name.set 'aggregate-test-results'
                 runsOn.set 'ubuntu-latest'
@@ -228,11 +132,9 @@ managedVersioning {
                 buildCache()
                 name.set 'build'
                 javaVersion.set '21'
-                testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 mavenSnapshot('github')
             }
-            platformTest.call(it)
         }
         build_pr {
             prettyName.set 'Build PR'
@@ -240,11 +142,9 @@ managedVersioning {
             gradleJob {
                 javaVersion.set '21'
                 name.set 'build'
-                testOnBuild.call(it)
                 gradlew 'Publish', 'publish'
                 pullRequestArtifact()
             }
-            platformTest.call(it)
         }
         publish_pr {
             concurrency.unsetConvention()
@@ -256,6 +156,18 @@ managedVersioning {
                     'Build PR'
             )
         }
+    }
+}
+
+testingUtils {
+    onBranches.add 'main'
+    gradleRoots.add './testplugin'
+    platform {
+        enabled = true
+        javaVersions = ['17', '21', '24']
+        exclude('windows', 'aarch64', '17')
+        exclude('windows', 'aarch64', '24')
+        testEnvironmentProject = 'testtargets'
     }
 }
 

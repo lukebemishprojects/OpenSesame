@@ -5,12 +5,11 @@ import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Field;
 import dev.lukebemish.opensesame.annotations.extend.Overrides;
-import dev.lukebemish.opensesame.test.transformation.java.TransformerAwareTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TestBigLVT implements TransformerAwareTest {
+public class TestBigLVT {
     @Open(
             name = "toString",
             targetName = "dev.lukebemish.opensesame.test.target.BigLVT$Inner",

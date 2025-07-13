@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'fabric-loom' version libs.versions.fabric.loom apply false
+    id 'fabric-loom' version libs.versions.fabric.loom.testing apply false
     id 'dev.lukebemish.opensesame'
     id 'dev.lukebemish.opensesame.loom' apply false
 }
@@ -16,6 +16,9 @@ configurations {
 }
 
 repositories {
+    maven {
+        url = "https://maven.lukebemish.dev/releases/"
+    }
     mavenCentral()
 }
 
@@ -26,11 +29,9 @@ dependencies {
         }
     }
 
-    testRuntimeOnly libs.bundles.junit.runtime
     testImplementation 'dev.lukebemish.opensesame:opensesame-core'
     testImplementation 'dev.lukebemish.opensesame:testtargets'
     testImplementation libs.asm.core
-    testImplementation libs.bundles.junit.implementation
 }
 
 opensesame.apply(sourceSets.test)
@@ -52,11 +53,4 @@ test {
     }
 
     enableAssertions = true
-    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
-    systemProperty('opensesame.transformer.name', 'gradle-loom')
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
 }

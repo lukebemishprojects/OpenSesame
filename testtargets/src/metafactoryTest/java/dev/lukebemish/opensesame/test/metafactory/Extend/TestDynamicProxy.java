@@ -3,8 +3,9 @@ package dev.lukebemish.opensesame.test.metafactory.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Constructor;
 import dev.lukebemish.opensesame.annotations.extend.Extend;
 import dev.lukebemish.opensesame.annotations.extend.Field;
-import dev.lukebemish.opensesame.test.framework.LayerBuilder;
-import dev.lukebemish.opensesame.test.framework.LayerTest;
+import dev.lukebemish.opensesame.test.metafactory.OpenSesameLayerConfiguration;
+import dev.lukebemish.testingutils.framework.modulelayer.LayerBuilder;
+import dev.lukebemish.testingutils.framework.modulelayer.LayerTest;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -12,7 +13,7 @@ import java.net.URL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class TestDynamicProxy {
+public class TestDynamicProxy implements OpenSesameLayerConfiguration {
     @LayerTest
     public LayerBuilder testBounceGenerationInterfaces() {
         return LayerBuilder.create()

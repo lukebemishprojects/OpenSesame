@@ -2,13 +2,12 @@ package dev.lukebemish.opensesame.test.transformation.java.Open;
 
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.test.target.Public;
-import dev.lukebemish.opensesame.test.transformation.java.TransformerAwareTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class TestTypes implements TransformerAwareTest {
+class TestTypes {
     @Open(
             name = "voidReturn",
             targetClass = Public.class,

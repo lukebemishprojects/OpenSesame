@@ -23,6 +23,9 @@ configurations {
 repositories {
     mavenCentral()
     maven {
+        url = "https://maven.lukebemish.dev/releases/"
+    }
+    maven {
         name = 'SpongePowered'
         url = 'https://repo.spongepowered.org/maven'
     }
@@ -39,14 +42,12 @@ dependencies {
     testImplementation 'dev.lukebemish.opensesame:testtargets'
     testImplementation 'dev.lukebemish.opensesame:opensesame-core'
     testImplementation libs.asm.core
-    testRuntimeOnly libs.bundles.junit.runtime
-    testImplementation libs.bundles.junit.implementation
     testRuntimeOnly 'dev.lukebemish.opensesame:opensesame-fabric'
 }
 
 tasks.register('remapTestClasses', RemapJarTask).configure {
     dependsOn configurations.testClasses
-    input.set configurations.testClasses.singleFile
+    inputFile.set configurations.testClasses.singleFile
     targetNamespace.set 'named'
     sourceNamespace.set 'intermediary'
     archiveClassifier.set 'remapped'
@@ -73,11 +74,4 @@ test {
     classpath.from tasks.unpackRemappedJar.outputs
 
     enableAssertions = true
-    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
-    systemProperty('opensesame.transformer.name', 'gradle-loom')
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
 }

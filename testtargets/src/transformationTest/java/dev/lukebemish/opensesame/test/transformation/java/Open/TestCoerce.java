@@ -3,12 +3,11 @@ package dev.lukebemish.opensesame.test.transformation.java.Open;
 import dev.lukebemish.opensesame.annotations.Coerce;
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.test.target.Public;
-import dev.lukebemish.opensesame.test.transformation.java.TransformerAwareTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class TestCoerce implements TransformerAwareTest {
+class TestCoerce {
     @Open(
             name = "simpleReturn",
             targetClass = Public.class,

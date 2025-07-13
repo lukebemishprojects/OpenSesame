@@ -15,6 +15,9 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven {
+        url = "https://maven.lukebemish.dev/releases/"
+    }
 }
 
 dependencies {
@@ -24,11 +27,9 @@ dependencies {
         }
     }
 
-    testRuntimeOnly libs.bundles.junit.runtime
     testImplementation 'dev.lukebemish.opensesame:opensesame-core'
     testImplementation 'dev.lukebemish.opensesame:testtargets'
     testImplementation libs.asm.core
-    testImplementation libs.bundles.junit.implementation
 }
 
 opensesame.applyJavac(sourceSets.test)
@@ -50,11 +51,4 @@ test {
     }
 
     enableAssertions = true
-    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
-    systemProperty('opensesame.transformer.name', 'gradle-loom')
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
 }

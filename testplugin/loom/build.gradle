@@ -18,13 +18,13 @@ configurations {
     testSource {
         canBeResolved = true
     }
-    testClasses {
-        canBeResolved = false
-        canBeConsumed = true
-    }
+    consumable('testClasses')
 }
 
 repositories {
+    maven {
+        url = "https://maven.lukebemish.dev/releases/"
+    }
     mavenCentral()
 }
 
@@ -39,11 +39,9 @@ dependencies {
     }
     modImplementation libs.fabric.loader
 
-    testRuntimeOnly libs.bundles.junit.runtime
     testImplementation 'dev.lukebemish.opensesame:opensesame-core'
     testImplementation 'dev.lukebemish.opensesame:testtargets'
     testImplementation libs.asm.core
-    testImplementation libs.bundles.junit.implementation
 }
 
 tasks.named('compileTestJava', JavaCompile) {
@@ -71,11 +69,4 @@ test {
     }
 
     enableAssertions = true
-    systemProperty('junit.platform.reporting.open.xml.enabled', 'true')
-    systemProperty('junit.platform.reporting.output.dir', 'build/reports/test')
-    systemProperty('opensesame.transformer.name', 'gradle-loom')
-    reports {
-        junitXml.required = false
-        html.required = false
-    }
 }

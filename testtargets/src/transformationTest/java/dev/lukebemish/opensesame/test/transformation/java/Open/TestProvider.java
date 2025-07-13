@@ -2,14 +2,13 @@ package dev.lukebemish.opensesame.test.transformation.java.Open;
 
 import dev.lukebemish.opensesame.annotations.Open;
 import dev.lukebemish.opensesame.runtime.ClassProvider;
-import dev.lukebemish.opensesame.test.transformation.java.TransformerAwareTest;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class TestProvider implements TransformerAwareTest {
+class TestProvider {
     private static class SimpleProvider implements ClassProvider {
         @Override
         public Class<?> provide(ClassLoader loader, String name) {
