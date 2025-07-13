@@ -190,14 +190,14 @@
                             "arch": "x86_64"
                         },
                         {
-                            "os": "17",
+                            "os": "windows",
                             "arch": "aarch64",
-                            "java": "windows"
+                            "java": "17"
                         },
                         {
-                            "os": "24",
+                            "os": "windows",
                             "arch": "aarch64",
-                            "java": "windows"
+                            "java": "24"
                         }
                     ],
                     "include": [
@@ -220,11 +220,6 @@
                             "os": "linux",
                             "arch": "x86_64",
                             "runner": "ubuntu-latest"
-                        },
-                        {
-                            "os": "windows",
-                            "arch": "aarch64",
-                            "runner": "windows-11-arm"
                         }
                     ]
                 }
