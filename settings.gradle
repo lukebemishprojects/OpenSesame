@@ -10,7 +10,7 @@ pluginManagement {
 
 plugins {
     id 'dev.lukebemish.central-portal-publishing' version '0.1.7' apply false
-    id 'dev.lukebemish.testingutils' version '0.1.4'
+    id 'dev.lukebemish.testingutils' version '0.1.6'
     id 'dev.lukebemish.managedversioning' version '2.0.0-beta.6'
     id 'dev.lukebemish.conventions' version '0.2.0-beta.2'
     id 'dev.lukebemish.zig-gradle' version '0.1.0'

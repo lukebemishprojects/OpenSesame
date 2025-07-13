@@ -62,15 +62,67 @@
                     "working-directory": "./testplugin"
                 },
                 {
-                    "name": "Upload Upload Results",
+                    "name": "Upload Results",
                     "uses": "actions/upload-artifact@v4",
                     "if": "(success() || failure())",
                     "with": {
-                        "name": "Upload Results",
+                        "name": "test-results-gradle",
                         "path": "**/testingUtils/out/*-open-test-report.xml",
                         "retention-days": "1"
                     }
+                },
+                {
+                    "name": "Record Source Directories",
+                    "id": "record-source-directories",
+                    "run": "./gradlew testingUtilsWriteSourceDirectories",
+                    "if": "(success() || failure())"
+                },
+                {
+                    "name": "Capture Source Directories",
+                    "id": "capture-source-directories",
+                    "run": "echo sourcedirectories=$(cat build/testingUtils/source-directories.txt) >> \"$GITHUB_OUTPUT\"",
+                    "if": "(success() || failure()) && steps.record-source-directories.outcome == 'success'"
                 }
+            ],
+            "outputs": {
+                "sourcedirectories": "${{ steps.capture-source-directories.outputs.sourcedirectories }}"
+            }
+        },
+        "summarize-test-results": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+                {
+                    "name": "Setup Java",
+                    "run": "echo \"JAVA_HOME=$JAVA_HOME_21_X64\" >> \"$GITHUB_ENV\""
+                },
+                {
+                    "name": "Checkout",
+                    "uses": "actions/checkout@v4",
+                    "with": {
+                        "path": "repository"
+                    }
+                },
+                {
+                    "name": "Download Test Results",
+                    "uses": "actions/download-artifact@v4",
+                    "with": {
+                        "name": "test-results-*",
+                        "path": "results"
+                    }
+                },
+                {
+                    "name": "Download TestingUtils CLI",
+                    "run": "curl -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.6/cli-0.1.6-all.jar"
+                },
+                {
+                    "name": "Annotate Test Results",
+                    "run": "find results -name '*-test-report.xml' > reports.txt;\njava -jar testingutils-cli.jar annotate repository ${{needs.check.outputs.sourcedirectories}} @reports.txt\n"
+                }
+            ],
+            "if": "always()",
+            "needs": [
+                "check",
+                "platform-test"
             ]
         },
         "make-test-environment": {
@@ -202,19 +254,19 @@
                     ],
                     "include": [
                         {
+                            "os": "windows",
+                            "arch": "x86_64",
+                            "runner": "windows-latest"
+                        },
+                        {
                             "os": "macos",
                             "arch": "aarch64",
                             "runner": "macos-latest"
                         },
                         {
                             "os": "windows",
-                            "arch": "x86_64",
-                            "runner": "windows-latest"
-                        },
-                        {
-                            "os": "linux",
                             "arch": "aarch64",
-                            "runner": "ubuntu-24.04-arm"
+                            "runner": "windows-11-arm"
                         },
                         {
                             "os": "linux",
@@ -222,9 +274,9 @@
                             "runner": "ubuntu-latest"
                         },
                         {
-                            "os": "windows",
+                            "os": "linux",
                             "arch": "aarch64",
-                            "runner": "windows-11-arm"
+                            "runner": "ubuntu-24.04-arm"
                         }
                     ]
                 }
