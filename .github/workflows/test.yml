@@ -112,7 +112,7 @@
                 },
                 {
                     "name": "Download TestingUtils CLI",
-                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.9/cli-0.1.9-all.jar"
+                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.11/cli-0.1.11-all.jar"
                 },
                 {
                     "name": "Annotate Test Results",
@@ -254,9 +254,14 @@
                     ],
                     "include": [
                         {
-                            "os": "windows",
+                            "os": "linux",
                             "arch": "x86_64",
-                            "runner": "windows-latest"
+                            "runner": "ubuntu-latest"
+                        },
+                        {
+                            "os": "windows",
+                            "arch": "aarch64",
+                            "runner": "windows-11-arm"
                         },
                         {
                             "os": "macos",
@@ -265,13 +270,8 @@
                         },
                         {
                             "os": "windows",
-                            "arch": "aarch64",
-                            "runner": "windows-11-arm"
-                        },
-                        {
-                            "os": "linux",
                             "arch": "x86_64",
-                            "runner": "ubuntu-latest"
+                            "runner": "windows-latest"
                         },
                         {
                             "os": "linux",

@@ -59,8 +59,8 @@ final class ManualAllocationUtil {
                 constructionHandle
         );
         var allocateThenConstruct = MethodHandles.foldArguments(
-                allocateInstanceHandle.asType(allocateInstanceHandle.type().changeReturnType(targetClass)),
-                constructAndReturn
+                constructAndReturn,
+                allocateInstanceHandle.asType(allocateInstanceHandle.type().changeReturnType(targetClass))
         );
         var fullHandle = allocateThenConstruct.asType(allocateThenConstruct.type().changeReturnType(subClass));
 
@@ -68,7 +68,7 @@ final class ManualAllocationUtil {
         
         for (int i = fields.length - 1; i >= 0; i--) {
             var fieldName = fields[i];
-            var fieldType = subClass.getDeclaredField(fieldName).getClass();
+            var fieldType = subClass.getDeclaredField(fieldName).getType();
             var setter = unsafeLookup.findSetter(
                     subClass,
                     fieldName,
@@ -79,7 +79,7 @@ final class ManualAllocationUtil {
                     0,
                     setter
             );
-            fullHandle = MethodHandles.filterArguments(
+            fullHandle = MethodHandles.collectArguments(
                     MethodHandles.permuteArguments(setAndReturn, MethodType.methodType(subClass, fieldType, subClass), 1, 0),
                     1,
                     fullHandle

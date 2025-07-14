@@ -576,8 +576,8 @@ public final class OpeningMetafactory {
         }
 
         boolean requiresManualAllocation = proxyData.isProxy() && !allCtorsVisible;
-        boolean bouncesCtors = false;
-        boolean boundeOverrides = false;
+        boolean bounceCtors = false;
+        boolean bounceOverrides = false;
         try {
             if (proxyData.isProxy() && ((targetClass.getModifiers() & Modifier.PUBLIC) == 0 || !ProxyUtil.canAccess(proxyData.targetClass(), superRequirements, lookup))) {
                 // Generate a new proxy interface and use that instead
@@ -610,7 +610,12 @@ public final class OpeningMetafactory {
                     overridesNames.add(interfaceName);
                     overridesSuperNames.add(superName);
                 }
+                Set<MethodType> visitedConstructors = new HashSet<>();
                 var bounceType = ProxyUtil.makeBounceType(targetClass, lookup, ctorTypes, superCtorTypes, overridesTypes, overridesSuperTypes, overridesNames, overridesSuperNames, (ctorTypeList, superTypeList, classVisitor) -> {
+                    if (visitedConstructors.contains(ctorTypeList)) {
+                        return;
+                    }
+                    visitedConstructors.add(ctorTypeList);
                     var methodVisitor = classVisitor.visitMethod(
                             Opcodes.ACC_PUBLIC,
                             "<init>",
@@ -674,11 +679,11 @@ public final class OpeningMetafactory {
                     );
                     implMethodVisitor.visitEnd();
                 });
-                boundeOverrides = true;
+                bounceOverrides = true;
                 if (targetClass.isInterface()) {
                     interfaces[0] = Type.getInternalName(bounceType);
                 } else {
-                    bouncesCtors = true;
+                    bounceCtors = true;
                     superClass = bounceType;
                 }
             }
@@ -752,27 +757,27 @@ public final class OpeningMetafactory {
                     .orElseThrow(() -> new OpeningException("Could not find interface method to bounce override to with name "+name+", type "+interfaceType));
             var parameterTypes = Arrays.stream(overrideType.parameterArray()).map(Type::getType).toArray(Type[]::new);
             var overrideDesc = Type.getMethodDescriptor(Type.getType(overrideType.returnType()), parameterTypes);
-            if (boundeOverrides) {
-                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, name, overrideType.descriptorString(), null, null);
+            if (bounceOverrides) {
+                var methodVisitor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, name, interfaceType.descriptorString(), null, null);
                 methodVisitor.visitCode();
                 methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
                 int j = 1;
-                for (int i = 0; i < overrideType.parameterCount(); i++) {
-                    var t = Type.getType(overrideType.parameterType(i));
+                for (int i = 0; i < interfaceType.parameterCount(); i++) {
+                    var t = Type.getType(interfaceType.parameterType(i));
                     methodVisitor.visitVarInsn(t.getOpcode(Opcodes.ILOAD), j);
                     j += t.getSize();
                 }
                 methodVisitor.visitMethodInsn(
-                        isInterface ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL,
-                        Type.getInternalName(superClass),
+                        Opcodes.INVOKESPECIAL,
+                        Type.getInternalName(holdingClass),
                         name,
-                        overrideType.descriptorString(),
-                        isInterface
+                        interfaceType.descriptorString(),
+                        true
                 );
-                if (overrideType.returnType().equals(void.class)) {
+                if (interfaceType.returnType().equals(void.class)) {
                     methodVisitor.visitInsn(Opcodes.RETURN);
                 } else {
-                    methodVisitor.visitInsn(Type.getType(overrideType.returnType()).getOpcode(Opcodes.IRETURN));
+                    methodVisitor.visitInsn(Type.getType(interfaceType.returnType()).getOpcode(Opcodes.IRETURN));
                 }
                 methodVisitor.visitMaxs(1, 1);
                 methodVisitor.visitEnd();
@@ -821,7 +826,7 @@ public final class OpeningMetafactory {
             MethodType superType;
             try {
                 ctorType = (MethodType) ((MethodHandle) ctor.get(0)).invoke(holdingClass.getClassLoader());
-                if (bouncesCtors) {
+                if (bounceCtors) {
                     var originalSuperType = (MethodType) ((MethodHandle) ctor.get(1)).invoke(holdingClass.getClassLoader());
                     var fieldParams = ctorType.parameterCount() - originalSuperType.parameterCount();
                     var newParamTypes = ctorType.parameterList().subList(fieldParams, ctorType.parameterCount());
@@ -853,7 +858,8 @@ public final class OpeningMetafactory {
                             arrayVisitor.visit("superConstructor", Type.getType(type));
                         }
                         arrayVisitor.visitEnd();
-                        annotationVisitor.visit("superClass", Type.getType(superClass));
+                        // Target class, _not_ super class, to deal with proxy bounce
+                        annotationVisitor.visit("superClass", Type.getType(targetClass));
                         arrayVisitor = annotationVisitor.visitArray("fields");
                         for (var field : fieldsToSet) {
                             arrayVisitor.visit("fields", field);
