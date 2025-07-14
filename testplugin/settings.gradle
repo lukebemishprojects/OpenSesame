@@ -14,7 +14,7 @@ pluginManagement {
 
 plugins {
     id 'dev.lukebemish.conventions' version '0.2.0-beta.2'
-    id 'dev.lukebemish.testingutils' version '0.1.12'
+    id 'dev.lukebemish.testingutils' version '0.1.13'
 }
 
 rootProject.name = 'testplugin'
