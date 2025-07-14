@@ -112,11 +112,15 @@
                 },
                 {
                     "name": "Download TestingUtils CLI",
-                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.11/cli-0.1.11-all.jar"
+                    "run": "curl -L -o testingutils-cli.jar https://github.com/lukebemishprojects/TestingUtils/releases/download/0.1.12/cli-0.1.12-all.jar"
                 },
                 {
                     "name": "Annotate Test Results",
                     "run": "find results -name '*-test-report.xml' > reports.txt;\n$JAVA_HOME/bin/java -jar testingutils-cli.jar annotate repository ${{needs.check.outputs.sourcedirectories}} @reports.txt\n"
+                },
+                {
+                    "name": "Make Summary",
+                    "run": "find results -name '*-test-report.xml' > reports.txt;\n$JAVA_HOME/bin/java -jar testingutils-cli.jar summary $GITHUB_STEP_SUMMARY @reports.txt\n"
                 }
             ],
             "if": "always()",
@@ -255,13 +259,13 @@
                     "include": [
                         {
                             "os": "linux",
-                            "arch": "x86_64",
-                            "runner": "ubuntu-latest"
+                            "arch": "aarch64",
+                            "runner": "ubuntu-24.04-arm"
                         },
                         {
                             "os": "windows",
-                            "arch": "aarch64",
-                            "runner": "windows-11-arm"
+                            "arch": "x86_64",
+                            "runner": "windows-latest"
                         },
                         {
                             "os": "macos",
@@ -270,13 +274,13 @@
                         },
                         {
                             "os": "windows",
-                            "arch": "x86_64",
-                            "runner": "windows-latest"
+                            "arch": "aarch64",
+                            "runner": "windows-11-arm"
                         },
                         {
                             "os": "linux",
-                            "arch": "aarch64",
-                            "runner": "ubuntu-24.04-arm"
+                            "arch": "x86_64",
+                            "runner": "ubuntu-latest"
                         }
                     ]
                 }
