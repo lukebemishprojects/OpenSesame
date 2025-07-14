@@ -12,7 +12,7 @@ fabric-loom = "1.5.6"
 fabric-loom-testing = "1.11.4"
 fabric-loader = "0.15.4"
 
-tinyremapper = "0.10.0"
+tinyremapper = "0.11.1"
 
 mixin = "0.8.5"
 
