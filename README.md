@@ -104,7 +104,7 @@ plugin present at runtime, you will likely want to split it into its runtime and
 ```gradle
 dependencies {
     annotationProcessor 'dev.lukebemish.opensesame:opensesame-javac:<version>'
-    runtimeOnly 'dev.lukebemish.opensesame:opensesame-core:<version>'
+    implementation 'dev.lukebemish.opensesame:opensesame-core:<version>'
 }
 
 tasks.named('compileJava', JavaCompile).configure {
