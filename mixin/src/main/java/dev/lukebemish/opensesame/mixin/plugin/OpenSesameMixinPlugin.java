@@ -117,7 +117,7 @@ public class OpenSesameMixinPlugin implements IMixinConfigPlugin {
             var type = Type.getType(desc);
             if (type.getSort() == Type.METHOD) {
                 methods.computeIfAbsent(remappedClassName, k -> new ArrayList<>()).add(OpeningMetafactory.remapMethod(name, desc, className, OpenSesameMixinPlugin.class)+"."+remapDescriptor(desc));
-            } else if (type.getSort() == Type.OBJECT) {
+            } else {
                 if (!allowFields) {
                     throw new RuntimeException("Invalid " + searchingName + " line: " + line);
                 }
