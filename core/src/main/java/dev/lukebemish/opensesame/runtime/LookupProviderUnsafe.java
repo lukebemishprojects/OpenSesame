@@ -5,6 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 @ApiStatus.Internal
 class LookupProviderUnsafe implements LookupProvider {
@@ -41,7 +42,19 @@ class LookupProviderUnsafe implements LookupProvider {
 
     private MethodHandles.Lookup getImplLookup() throws Exception {
         Class<?> unsafe = Class.forName("sun.misc.Unsafe", true, LookupProviderUnsafe.class.getClassLoader());
-        Field f = unsafe.getDeclaredField("theUnsafe");
+        
+        Field[] fields = unsafe.getDeclaredFields();
+        Field f = null;
+        for (var field : fields) {
+            if (field.getType() == unsafe && Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())) {
+                f = field;
+                break;
+            }
+        }
+        if (f == null) {
+            throw new IllegalStateException("Could not find static final Unsafe-typed field in sun.misc.Unsafe");
+        }
+        
         f.setAccessible(true);
         Object theUnsafe = f.get(null);
 
