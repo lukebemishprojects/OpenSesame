@@ -38,25 +38,27 @@ public abstract class OpenSesameExtension implements ExtensionAware {
         // Fix classes secondary variant...
         project.getConfigurations().configureEach(c -> {
             c.getOutgoing().getVariants().configureEach(v -> {
-                replaceArtifacts(openSesameTask, v.getArtifacts(), v.getName());
+                replaceArtifacts(openSesameTask, v.getArtifacts(), c.getName(), c.getArtifacts());
             });
-            replaceArtifacts(openSesameTask, c.getArtifacts(), c.getName());
+            replaceArtifacts(openSesameTask, c.getArtifacts(), c.getName(), c.getArtifacts());
         });
     }
 
-    private void replaceArtifacts(TaskProvider<OpenSesameTask> openSesameTask, PublishArtifactSet artifacts, String name) {
+    private void replaceArtifacts(TaskProvider<OpenSesameTask> openSesameTask, PublishArtifactSet artifacts, String name, PublishArtifactSet delegate) {
         var path = openSesameTask.get().getOutputClasses().get().getAsFile().toPath().toAbsolutePath();
         var matching = artifacts.matching(a -> a.getFile().toPath().toAbsolutePath().equals(path));
         var removed = new ArrayList<>(matching);
         removed.forEach(artifacts::remove);
         for (var artifact : removed) {
-            project.getArtifacts().add(name, path.toFile(), a -> {
+            var created = project.getArtifacts().add(name, path.toFile(), a -> {
                 a.builtBy(openSesameTask);
                 a.setExtension(artifact.getExtension());
                 a.setClassifier(artifact.getClassifier());
                 a.setType(artifact.getType());
                 a.setName(artifact.getName());
             });
+            delegate.remove(created);
+            artifacts.add(created);
         }
     }
 
