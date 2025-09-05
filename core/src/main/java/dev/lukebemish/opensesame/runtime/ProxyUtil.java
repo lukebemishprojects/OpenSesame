@@ -10,7 +10,6 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -127,12 +126,7 @@ final class ProxyUtil {
         if (canSee(target, extensionClass, unsafeLookup, true)) {
             return new ProxyData(target, false);
         }
-        Class<?> targetInterface;
-        if (target.isInterface() && (target.getModifiers() & Modifier.PUBLIC) != 0) {
-            targetInterface = target;
-        } else {
-            targetInterface = makeInterfaceInPackage(target, unsafeLookup);
-        }
+        Class<?> targetInterface = makeInterfaceInPackage(target, unsafeLookup);
         var interfaces = new ArrayList<Class<?>>();
         interfaces.add(targetInterface);
         interfaces.add(extensionClass);
@@ -152,12 +146,7 @@ final class ProxyUtil {
             }
             actuallyRequiredClasses.add(requiredClass);
             if (!modules.add(requiredClass.getModule())) {
-                Class<?> newInterface;
-                if (requiredClass.isInterface() && (requiredClass.getModifiers() & Modifier.PUBLIC) != 0) {
-                    newInterface = requiredClass;
-                } else {
-                    newInterface = makeInterfaceInPackage(requiredClass, unsafeLookup);
-                }
+                Class<?> newInterface = makeInterfaceInPackage(requiredClass, unsafeLookup);
                 interfaces.add(newInterface);
             }
         }
