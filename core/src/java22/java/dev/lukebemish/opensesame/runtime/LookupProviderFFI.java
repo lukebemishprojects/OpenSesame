@@ -193,9 +193,7 @@ class LookupProviderFFI implements LookupProvider {
         }
 
         private MemorySegment getJniClass(Class<?> clazz) throws Throwable {
-            var globalRef = (MemorySegment) withGlobalRef(FindClass).invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
-            globalRefs.add(globalRef);
-            return globalRef;
+            return (MemorySegment) withGlobalRef(FindClass).invoke(env, arena.allocateFrom(clazz.getName().replace('.', '/')));
         }
         
         private MemorySegment getStaticFieldId(MemorySegment clazz, String name, @SuppressWarnings("SameParameterValue") Class<?> type) throws Throwable {
@@ -206,8 +204,20 @@ class LookupProviderFFI implements LookupProvider {
             return (MemorySegment) withGlobalRef(GetStaticObjectField).invoke(env, clazz, fieldId);
         }
         
+        private static final MethodHandle LIST_ADD;
+        static {
+            try {
+                LIST_ADD = MethodHandles.lookup().findVirtual(List.class, "add", MethodType.methodType(boolean.class, Object.class));
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        
         private MethodHandle withGlobalRef(MethodHandle handle) {
-            return MethodHandles.filterReturnValue(handle, NewGlobalRef.bindTo(env));
+            return MethodHandles.filterReturnValue(
+                    MethodHandles.filterReturnValue(handle, NewGlobalRef.bindTo(env)),
+                    LIST_ADD.bindTo(globalRefs)
+            );
         }
 
         private void deleteGlobalRef(MemorySegment obj) throws Throwable {
