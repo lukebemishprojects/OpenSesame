@@ -216,7 +216,7 @@ class LookupProviderFFI implements LookupProvider {
         private MethodHandle withGlobalRef(MethodHandle handle) {
             return MethodHandles.filterReturnValue(
                     MethodHandles.filterReturnValue(handle, NewGlobalRef.bindTo(env)),
-                    MethodHandles.foldArguments(MethodHandles.identity(MemorySegment.class), MethodHandles.dropReturn(LIST_ADD.bindTo(globalRefs)))
+                    MethodHandles.foldArguments(MethodHandles.identity(MemorySegment.class), MethodHandles.dropReturn(LIST_ADD.bindTo(globalRefs)).asType(MethodType.methodType(void.class, MemorySegment.class)))
             );
         }
 
