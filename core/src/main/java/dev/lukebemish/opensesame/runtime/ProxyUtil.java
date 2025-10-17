@@ -88,7 +88,7 @@ final class ProxyUtil {
         check.visitEnd();
         writer.visitEnd();
         try {
-            var handle = unsafeLookup.in(viewer).defineHiddenClass(writer.toByteArray(), false);
+            var handle = ClassCreatorUtils.defineHiddenClass(unsafeLookup.in(viewer), writer.toByteArray(), false);
             var getter = handle.findStatic(handle.lookupClass(), "check", MethodType.methodType(Class.class));
             var clazz = (Class<?>) getter.invokeExact();
             return clazz == target;
@@ -215,7 +215,7 @@ final class ProxyUtil {
                 new String[]{}
         );
         writer.visitEnd();
-        return unsafeLookup.in(target).defineClass(writer.toByteArray());
+        return ClassCreatorUtils.defineClass(unsafeLookup.in(target), writer.toByteArray());
     }
     
     interface CtorWriter {
@@ -281,7 +281,7 @@ final class ProxyUtil {
         }
         writer.visitEnd();
 
-        return unsafeLookup.in(targetClass).defineClass(writer.toByteArray());
+        return ClassCreatorUtils.defineClass(unsafeLookup.in(targetClass), writer.toByteArray());
     }
 
     private static boolean exists(String generatedName, Class<?> target) {

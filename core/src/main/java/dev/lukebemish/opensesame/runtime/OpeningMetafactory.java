@@ -922,10 +922,10 @@ public final class OpeningMetafactory {
                     ProxyUtil.expose(targetClass, holdingClass, lookup);
                     ProxyUtil.expose(targetClass, OpeningMetafactory.class, lookup);
                 } catch (Throwable t) {
-                    throw new OpeningException("While opening, issues occured setting up module links", t);
+                    throw new OpeningException("While opening, issues occurred setting up module links", t);
                 }
             }
-            return lookupIn.defineHiddenClass(bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
+            return ClassCreatorUtils.defineHiddenClass(lookupIn, bytes, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating hidden class", e);
         }
