@@ -39,12 +39,8 @@ final class ManualAllocationUtil {
         var constructionHandle = (MethodHandle) getDirectMethodMethodHandle.invoke(unsafeLookup, (byte) 5, superClassCtor.type().returnType(), memberName, unsafeLookup);
         constructionHandle = constructionHandle.asFixedArity();
         
-        var unsafeClass = Class.forName("sun.misc.Unsafe");
-        var theUnsafe = unsafeLookup.findStaticGetter(
-                unsafeClass,
-                "theUnsafe",
-                unsafeClass
-        ).invoke();
+        var unsafeClass = Class.forName("sun.misc.Unsafe", true, ManualAllocationUtil.class.getClassLoader());
+        Object theUnsafe = UnsafeProvision.theUnsafe();
         var allocateInstanceHandle = unsafeLookup.findVirtual(
                 unsafeClass,
                 "allocateInstance",
