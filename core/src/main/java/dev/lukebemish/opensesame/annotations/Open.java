@@ -43,7 +43,7 @@ public @interface Open {
     Class<?> targetProvider() default ErrorProvider.class;
 
     /**
-     * {@return the type of member o the target class to invoke}
+     * {@return the type of member of the target class to invoke}
      */
     Type type();
 
