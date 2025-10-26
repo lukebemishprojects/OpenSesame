@@ -184,7 +184,7 @@ public final class OpeningMetafactory {
             }
             var results = new LookupProviderResults(
                     LOOKUP_PROVIDER1 == null ? new LookupProviderFallback() : LOOKUP_PROVIDER1,
-                    LOOKUP_PROVIDER_EXCEPTION1
+                    LOOKUP_PROVIDER1 == null ? LOOKUP_PROVIDER_EXCEPTION1 : null
             );
             LOOKUP_PROVIDER_UNSAFE_RESULTS = results;
             return results;
