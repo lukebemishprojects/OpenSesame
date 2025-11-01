@@ -2,7 +2,9 @@ package dev.lukebemish.opensesame.plugin;
 
 import dev.lukebemish.javacpostprocessor.plugin.PostProcessorExtension;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.PublishArtifactSet;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.tasks.SourceSet;
@@ -13,6 +15,7 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.function.Function;
 
 public abstract class OpenSesameExtension implements ExtensionAware {
     private final Project project;
@@ -22,14 +25,18 @@ public abstract class OpenSesameExtension implements ExtensionAware {
         this.project = project;
     }
 
-    public void apply(SourceSet sourceSet, SourceDirectorySet sourceDirectorySet, TaskProvider<? extends AbstractCompile> compileTaskProvider) {
+    public TaskProvider<OpenSesameTask> apply(SourceSet sourceSet, SourceDirectorySet sourceDirectorySet, TaskProvider<? extends AbstractCompile> compileTaskProvider) {
+        return apply(sourceSet, sourceDirectorySet, compileTaskProvider, AbstractCompile::getDestinationDirectory);
+    }
+
+    public <T extends Task> TaskProvider<OpenSesameTask> apply(SourceSet sourceSet, SourceDirectorySet sourceDirectorySet, TaskProvider<T> compileTaskProvider, Function<T, DirectoryProperty> mapping) {
         var unprocessed = project.getLayout().getBuildDirectory().dir("openSesame/unprocessed/"+compileTaskProvider.getName());
         compileTaskProvider.configure(compileTask ->
-                compileTask.getDestinationDirectory().set(unprocessed)
+                mapping.apply(compileTask).set(unprocessed)
         );
         var capitalized = compileTaskProvider.getName().substring(0, 1).toUpperCase(Locale.ROOT) + compileTaskProvider.getName().substring(1);
         var openSesameTask = project.getTasks().register("openSesame" + capitalized, OpenSesameTask.class, task -> {
-            task.getInputClasses().set(compileTaskProvider.get().getDestinationDirectory());
+            task.getInputClasses().set(mapping.apply(compileTaskProvider.get()));
             task.getOutputClasses().set(sourceDirectorySet.getClassesDirectory());
         });
         sourceDirectorySet.compiledBy(openSesameTask, OpenSesameTask::getOutputClasses);
@@ -42,6 +49,8 @@ public abstract class OpenSesameExtension implements ExtensionAware {
             });
             replaceArtifacts(openSesameTask, c.getArtifacts(), c.getName(), c.getArtifacts());
         });
+        
+        return openSesameTask;
     }
 
     private void replaceArtifacts(TaskProvider<OpenSesameTask> openSesameTask, PublishArtifactSet artifacts, String name, PublishArtifactSet delegate) {
@@ -62,8 +71,8 @@ public abstract class OpenSesameExtension implements ExtensionAware {
         }
     }
 
-    public void apply(SourceSet sourceSet) {
-        apply(sourceSet, sourceSet.getJava(), project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class));
+    public TaskProvider<OpenSesameTask> apply(SourceSet sourceSet) {
+        return apply(sourceSet, sourceSet.getJava(), project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class));
     }
 
     public void applyJavac(SourceSet sourceSet, TaskProvider<? extends AbstractCompile> compileTaskProvider) {
