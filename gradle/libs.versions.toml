@@ -8,7 +8,7 @@ testingutils = "0.1.13"
 groovy = "4.0.18"
 asm = "9.6"
 
-fabric-loom = "1.5.6"
+fabric-loom = "1.12.1"
 fabric-loom-testing = "1.11.4"
 fabric-loader = "0.15.4"
 
