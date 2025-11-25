@@ -26,6 +26,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -249,8 +250,8 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     public static Set<Path> processFile(Path file, Path out, @Nullable OutputPathResolver rootPath) throws IOException {
-        if (!file.getFileName().toString().endsWith(".class") && !Files.exists(out)) {
-            Files.copy(file, out);
+        if (!file.getFileName().toString().endsWith(".class")) {
+            Files.copy(file, out, StandardCopyOption.REPLACE_EXISTING);
             return Set.of();
         }
         Set<Path> modifiedExternal = new HashSet<>();
