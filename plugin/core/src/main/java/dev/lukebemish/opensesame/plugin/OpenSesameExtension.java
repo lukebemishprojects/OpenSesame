@@ -4,6 +4,7 @@ import dev.lukebemish.javacpostprocessor.plugin.PostProcessorExtension;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.PublishArtifactSet;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.plugins.ExtensionAware;
@@ -40,6 +41,7 @@ public abstract class OpenSesameExtension implements ExtensionAware {
             task.getOutputClasses().set(sourceDirectorySet.getClassesDirectory());
         });
         sourceDirectorySet.compiledBy(openSesameTask, OpenSesameTask::getOutputClasses);
+        ((ConfigurableFileCollection) sourceSet.getOutput().getClassesDirs()).builtBy(openSesameTask);
         project.getTasks().named(sourceSet.getClassesTaskName()).configure(task -> task.dependsOn(openSesameTask));
         
         // Fix classes secondary variant...
