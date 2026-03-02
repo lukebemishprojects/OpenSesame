@@ -297,7 +297,7 @@ class LookupProviderFFI implements LookupProvider {
     }
     
     @Override
-    public MethodHandles.Lookup openingLookup(MethodHandles.Lookup original, Class<?> target) {
+    public MethodHandles.Lookup unsafeLookup() {
         return this.lookup;
     }
 }

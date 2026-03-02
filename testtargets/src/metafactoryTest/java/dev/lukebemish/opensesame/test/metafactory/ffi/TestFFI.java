@@ -15,7 +15,7 @@ public class TestFFI {
         var lookup = MethodHandles.privateLookupIn(clazz, MethodHandles.lookup());
         var ctor = lookup.findConstructor(clazz, MethodType.methodType(void.class));
         var provider = ctor.invoke();
-        var getLookup = lookup.findVirtual(clazz, "openingLookup", MethodType.methodType(MethodHandles.Lookup.class, MethodHandles.Lookup.class, Class.class));
+        var getLookup = lookup.findVirtual(clazz, "unsafeLookup", MethodType.methodType(MethodHandles.Lookup.class, MethodHandles.Lookup.class, Class.class));
         var implLookup = (MethodHandles.Lookup) getLookup.invoke(provider, MethodHandles.lookup(), TestFFI.class);
 
         // Test if it is IMPL_LOOKUP, by using it to grab IMPL_LOOKUP

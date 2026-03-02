@@ -6,5 +6,5 @@ import java.lang.invoke.MethodHandles;
 
 @ApiStatus.Internal
 interface LookupProvider {
-    MethodHandles.Lookup openingLookup(MethodHandles.Lookup original, Class<?> target) throws IllegalAccessException;
+    MethodHandles.Lookup unsafeLookup();
 }

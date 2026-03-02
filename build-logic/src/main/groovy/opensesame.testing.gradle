@@ -8,10 +8,6 @@ dependencies {
     testRuntimeOnly sourceSets.test.output
 }
 
-def openSesameExtension = project.extensions.getByName('openSesameConvention')
-
-def javaVersions = [17, 21, 22]
-
 test {
     useJUnitPlatform()
 

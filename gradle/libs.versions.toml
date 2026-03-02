@@ -7,6 +7,7 @@ testingutils = "0.1.13"
 
 groovy = "4.0.18"
 asm = "9.6"
+bytecodebuilder = "0.2.0"
 
 fabric-loom = "1.5.6"
 fabric-loom-testing = "1.11.4"
@@ -28,6 +29,8 @@ groovy_core = { module = "org.apache.groovy:groovy", version.ref = "groovy" }
 asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
+
+bytecodebuilder = { module = "dev.lukebemish:bytecodebuilder", version.ref = "bytecodebuilder" }
 
 fabric-loom = { module = "net.fabricmc:fabric-loom", version.ref = "fabric-loom" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }

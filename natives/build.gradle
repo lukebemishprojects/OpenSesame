@@ -44,9 +44,9 @@ def registerZigCompile(String os, String arch, String finalName) {
     ]
 
     def jniHeaders = [
-            'linux': zig.jniHeadersUnixOpenJDK("tags/jdk-17+35"),
-            'windows': zig.jniHeadersWindowsOpenJDK("tags/jdk-17+35"),
-            'macos': zig.jniHeadersUnixOpenJDK("tags/jdk-17+35")
+            'linux': zig.jniHeadersUnixOpenJDK("tags/jdk-26+21"),
+            'windows': zig.jniHeadersWindowsOpenJDK("tags/jdk-26+21"),
+            'macos': zig.jniHeadersUnixOpenJDK("tags/jdk-26+21")
     ]
 
     return project.tasks.register('zigCompile-'+os+'-'+arch, ZigCompileTask) {

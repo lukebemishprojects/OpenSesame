@@ -232,9 +232,9 @@ public final class OpeningMetafactory {
         MethodHandles.Lookup lookup;
         try {
             if (unsafe) {
-                lookup = getLookupProviderUnsafe().provider.openingLookup(caller, holdingClass);
+                lookup = getLookupProviderUnsafe().provider.unsafeLookup();
             } else {
-                lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, holdingClass);
+                lookup = LOOKUP_PROVIDER_SAFE.unsafeLookup();
             }
         } catch (IllegalAccessException e) {
             throw new OpeningException("Issue creating lookup", e);
@@ -425,9 +425,9 @@ public final class OpeningMetafactory {
         MethodHandles.Lookup lookup;
         try {
             if (unsafe) {
-                lookup = getLookupProviderUnsafe().provider.openingLookup(caller, targetClass);
+                lookup = getLookupProviderUnsafe().provider.unsafeLookup();
             } else {
-                lookup = LOOKUP_PROVIDER_SAFE.openingLookup(caller, targetClass);
+                lookup = LOOKUP_PROVIDER_SAFE.unsafeLookup();
                 if (targetClass.getModule() != holdingClass.getModule() && (lookup.lookupModes() & MethodHandles.Lookup.ORIGINAL) == 0) {
                     throw new OpeningException("Holding interface and class to extend must be in the same module, or otherwise have ORIGINAL lookup access, if `unsafe` is false");
                 }
@@ -449,16 +449,26 @@ public final class OpeningMetafactory {
             throw new OpeningException("Could not get existing generated subclass", e);
         }
     }
-
+    
     private static MethodHandle findCtorOrAllocator(MethodType factoryType, MethodHandles.Lookup lookup, Class<?> generatedClass) throws Throwable {
+        // TODO: use a custom field for this instead? Seems simpler...
         var constructor = generatedClass.getConstructor(factoryType.parameterArray());
         if (constructor.isAnnotationPresent(ManualAllocation.class)) {
             var annotationValue = constructor.getAnnotation(ManualAllocation.class);
-            var superClass = annotationValue.superClass();
-            var superClassCtor = lookup.findConstructor(superClass, MethodType.methodType(void.class, annotationValue.superConstructor()));
-            return ManualAllocationUtil.constructionHandle(generatedClass, annotationValue.superClass(), superClassCtor, lookup, annotationValue.fields()).asType(factoryType);
+            return annotationValue.handle().asType(factoryType);
         }
         return lookup.findConstructor(generatedClass, factoryType.changeReturnType(void.class)).asType(factoryType);
+    }
+    
+    private static Class<?> generateClass(MethodHandles.Lookup lookup, ExtendInfo info, boolean allowUnsafe) {
+        var isInterface = info.target().isInterface();
+        var superClass = isInterface ? Object.class : info.target();
+        var interfaces = isInterface ? List.of(info.target(), info.extension(), Extension.class) : List.of(info.extension(), Extension.class);
+        /*
+        Algorithm for finding target lookup / nest:
+        - If the target class is not visible from the extension class's module, find a target original lookup
+        - If the extension class is not visible from the target class's module, find an unsafe lookup
+         */
     }
 
     private static Class<?> generateClass(MethodHandles.Lookup originalLookup, MethodHandles.Lookup lookup, Class<?> targetClass, String constructionMethodName, Class<?> holdingClass, List<List<Object>> fields, List<List<Object>> overrides, List<List<Object>> ctors) {
@@ -820,7 +830,7 @@ public final class OpeningMetafactory {
                 methodVisitor.visitEnd();
             }
         }
-
+        
         for (var ctor : ctors) {
             MethodType ctorType;
             MethodType superType;
@@ -847,6 +857,11 @@ public final class OpeningMetafactory {
                 try {
                     Constructor<?> originalCtor = targetClass.getDeclaredConstructor(superType.parameterArray());
                     if ((originalCtor.getModifiers() & Opcodes.ACC_PRIVATE) != 0) {
+                        // TODO: write hidden data here?
+                        var superClassCtor = lookup.unreflectConstructor(originalCtor);
+                        return ManualAllocationUtil.constructionHandle(generatedClass, targetClass, superClassCtor, lookup, fieldsToSet);
+
+                        // TODO: OLD
                         // This proxy constructor is not visible, and we are using a proxy-generated dynamic module, so
                         // construction must happen through manual allocation and superclass invocation.
                         var annotationVisitor = methodVisitor.visitAnnotation(

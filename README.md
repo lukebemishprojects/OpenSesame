@@ -7,7 +7,7 @@
 OpenSesame provides a tool to break through basically any form of encapsulation in the JVM, in a way that allows you to work with simple accessor method in your code, instead of worrying about `MethodHandle`s or reflection. These accessors are turned
 into `INVOKEDYNAMIC` instructions at compile time which call a lightweight runtime component; the use of `INVOKEDYNAMIC` allows the runtime dependency to be extremely lightweight, and for the JVM to inline calls to members you are accessing when the
 call site is first evaluated, assuring that your code runs as fast as code accessing your target without breaking encapsulation. Normally, OpenSesame simply breaks though access control, but it can be told to break through module boundaries as well.
-OpenSesame requires Java 17 or higher.
+OpenSesame requires Java 21 or higher.
 
 ## Setup
 

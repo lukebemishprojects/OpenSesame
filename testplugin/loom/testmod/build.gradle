@@ -6,7 +6,7 @@ plugins {
 
 group='dev.lukebemish.opensesame'
 
-java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 
 loom {
     runs.configureEach {

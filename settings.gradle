@@ -164,9 +164,7 @@ testingUtils {
     gradleRoots.add './testplugin'
     platform {
         enabled = true
-        javaVersions = ['17', '21', '24']
-        exclude('windows', 'aarch64', '17')
-        exclude('windows', 'aarch64', '24')
+        javaVersions = ['21', '25']
         testEnvironmentProject = 'testtargets'
     }
 }

@@ -7,6 +7,7 @@ java.withJavadocJar()
 
 sourceSets {
     java22 {}
+    java24 {}
 }
 
 tasks.named('compileJava22Java', JavaCompile) {
@@ -15,11 +16,21 @@ tasks.named('compileJava22Java', JavaCompile) {
     }
 }
 
+tasks.named('compileJava24Java', JavaCompile) {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(24)
+    }
+}
+
 tasks.named('processResources', ProcessResources) {
     from(sourceSets.java22.output) {
         into 'META-INF/versions/22'
     }
+    from(sourceSets.java24.output) {
+        into 'META-INF/versions/24'
+    }
     dependsOn sourceSets.java22.output
+    dependsOn sourceSets.java24.output
 }
 
 tasks.named('jar', Jar) {
@@ -32,13 +43,16 @@ tasks.named('jar', Jar) {
 
 configurations {
     java22CompileClasspath.extendsFrom compileClasspath
+    java24CompileClasspath.extendsFrom compileClasspath
 }
 
 dependencies {
     implementation libs.asm.core
     implementation libs.asm.commons
-    
+    implementation libs.bytecodebuilder
+
     java22CompileOnly sourceSets.main.output.classesDirs
+    java24CompileOnly sourceSets.main.output.classesDirs
 }
 
 publishing {

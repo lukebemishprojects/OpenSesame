@@ -34,7 +34,7 @@ class LookupProviderUnsafe implements LookupProvider {
     }
 
     @Override
-    public MethodHandles.Lookup openingLookup(MethodHandles.Lookup original, Class<?> target) {
+    public MethodHandles.Lookup unsafeLookup() {
         return lookup;
     }
 }
