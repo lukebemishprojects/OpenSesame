@@ -6,7 +6,7 @@ autoservice = "1.0.1"
 testingutils = "0.1.13"
 
 groovy = "4.0.18"
-asm = "9.6"
+asm = "9.9.1"
 
 fabric-loom = "1.5.6"
 fabric-loom-testing = "1.11.4"
