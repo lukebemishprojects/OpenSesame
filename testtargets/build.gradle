@@ -102,7 +102,7 @@ testingUtils.makeTestingEnvironment(sourceSets.metafactoryTest) {
             '--add-exports=jdk.compiler/com.sun.tools.javac.api=dev.lukebemish.javacpostprocessor',
             '--add-exports=jdk.compiler/com.sun.tools.javac.jvm=dev.lukebemish.javacpostprocessor',
             '--add-exports=jdk.compiler/com.sun.tools.javac.util=dev.lukebemish.javacpostprocessor',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.main=dev.lukebemish.javacpostprocessor'
+            '--add-exports=jdk.compiler/com.sun.tools.javac.main=dev.lukebemish.javacpostprocessor',
 
             // Let our test framework test the native-access bits
             '--add-opens=dev.lukebemish.opensesame.natives/dev.lukebemish.opensesame.natives=dev.lukebemish.opensesame.test.metafactory',
