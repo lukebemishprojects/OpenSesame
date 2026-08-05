@@ -112,7 +112,8 @@ tasks.named('compileJava', JavaCompile).configure {
     options.forkOptions.jvmArgs.addAll([
             '--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED',
             '--add-exports=jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED'
+            '--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
+            '--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED'
     ])
 }
 ```
