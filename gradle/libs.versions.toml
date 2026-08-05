@@ -16,7 +16,7 @@ tinyremapper = "0.10.0"
 
 mixin = "0.8.5"
 
-javacpostprocessor = "0.1.3"
+javacpostprocessor = "0.1.10"
 
 [libraries]
 

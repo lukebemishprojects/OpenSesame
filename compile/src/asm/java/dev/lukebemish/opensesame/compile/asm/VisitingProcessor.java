@@ -24,6 +24,7 @@ import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -90,7 +91,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
 
     private static boolean isOpenSesameGenerated(Path file) {
         return file.getFileName().toString().endsWith(VisitingProcessor.UNFINAL_SERVICE + ".class")
-                || file.getFileName().toString().endsWith(MIXIN_PROVIDER.getClassName());
+                || file.getFileName().toString().equals(MIXIN_PROVIDER.getClassName());
     }
 
     public static Set<Path> process(Path input, Path output) throws IOException {
@@ -133,6 +134,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         mixin.visitEnd();
         var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
         generated.visit("value", MIXIN_PROVIDER);
+        generated.visit("cause", holderType);
         generated.visitEnd();
         if (forClass) {
             var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
@@ -191,6 +193,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, generatedClassName, null, "java/lang/Object", new String[]{MIXIN_PROVIDER.getInternalName()});
                     var generated = writer.visitAnnotation(OpenSesameGenerated.class.descriptorString(), false);
                     generated.visit("value", UNFINAL);
+                    generated.visit("cause", selfType);
                     generated.visitEnd();
                     var initWriter = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
                     initWriter.visitCode();
@@ -223,8 +226,9 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
                     if (modifiedExternal != null) {
                         modifiedExternal.add(serviceFile);
                     }
+                } else {
+                    super.writeMixinProviderLines(lines, selfType);
                 }
-                super.writeMixinProviderLines(lines, selfType);
             }
 
             private static void generateImpl(String implMethodName, Type selfType, ClassWriter writer, List<String> typeLines, Map<Type, Integer> targetIndexes) {
@@ -294,7 +298,23 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
     }
 
     protected void writeMixinProviderLines(Map<MixinProviderType, List<String>> lines, Type selfType) throws IOException {
+        throw new IOException("No mixin service location available");
+    }
 
+    public static Path getMixinServiceLocation(OutputPathResolver rootPath) throws IOException {
+        return rootPath.resolve("META-INF/services/" + MIXIN_PROVIDER.getInternalName().replace('/', '.'));
+    }
+    
+    public static void sortMixinServices(Path path) throws IOException {
+        if (Files.exists(path)) {
+            var contents = Files.readAllLines(path, StandardCharsets.UTF_8)
+                    .stream()
+                    .filter(it -> !it.isBlank())
+                    .distinct()
+                    .sorted()
+                    .toList();
+            Files.writeString(path, String.join("\n", contents)+"\n", StandardCharsets.UTF_8);
+        }
     }
 
     final List<Runnable> extendCallbacks = new ArrayList<>();
@@ -732,6 +752,7 @@ public class VisitingProcessor extends ClassVisitor implements Processor<Type, V
         @Override
         public void visitEnd() {
             if (this.annotations.containsKey(Open.class.descriptorString())) {
+                modifiedAny = true;
                 if (this.isAbstract) {
                     throw new RuntimeException("Method "+this.name+" is abstract, but "+Open.class.getSimpleName()+" expects a concrete method");
                 }

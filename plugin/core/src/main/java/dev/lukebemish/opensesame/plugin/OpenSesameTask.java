@@ -11,9 +11,9 @@ import org.gradle.api.tasks.LocalState;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
-import org.gradle.api.tasks.SkipWhenEmpty;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.ChangeType;
+import org.gradle.work.Incremental;
 import org.gradle.work.InputChanges;
 
 import javax.inject.Inject;
@@ -29,7 +29,7 @@ public abstract class OpenSesameTask extends DefaultTask {
     @InputDirectory
     @PathSensitive(PathSensitivity.RELATIVE)
     @IgnoreEmptyDirectories
-    @SkipWhenEmpty
+    @Incremental
     public abstract DirectoryProperty getInputClasses();
 
     @OutputDirectory
@@ -54,6 +54,12 @@ public abstract class OpenSesameTask extends DefaultTask {
         var incrementalClassesFile = getIncrementalClasses().get().getAsFile();
         if (incrementalClassesFile.exists()) {
             toProcess.addAll(Files.readAllLines(incrementalClassesFile.toPath()));
+        } else {
+            getInputClasses().getAsFileTree().visit(details -> {
+                if (!details.isDirectory()) {
+                    toProcess.add(details.getPath());
+                }
+            });
         }
         changes.getFileChanges(getInputClasses()).forEach(change -> {
             var path = change.getFile().toPath();
@@ -84,6 +90,7 @@ public abstract class OpenSesameTask extends DefaultTask {
                 }
             }
         }
+        VisitingProcessor.sortMixinServices(VisitingProcessor.getMixinServiceLocation(outputDir::resolve));
         Files.write(incrementalClassesFile.toPath(), processed);
     }
 }
