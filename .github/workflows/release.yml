@@ -23,7 +23,7 @@
                 },
                 {
                     "name": "Validate Gradle Wrapper",
-                    "uses": "gradle/actions/wrapper-validation@v4"
+                    "uses": "gradle/actions/wrapper-validation@v5"
                 },
                 {
                     "name": "Cache",
@@ -69,7 +69,7 @@
                 },
                 {
                     "name": "Submit Dependencies",
-                    "uses": "gradle/actions/dependency-submission@v4"
+                    "uses": "gradle/actions/dependency-submission@v5"
                 }
             ],
             "permissions": {
@@ -97,7 +97,7 @@
                 },
                 {
                     "name": "Validate Gradle Wrapper",
-                    "uses": "gradle/actions/wrapper-validation@v4"
+                    "uses": "gradle/actions/wrapper-validation@v5"
                 },
                 {
                     "name": "Cache",
@@ -153,7 +153,7 @@
                 },
                 {
                     "name": "Validate Gradle Wrapper",
-                    "uses": "gradle/actions/wrapper-validation@v4"
+                    "uses": "gradle/actions/wrapper-validation@v5"
                 },
                 {
                     "name": "Cache",
